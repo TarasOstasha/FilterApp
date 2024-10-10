@@ -1,6 +1,7 @@
 const express = require('express');
 const queryParser = require('query-parser-express');
 const { errorHandlers } = require('./middleware');
+const { categoryController } = require('./controllers');
 
 const app = express();
 
@@ -13,7 +14,7 @@ app.use(
   }),
 );
 
-
+app.get('/category', categoryController.getAllCategories);
 
 app.use(errorHandlers.errorHandler);
 
