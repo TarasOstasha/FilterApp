@@ -46,10 +46,10 @@ const Home: React.FC = () => {
   return (
     <div className={`container ${styles.home}`}>
       <div className="row">
-        <div className="col-md-3">
+        <div className="col-12 col-md-3">
           <FilterSidebar filters={filters} onFilterChange={handleFilterChange} />
         </div>
-        <div className="col-md-9">
+        <div className="col-12 col-md-9">
           <div className="controls d-flex justify-content-between">
             <SortDropdown />
             <ItemsPerPageDropdown />
