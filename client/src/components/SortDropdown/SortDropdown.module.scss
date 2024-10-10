@@ -1,0 +1,32 @@
+@import '../../styles/variables.scss';
+
+
+.sortBy {
+    font-family: $arial-font;
+    font-weight: bold;
+    font-size: 14px;
+    line-height: 20px;
+}
+.sort-dropdown {
+    display: flex;
+    align-items: center;  
+    gap: 10px;            
+  
+    .sortBy {
+      white-space: nowrap; 
+      margin: 0;            
+    }
+  
+    .form-select {
+      flex-grow: 1;       
+    }
+  }
+  .xyz-form-select {
+    border-radius: 0;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    font-family: $arial-font!important;
+    color: rgb(124, 137, 154);
+  }
+  

@@ -1,0 +1,15 @@
+@import './variables.scss';
+@import '~bootstrap/scss/bootstrap';
+
+html {
+  font-family: sans-serif;
+  -ms-text-size-adjust: 100%;
+  -webkit-text-size-adjust: 100%
+}
+
+body {
+  font-family: $primary-font;
+  margin: 0;
+  padding: 0;
+  background-color: #ffffff;
+}

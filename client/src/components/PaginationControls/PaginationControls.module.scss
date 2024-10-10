@@ -1,0 +1,42 @@
+@import '../../styles/variables.scss';
+
+.pagination-button {
+    text-align: center;
+    button {
+        font-family: $rasa-font;
+        font-weight: 700;
+        background-color: #fff;
+        color: #000;
+        border-color: #000;
+        transition: .2s;
+        border-radius: 0;
+        padding: 12px 26px;
+        font-size: 14px;
+        line-height: 1.3333333;
+        &:hover {
+            background-color: #333;
+            color: #fff;
+            border-color: #333;
+        }
+    }
+}
+.xyz-pagination-nav {
+    text-align: right;
+    button {
+        margin: 5px;
+        padding: 1px 5px;
+        border-radius: 0;
+        font-family: $rasa-font;
+        font-size: 14px;
+        line-height: 21px;
+        font-weight: 700;
+        color: $main-color;
+        border-color: $main-color;
+        background: $white-color;
+        &:hover {
+            background-color: #333;
+            color: #fff;
+            border-color: #333;
+        }
+    }
+}

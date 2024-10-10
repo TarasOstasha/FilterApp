@@ -1,0 +1,41 @@
+@import '../../styles/variables.scss';
+
+
+.xyzProductList {
+  display: flex;
+  flex-wrap: wrap; /* Allows items to wrap to the next row */
+  gap: 15px; /* Space between items */
+  padding: 15px; /* Padding inside the product list */
+}
+  
+.xyzProductItem {
+  flex: 1 1 calc(33.33% - 30px); /* Each item takes up 1/3 of the container, accounting for padding */
+  max-width: calc(33.33% - 30px); /* Max width for 3 items per row, minus the total padding */
+  box-sizing: border-box; /* Ensures padding and borders are included in the element's total width/height */
+  padding: 15px;
+}
+ 
+.xyzProductItem {
+  color: $main-color;
+  text-decoration: none;
+
+  &:hover {
+    color: $main-color;
+    // Apply the hover to all child elements except .xyzPprice
+    .xyzProductDetail *:not(.xyzPprice) {
+      color: $second-color;
+    }
+  }
+}
+
+.xyzPname {
+  font-family: $open-sans-condensed;
+  font-weight: 700;
+  font-size: 16px;
+  line-height: 23px;
+
+}
+.xyzPprice {
+  font-family: $arial-font;
+  //color: $main-color;
+}

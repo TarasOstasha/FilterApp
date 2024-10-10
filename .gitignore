@@ -1,0 +1,30 @@
+# Node.js dependencies (client and server)
+node_modules/
+
+# Client build artifacts
+client/build/
+client/.cache/
+client/dist/
+
+# Server build artifacts (if applicable)
+server/dist/
+
+# Ignore logs
+*.log
+logs/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Ignore environment variables
+*.env
+
+# Ignore package-lock and yarn.lock if you want
+# (keep if version-locking is desired)
+# package-lock.json
+# yarn.lock
+
+# Ignore IDE or editor folders (optional)
+.vscode/
+.idea/
+.DS_Store

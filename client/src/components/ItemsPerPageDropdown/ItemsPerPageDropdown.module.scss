@@ -1,0 +1,15 @@
+@import '../../styles/variables.scss';
+
+.items-per-page-dropdown {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .xyz-form-select {
+    border-radius: 0;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    font-family: $arial-font!important;
+    color: rgb(124, 137, 154);
+  }
