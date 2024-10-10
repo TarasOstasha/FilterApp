@@ -33,11 +33,7 @@
     font-family: $arial-font;
     color: $main-color;
   }
-}
-
-
-
-/* For tablet-sized screens (768px - 1024px) */
+  /* For tablet-sized screens (768px - 1024px) */
 @media (max-width: 1024px) {
   .xyzProductItem {
     flex: 1 1 calc(50% - 20px); /* Two items per row */
@@ -68,3 +64,8 @@
     max-width: 100%;
   }
 }
+
+}
+
+
+

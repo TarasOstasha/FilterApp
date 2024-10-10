@@ -15,8 +15,9 @@ const Home: React.FC = () => {
   const [currentPage, setCurrentPage] = useState(1); // Set current page
   const [visibleProducts, setVisibleProducts] = useState(itemsPerPage);
 
+  //https://apgexhibits.com/ProductDetails.asp?ProductCode=WLM-ACH2420-TDK
   const BASE_PRODUCT_IMG_URL = 'https://cdn4.volusion.store/wgjfq-aujvw/v/vspfiles/photos/';
-  const BASE_PRODUCT_URL = 'https://www.xyzdisplays.com/searchresults.asp?Search=';
+  const BASE_PRODUCT_URL = 'https://www.xyzdisplays.com/ProductDetails.asp?ProductCode=';
   const products = [
     { id: 1,productCode: 'MK5200', name: '24in x 60in Waveline Tension Fabric Banner Stand (Single-Sided)', productLink: `${BASE_PRODUCT_URL}MK5200`, productImgLink:`${BASE_PRODUCT_IMG_URL}MK5200-1.jpg?v-cache=1717581834`, price: 222 },
     { id: 2,productCode: 'MK5530', name: '24in x 60in Banner Stand w/ Hand Sanitizer Dispenser', productLink: `${BASE_PRODUCT_URL}MK5530`, productImgLink:`${BASE_PRODUCT_IMG_URL}MK5530-1.jpg?v-cache=1717581834`, price: 286 },
