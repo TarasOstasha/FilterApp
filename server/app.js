@@ -1,10 +1,20 @@
-const http = require('node:http');
-const app = require('./app');
+const express = require('express');
+const queryParser = require('query-parser-express');
+const { errorHandlers } = require('./middleware');
 
-const PORT = process.env.PORT ?? 5000;
+const app = express();
 
-const httpServer = http.createServer(app);
+app.use(express.json());
 
-httpServer.listen(PORT, () =>
-  console.log(`Server is listening http://localhost:${PORT}`)
+app.use(
+  queryParser({
+    parseBoolean: true, // default true
+    parseNumber: true, // default true
+  }),
 );
+
+
+
+app.use(errorHandlers.errorHandler);
+
+module.exports = app;

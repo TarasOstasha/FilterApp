@@ -13,10 +13,13 @@
     "nodemon": "^3.1.7"
   },
   "dependencies": {
+    "cors": "^2.8.5",
     "express": "^4.21.1",
     "http-errors": "^2.0.0",
     "pg": "^8.13.0",
+    "pg-hstore": "^2.3.4",
     "query-parser-express": "^1.0.7",
-    "yup": "^1.4.0"
+    "yup": "^1.4.0",
+    "chalk": "^4.1.2"
   }
 }
