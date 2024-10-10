@@ -12,70 +12,59 @@
     max-width: calc(33.33% - 30px);
     box-sizing: border-box;
     padding: 15px;
-  }
-
-  /* For tablet-sized screens (768px - 1024px) */
-  @media (max-width: 1024px) {
-    .xyzProductItem {
-      flex: 1 1 calc(50% - 20px); /* Two items per row */
-      max-width: calc(50% - 20px);
-    }
-  }
-  
-  @media (max-width: 820px) {
-    .xyzProductItem {
-      flex: 1 1 calc(50% - 20px); /* Two items per row */
-      max-width: calc(50% - 20px);
-    }
-  }
-  
-
-  /* For mobile screens (max-width: 768px) */
-  @media (max-width: 768px) {
-    .xyzProductItem {
-      flex: 1 1 calc(50% - 20px); /* Two items per row on mobile */
-      max-width: calc(50% - 20px);
-    }
-  }
-
-  /* For smaller mobile screens (max-width: 480px) */
-  @media (max-width: 480px) {
-    .xyzProductItem {
-      flex: 1 1 100%; /* One item per row */
-      max-width: 100%;
-    }
-  }
-}
-
-  
-.xyzProductItem {
-  flex: 1 1 calc(33.33% - 30px); 
-  max-width: calc(33.33% - 30px); 
-  box-sizing: border-box; 
-  padding: 15px;
-}
- 
-.xyzProductItem {
-  color: $main-color;
-  text-decoration: none;
-
-  &:hover {
     color: $main-color;
-    // Apply the hover to all child elements except .xyzPprice
-    .xyzProductDetail *:not(.xyzPprice) {
-      color: $second-color;
+    text-decoration: none;
+    &:hover {
+      color: $second-color;//$main-color;
+      // Apply the hover to all child elements except .xyzPprice
+      // .xyzProductDetail *:not(.xyzPprice) {
+      //   color: $main-color;//$second-color;
+      // }
     }
+  }
+  .xyzPname {
+    font-family: $open-sans-condensed;
+    font-weight: 700;
+    font-size: 16px;
+    line-height: 23px;
+  
+  }
+  .xyzPprice {
+    font-family: $arial-font;
+    color: $main-color;
   }
 }
 
-.xyzPname {
-  font-family: $open-sans-condensed;
-  font-weight: 700;
-  font-size: 16px;
-  line-height: 23px;
 
+
+/* For tablet-sized screens (768px - 1024px) */
+@media (max-width: 1024px) {
+  .xyzProductItem {
+    flex: 1 1 calc(50% - 20px); /* Two items per row */
+    max-width: calc(50% - 20px);
+  }
 }
-.xyzPprice {
-  font-family: $arial-font;
-  //color: $main-color;
+
+@media (max-width: 820px) {
+  .xyzProductItem {
+    flex: 1 1 calc(50% - 20px); /* Two items per row */
+    max-width: calc(50% - 20px);
+  }
+}
+
+
+/* For mobile screens (max-width: 768px) */
+@media (max-width: 768px) {
+  .xyzProductItem {
+    flex: 1 1 calc(50% - 20px); /* Two items per row on mobile */
+    max-width: calc(50% - 20px);
+  }
+}
+
+/* For smaller mobile screens (max-width: 480px) */
+@media (max-width: 480px) {
+  .xyzProductItem {
+    flex: 1 1 100%; /* One item per row */
+    max-width: 100%;
+  }
 }
