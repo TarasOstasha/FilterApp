@@ -5,9 +5,10 @@ class Product {
             SELECT *
             FROM Products
             ORDER BY id
+            LIMIT $1 OFFSET $2
           `;
-          const { rows } = await Product.pool.query(query);
-    
+          const { rows } = await Product.pool.query(query,[limit, offset]);
+
           return rows;
         } catch (err) {
           throw err;

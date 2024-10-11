@@ -1,0 +1,4 @@
+### 200 []
+GET http://localhost:5000/products?page=2&results=27
+###
+GET http://localhost:5000/products?page=50&results=-50

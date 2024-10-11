@@ -15,8 +15,8 @@ const { PAGE_VALIDATION_SCHEMA, RESULTS_VALIDATION_SCHEMA } = require('../utils/
       
   
     const limit = results;
-    const offset = (page - 1) * page;
-  
+    //const offset = (page - 1) * page;
+    const offset = (page - 1) * results;
     req.pagination = { limit, offset };
     next();
   };
