@@ -8,6 +8,8 @@ const productRouter = Router();
 
 productRouter
     .route('/')
-    .get(paginate.paginateProducts, productController.getAllProducts)
+    //.get(paginate.paginateProducts, productController.getAllProducts)
+    .get(paginate.paginateProducts, productController.getProducts)
+
 
 module.exports = productRouter;
