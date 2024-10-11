@@ -1,0 +1,5 @@
+### 200 []
+GET http://localhost:5000/productFilter
+
+### 200 []
+GET http://localhost:5000/productFilter?page=50&results=-50

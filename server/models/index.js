@@ -1,6 +1,11 @@
+require('dotenv').config();
 const { Pool } = require('pg');
 const Category = require('./category');
-require('dotenv').config();
+const FilterField = require('./filterField');
+const ProductCategory = require('./productCategory');
+const ProductFilter = require('./productFilter');
+const Product = require('./product');
+
 
 
 const connectionOptions = {
@@ -20,9 +25,16 @@ const db = {};
 db.pool = pool;
 
 db.Category = Category;
+db.FilterField = FilterField;
+db.ProductCategory = ProductCategory;
+db.ProductFilter = ProductFilter;
+db.Product = Product;
 
 
 Category.pool = pool;
-
+FilterField.pool = pool;
+ProductCategory.pool = pool;
+ProductFilter.pool = pool;
+Product.pool = pool;
 
 module.exports = db;
