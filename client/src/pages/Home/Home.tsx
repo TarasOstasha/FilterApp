@@ -26,10 +26,27 @@ const Home: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [sortBy, setSortBy] = useState('price_asc');
 
+  // const handleFilterChange = (filter: { field: string; value: string }) => {
+  //   setSelectedFilters((prevFilters) => {
+  //     const { field, value } = filter;
+  //     const newFilters = { ...prevFilters };
+  //     if (!newFilters[field]) {
+  //       newFilters[field] = [];
+  //     }
+  //     if (newFilters[field].includes(value)) {
+  //       newFilters[field] = newFilters[field].filter((v) => v !== value);
+  //     } else {
+  //       newFilters[field].push(value);
+  //     }
+  //     return newFilters;
+  //   });
+  // };
   const handleFilterChange = (filter: { field: string; value: string }) => {
     setSelectedFilters((prevFilters) => {
       const { field, value } = filter;
       const newFilters = { ...prevFilters };
+      
+      // Update filters state
       if (!newFilters[field]) {
         newFilters[field] = [];
       }
@@ -38,9 +55,25 @@ const Home: React.FC = () => {
       } else {
         newFilters[field].push(value);
       }
+  
+      // Update query string
+      const params = new URLSearchParams(window.location.search);
+      
+      // Remove the field if no values are selected, else update the query string
+      if (newFilters[field].length === 0) {
+        params.delete(field);
+      } else {
+        params.set(field, newFilters[field].join(','));
+      }
+      
+      // Update the URL with the new filters
+      window.history.pushState({}, '', `${window.location.pathname}?${params.toString()}`);
+      
+      fetchProducts(); // Fetch products with updated filters
       return newFilters;
     });
   };
+  
 
 
   const handleSortChange = (sortMethod: string) => {
