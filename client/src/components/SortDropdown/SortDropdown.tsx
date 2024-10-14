@@ -32,6 +32,7 @@ interface SortDropdownProps {
 }
 
 const SortDropdown: React.FC<SortDropdownProps> = ({ handleSortChange, currentSort }) => {
+
   return (
     <div className={styles['sort-dropdown']}>
       <label className={styles.sortBy}>Sort By:</label>

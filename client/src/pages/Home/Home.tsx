@@ -44,7 +44,7 @@ const Home: React.FC = () => {
 
 
   const handleSortChange = (sortMethod: string) => {
-    console.log(sortMethod)
+    
     setSortBy(sortMethod); // Set sort method when user changes the dropdown
     const params = new URLSearchParams(window.location.search);
     params.set('sortBy', sortMethod);
@@ -122,7 +122,7 @@ const Home: React.FC = () => {
       Object.keys(selectedFilters).forEach((key) => {
         queryParams.append(key, selectedFilters[key].join(','));
       });
-
+     
       const response = await axios.get(`http://localhost:5000/products?${queryParams.toString()}`);
   
       setProducts(response.data.products); 
@@ -136,7 +136,7 @@ const Home: React.FC = () => {
 
   useEffect(() => {
     fetchProducts();
-  }, [selectedFilters, currentPage, itemsPerPage]); // Refetch when filters, page, or itemsPerPage changes
+  }, [selectedFilters, currentPage, itemsPerPage,sortBy]); // Refetch when filters, page, or itemsPerPage changes
 
   const totalPages = Math.ceil(totalProducts / itemsPerPage);
 
