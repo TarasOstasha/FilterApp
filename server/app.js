@@ -18,6 +18,8 @@ app.use(
   queryParser({
     parseBoolean: true, // default true
     parseNumber: true, // default true
+    parseArray: true,
+    parseNull: true 
   }),
 );
 
@@ -27,7 +29,7 @@ app.use(
 // app.get('/productFilter', productFilterController.getAllProductFilters);
 // app.get('/products', paginate.paginateProducts, productController.getAllProducts);
 
-app.use('/', router);
+app.use('/api', router);
 
 app.use(errorHandlers.errorHandler);
 

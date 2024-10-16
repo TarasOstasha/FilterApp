@@ -41,7 +41,43 @@ const Home: React.FC = () => {
   //     return newFilters;
   //   });
   // };
+
+  // const handleFilterChange = (filter: { field: string; value: string }) => {
+  //   console.log(filter);
+  //   setSelectedFilters((prevFilters) => {
+  //     const { field, value } = filter;
+  //     const newFilters = { ...prevFilters };
+      
+  //     // Update filters state
+  //     if (!newFilters[field]) {
+  //       newFilters[field] = [];
+  //     }
+  //     if (newFilters[field].includes(value)) {
+  //       newFilters[field] = newFilters[field].filter((v) => v !== value);
+  //     } else {
+  //       newFilters[field].push(value);
+  //     }
+  
+  //     // Update query string
+  //     const params = new URLSearchParams(window.location.search);
+      
+  //     // Remove the field if no values are selected, else update the query string
+  //     if (newFilters[field].length === 0) {
+  //       params.delete(field);
+  //     } else {
+  //       params.set(field, newFilters[field].join(','));
+  //     }
+      
+  //     // Update the URL with the new filters
+  //     window.history.pushState({}, '', `${window.location.pathname}?${params.toString()}`);
+      
+  //     fetchProducts(); // Fetch products with updated filters
+  //     return newFilters;
+  //   });
+  // };
+
   const handleFilterChange = (filter: { field: string; value: string }) => {
+    console.log(filter);
     setSelectedFilters((prevFilters) => {
       const { field, value } = filter;
       const newFilters = { ...prevFilters };
@@ -55,21 +91,25 @@ const Home: React.FC = () => {
       } else {
         newFilters[field].push(value);
       }
-  
-      // Update query string
-      const params = new URLSearchParams(window.location.search);
-      
-      // Remove the field if no values are selected, else update the query string
+    
       if (newFilters[field].length === 0) {
-        params.delete(field);
-      } else {
-        params.set(field, newFilters[field].join(','));
+        delete newFilters[field]; 
+      }
+  
+      // Rebuild the query parameters from newFilters
+      const params = new URLSearchParams();
+  
+      // Add all selected filters to params
+      for (const key in newFilters) {
+        if (newFilters.hasOwnProperty(key)) {
+          params.set(key, newFilters[key].join(','));
+        }
       }
       
       // Update the URL with the new filters
-      window.history.pushState({}, '', `${window.location.pathname}?${params.toString()}`);
+       window.history.pushState({}, '', `${window.location.pathname}?${params.toString()}`);
       
-      fetchProducts(); // Fetch products with updated filters
+      //fetchProducts(); // Fetch products with updated filters
       return newFilters;
     });
   };
@@ -143,21 +183,18 @@ const Home: React.FC = () => {
   const fetchProducts = async () => {
     setLoading(true);
     try {
-      // const queryParams = new URLSearchParams();
-      // queryParams.append('page', currentPage.toString());
-      // queryParams.append('results', itemsPerPage.toString());
       const queryParams = new URLSearchParams();
       queryParams.append('limit', itemsPerPage.toString());
       queryParams.append('offset', ((currentPage - 1) * itemsPerPage).toString());
       queryParams.append('sortBy', sortBy);
-
+      //console.log(queryParams.toString(), '<< queryParams');
       // Append selected filters to the query
       Object.keys(selectedFilters).forEach((key) => {
         queryParams.append(key, selectedFilters[key].join(','));
       });
      
-      const response = await axios.get(`http://localhost:5000/products?${queryParams.toString()}`);
-  
+      const response = await axios.get(`http://localhost:5000/api/products?${queryParams.toString()}`);
+      console.log(response.data.products, '<< response.data.products');
       setProducts(response.data.products); 
       setTotalProducts(response.data.totalProducts); 
     } catch (error) {
@@ -169,7 +206,7 @@ const Home: React.FC = () => {
 
   useEffect(() => {
     fetchProducts();
-  }, [selectedFilters, currentPage, itemsPerPage,sortBy]); // Refetch when filters, page, or itemsPerPage changes
+  }, [selectedFilters, currentPage, itemsPerPage, sortBy, selectedFilters]); // Refetch when filters, page, or itemsPerPage changes
 
   const totalPages = Math.ceil(totalProducts / itemsPerPage);
 

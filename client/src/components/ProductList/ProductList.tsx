@@ -38,14 +38,15 @@ const ProductList: React.FC<ProductListProps> = ({ products = [], filters, loadi
   return (
     <div className={styles.xyzProductList}>
       {/* {JSON.stringify(filteredProducts)} */}
-      {filteredProducts.length === 0 ? (
+      {products.length === 0 ? (
         <p>No products match the selected filters.</p>
       ) : (
-        filteredProducts.map((product) => (
+        products.map((product) => (
           <a href={product.product_link} key={product.id} className={styles.xyzProductItem}>
             <img src={product.product_img_link} alt={product.product_name} />
             <h3 className={styles.xyzPname}>{product.product_name}</h3>
-            <p className={styles.xyzPprice}>Our Price: ${product.product_price}</p>
+            <p className={styles.xyzPprice}>Our Price: {`$${product.product_price.toFixed(2).toLocaleString()}`}</p>
+            {/* <p>{JSON.stringify(product)}</p> */}
           </a>
         ))
       )}

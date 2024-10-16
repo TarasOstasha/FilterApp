@@ -15,9 +15,12 @@
   "dependencies": {
     "chalk": "^4.1.2",
     "cors": "^2.8.5",
+    "csv-parser": "^3.0.0",
     "dotenv": "^16.4.5",
     "express": "^4.21.1",
+    "fs": "^0.0.1-security",
     "http-errors": "^2.0.0",
+    "json2csv": "^6.0.0-alpha.2",
     "pg": "^8.13.0",
     "pg-hstore": "^2.3.4",
     "query-parser-express": "^1.0.7",
