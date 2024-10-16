@@ -1,10 +1,11 @@
-const { exportDataToCSV } = require('./services/csvExporter');
+const chalk = require('chalk');
+const { exportProductDataToCSV } = require('./services/export'); //require('./services/csvExporter');
 
 // Call the export function
-exportDataToCSV()
+exportProductDataToCSV()
   .then(() => {
-    console.log('Export completed successfully.');
+    console.log(chalk.green('Export completed successfully.'));
   })
   .catch((error) => {
-    console.error('Error during export:', error);
+    console.error(chalk.red('Error during export:', error));
   });

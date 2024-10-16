@@ -1,9 +1,10 @@
-const { processCsvFile } = require('./services/csvProcessor');
+const chalk = require('chalk');
+const { processProductCsvFile } = require('./services/import');
 
-processCsvFile()
+processProductCsvFile()
   .then((results) => {
-    console.log('Products successfully inserted:', results.length);
+    console.log(chalk.green('Products successfully inserted:', results.length));
   })
   .catch((error) => {
-    console.error('Error processing CSV file:', error);
+    console.error(chalk.red('Error processing CSV file:', error));
   });
