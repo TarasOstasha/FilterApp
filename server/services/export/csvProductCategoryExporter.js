@@ -3,6 +3,7 @@ const { Pool } = require('pg')
 const fs = require('fs')
 const { Parser } = require('json2csv')
 const pool = require('../../config/dbConfig');
+const manageExportedFiles = require('./manageExportedFiles ');
 // require('dotenv').config()
 
 // const pool = new Pool({
@@ -44,6 +45,7 @@ const exportProductCategoriesToCSV = async () => {
         `Product categories data successfully exported to ${filePath}`,
       ),
     )
+    manageExportedFiles();
   } catch (error) {
     console.error(chalk.red('Error exporting data to CSV:', error))
     throw error;
