@@ -27,14 +27,14 @@ const CsvImportExport: React.FC = () => {
                     'Content-Type': 'multipart/form-data',
                 },
             });
-            toast.success('File uploaded successfully!'); // Success notification
+            toast.success('File uploaded successfully!'); 
         } catch (error) {
-            toast.error('Error uploading file'); // Error notification
+            toast.error('Error uploading file'); 
         }
     };
 
     // Handle exporting data
-    const handleExport = async (type: 'products' | 'categories' | 'productCategories') => {
+    const handleExport = async (type: 'products' | 'categories' | 'productCategories' | 'filterFields' | 'productFilters') => {
         try {
             const response = await axios.get(`/api/export-${type}`, { responseType: 'blob' });
             const url = window.URL.createObjectURL(new Blob([response.data]));
@@ -44,9 +44,9 @@ const CsvImportExport: React.FC = () => {
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
-            toast.success(`${type} data exported successfully!`); // Success notification for export
+            toast.success(`${type} data exported successfully!`); 
         } catch (error) {
-            toast.error(`Error exporting ${type} data`); // Error notification for export failure
+            toast.error(`Error exporting ${type} data`); 
         }
     };
 
@@ -75,6 +75,8 @@ const CsvImportExport: React.FC = () => {
                 <button onClick={() => handleExport('products')}>Export Products</button>
                 <button onClick={() => handleExport('categories')}>Export Categories</button>
                 <button onClick={() => handleExport('productCategories')}>Export Product Categories</button>
+                <button onClick={() => handleExport('filterFields')}>Export Filter Fields</button> 
+                <button onClick={() => handleExport('productFilters')}>Export Product Filter</button>
             </div>
         </div>
     );
