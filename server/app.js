@@ -2,7 +2,7 @@ const express = require('express');
 const queryParser = require('query-parser-express');
 const cors = require('cors');
 const { errorHandlers, paginate } = require('./middleware');
-const { categoryController, filterFieldController, productCategoryController, productFilterController, productController } = require('./controllers');
+const { categoryController, filterFieldController, productCategoryController, productFilterController, productController, importController } = require('./controllers');
 const router = require('./routes');
 
 const app = express();
@@ -28,6 +28,7 @@ app.use(
 // app.get('/productCategory', productCategoryController.getAllProductCategories);
 // app.get('/productFilter', productFilterController.getAllProductFilters);
 // app.get('/products', paginate.paginateProducts, productController.getAllProducts);
+//app.use('/api/upload-csv', importController);
 
 app.use('/api', router);
 

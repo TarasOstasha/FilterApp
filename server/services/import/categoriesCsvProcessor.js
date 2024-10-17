@@ -4,12 +4,12 @@ const csv = require('csv-parser');
 const db = require('../../models/index'); // Import your DB configuration
 
 // Define the correct path to your CSV file
-const csvFilePath = __dirname + '/data/categories.csv';
+//const csvFilePath = __dirname + '/data/categories.csv';
 
-const processCategoriesCsvFile = () => {
+const processCategoriesCsvFile = (csvFilePath) => {
   return new Promise((resolve, reject) => {
     const results = [];
-
+    console.log(csvFilePath);
     fs.createReadStream(csvFilePath)
       .pipe(csv())
       .on('data', async (row) => {

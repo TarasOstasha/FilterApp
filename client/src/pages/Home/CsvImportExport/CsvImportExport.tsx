@@ -20,13 +20,14 @@ const CsvImportExport: React.FC = () => {
 
         const formData = new FormData();
         formData.append('file', file);
-
+        console.log(file);
         try {
-            const response = await axios.post('/api/upload-csv', formData, {
+            const response = await axios.post('http://localhost:5000/api/upload-csv', formData, {
                 headers: {
                     'Content-Type': 'multipart/form-data',
                 },
             });
+            console.log(response);
             toast.success('File uploaded successfully!'); 
         } catch (error) {
             toast.error('Error uploading file'); 
