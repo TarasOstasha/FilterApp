@@ -4,9 +4,9 @@ const csv = require('csv-parser');
 const db = require('../../models/index'); // Import your DB configuration
 
 // Define the correct path to your CSV file
-const csvFilePath = __dirname + '/data/filter_products.csv';
+//const csvFilePath = __dirname + '/data/filter_products.csv';
 
-const processProductCsvFile = () => {
+const processProductCsvFile = (csvFilePath) => {
   return new Promise((resolve, reject) => {
     const results = [];
 

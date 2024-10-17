@@ -71,10 +71,21 @@ const CsvImportExport: React.FC = () => {
                     'Content-Type': 'multipart/form-data',
                 },
             });
-            //console.log(response);
-            toast.success('File uploaded successfully!');
+            const uploadTime = new Date().toLocaleString();
+            // toast.success(`File uploaded successfully at ${uploadTime}`);
+            if (response.data.errorRows && response.data.errorRows.length > 0) {
+                toast.warn(`File uploaded with errors. ${response.data.errorRows.length} rows had issues.`);
+            } else {
+                toast.success(`File uploaded successfully at ${uploadTime}`);
+            }
         } catch (error) {
-            toast.error('Error uploading file');
+            if (axios.isAxiosError(error) && error.response?.data?.message) {
+                toast.error(error.response.data.message);
+            } else if (error instanceof Error) {
+                toast.error(error.message); 
+            } else {
+                toast.error('Error uploading file');
+            }
         }
     };
 

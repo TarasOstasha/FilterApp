@@ -1,7 +1,7 @@
 const { Router } = require('express');
 const multer = require('multer');
 const path = require('path');
-const { importCategoryController } = require('../controllers');
+const { importController } = require('../controllers');
 
 const importRouter = Router();
 
@@ -30,10 +30,14 @@ const upload = multer({
     fileFilter,
 });
 
-importRouter.post('/category', upload.single('file'), importCategoryController.importCategories);
-importRouter.post('/product', upload.single('file'), );
-importRouter.post('/product-category', upload.single('file'), );
-importRouter.post('/product-filter', upload.single('file'), );
-importRouter.post('/filter-field', upload.single('file'), );
+importRouter
+    .post('/category', upload.single('file'), importController.importCategories)
+    .post('/product', upload.single('file'), importController.importProducts)
+    .post('/product-category', upload.single('file'), importController.importProductCategories)
+    // .post('/product-filter', upload.single('file'), importController.importProductFilters)
+    // .post('/filter-field', upload.single('file'), importController.importFilterFields);
 
 module.exports = importRouter;
+
+
+
