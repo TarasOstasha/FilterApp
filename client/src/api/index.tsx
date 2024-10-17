@@ -49,3 +49,14 @@ export const exportData = async (type: string): Promise<AxiosResponse<Blob> | un
         return undefined;
     }
 };
+
+export const fetchProductsFromAPI = async (
+    queryParams: URLSearchParams
+): Promise<AxiosResponse<any> | undefined> => {
+    try {
+        return await axiosInstance.get(`/products?${queryParams.toString()}`);
+    } catch (error) {
+        console.error('Error fetching products:', error);
+        return undefined;
+    }
+};

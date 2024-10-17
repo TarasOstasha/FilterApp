@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';  
+import axios from 'axios';
 import FilterSidebar from '../../components/FilterSidebar/FilterSidebar';
 import ProductList from '../../components/ProductList/ProductList';
 import SortDropdown from '../../components/SortDropdown/SortDropdown';
 import ItemsPerPageDropdown from '../../components/ItemsPerPageDropdown/ItemsPerPageDropdown';
 import PaginationControls from '../../components/PaginationControls/PaginationControls';
+import { fetchProductsFromAPI } from '../../api';
 
 
 interface Product {
@@ -47,7 +48,7 @@ const Home: React.FC = () => {
   //   setSelectedFilters((prevFilters) => {
   //     const { field, value } = filter;
   //     const newFilters = { ...prevFilters };
-      
+
   //     // Update filters state
   //     if (!newFilters[field]) {
   //       newFilters[field] = [];
@@ -57,31 +58,31 @@ const Home: React.FC = () => {
   //     } else {
   //       newFilters[field].push(value);
   //     }
-  
+
   //     // Update query string
   //     const params = new URLSearchParams(window.location.search);
-      
+
   //     // Remove the field if no values are selected, else update the query string
   //     if (newFilters[field].length === 0) {
   //       params.delete(field);
   //     } else {
   //       params.set(field, newFilters[field].join(','));
   //     }
-      
+
   //     // Update the URL with the new filters
   //     window.history.pushState({}, '', `${window.location.pathname}?${params.toString()}`);
-      
+
   //     fetchProducts(); // Fetch products with updated filters
   //     return newFilters;
   //   });
   // };
 
   const handleFilterChange = (filter: { field: string; value: string }) => {
-    console.log(filter);
+
     setSelectedFilters((prevFilters) => {
       const { field, value } = filter;
       const newFilters = { ...prevFilters };
-      
+
       // Update filters state
       if (!newFilters[field]) {
         newFilters[field] = [];
@@ -91,33 +92,33 @@ const Home: React.FC = () => {
       } else {
         newFilters[field].push(value);
       }
-    
+
       if (newFilters[field].length === 0) {
-        delete newFilters[field]; 
+        delete newFilters[field];
       }
-  
+
       // Rebuild the query parameters from newFilters
       const params = new URLSearchParams();
-  
+
       // Add all selected filters to params
       for (const key in newFilters) {
         if (newFilters.hasOwnProperty(key)) {
           params.set(key, newFilters[key].join(','));
         }
       }
-      
+
       // Update the URL with the new filters
-       window.history.pushState({}, '', `${window.location.pathname}?${params.toString()}`);
-      
+      window.history.pushState({}, '', `${window.location.pathname}?${params.toString()}`);
+
       //fetchProducts(); // Fetch products with updated filters
       return newFilters;
     });
   };
-  
+
 
 
   const handleSortChange = (sortMethod: string) => {
-    
+
     setSortBy(sortMethod); // Set sort method when user changes the dropdown
     const params = new URLSearchParams(window.location.search);
     params.set('sortBy', sortMethod);
@@ -132,17 +133,17 @@ const Home: React.FC = () => {
   const handleItemsPerPageChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const newItemsPerPage = Number(e.target.value);
     setItemsPerPage(newItemsPerPage);
-    setCurrentPage(1); 
+    setCurrentPage(1);
     setVisibleProducts(newItemsPerPage);
-    
+
     // Update the query parameters in the URL
     const params = new URLSearchParams(window.location.search);
     params.set('limit', newItemsPerPage.toString()); // Set new limit
     params.set('offset', '0'); // Reset offset when items per page changes
     window.history.pushState({}, '', `${window.location.pathname}?${params.toString()}`);
-    fetchProducts(); 
+    fetchProducts();
   };
-  
+
 
   // const handlePageChange = (page: number) => {
   //   setCurrentPage(page);
@@ -150,21 +151,21 @@ const Home: React.FC = () => {
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
     const newOffset = (page - 1) * itemsPerPage;
-    
+
     // Update the query parameters in the URL
     const params = new URLSearchParams(window.location.search);
     params.set('limit', itemsPerPage.toString());
     params.set('offset', newOffset.toString());
-  
+
     window.history.pushState({}, '', `${window.location.pathname}?${params.toString()}`);
-    fetchProducts(); 
+    fetchProducts();
   };
-  
+
 
   // const handleLoadMore = () => {
   //   setVisibleProducts((prev) => prev + itemsPerPage);
   // };
- 
+
   const handleLoadMore = () => {
     setCurrentPage((prevPage) => prevPage + 1); // Move to the next page
     setVisibleProducts((prevVisible) => {
@@ -174,7 +175,7 @@ const Home: React.FC = () => {
     if (visibleProducts < totalProducts) {
       fetchProducts(); // Fetch more products from the backend only if there are more to fetch
     }
-    
+
     // setVisibleProducts((prevVisible) => prevVisible + itemsPerPage); // Load more items
     // setCurrentPage(currentPage + 1); // Move to next page
     // fetchProducts(); // Fetch more products from backend
@@ -192,11 +193,17 @@ const Home: React.FC = () => {
       Object.keys(selectedFilters).forEach((key) => {
         queryParams.append(key, selectedFilters[key].join(','));
       });
-     
-      const response = await axios.get(`http://localhost:5000/api/products?${queryParams.toString()}`);
-      console.log(response.data.products, '<< response.data.products');
-      setProducts(response.data.products); 
-      setTotalProducts(response.data.totalProducts); 
+
+      //const response = await axios.get(`http://localhost:5000/api/products?${queryParams.toString()}`);
+      const response = await fetchProductsFromAPI(queryParams);
+      if (response && response.data) {
+        setProducts(response.data.products);
+        setTotalProducts(response.data.totalProducts);
+      } else {
+        console.error('No data received');
+      }
+      //setProducts(response.data.products); 
+      //setTotalProducts(response.data.totalProducts); 
     } catch (error) {
       console.error('Error fetching products:', error);
     } finally {
