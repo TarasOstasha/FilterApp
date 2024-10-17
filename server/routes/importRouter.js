@@ -3,7 +3,7 @@ const multer = require('multer');
 const path = require('path');
 const { importCategoryController } = require('../controllers');
 
-const importCategoryRouter = Router();
+const importRouter = Router();
 
 // Multer configuration
 const storage = multer.diskStorage({
@@ -30,6 +30,10 @@ const upload = multer({
     fileFilter,
 });
 
-importCategoryRouter.post('/', upload.single('file'), importCategoryController.importCategories);
+importRouter.post('/category', upload.single('file'), importCategoryController.importCategories);
+importRouter.post('/product', upload.single('file'), );
+importRouter.post('/product-category', upload.single('file'), );
+importRouter.post('/product-filter', upload.single('file'), );
+importRouter.post('/filter-field', upload.single('file'), );
 
-module.exports = importCategoryRouter;
+module.exports = importRouter;

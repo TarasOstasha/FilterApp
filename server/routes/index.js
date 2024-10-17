@@ -5,7 +5,7 @@ const filterFieldsRouter = require('./filterFieldsRouter');
 const productCategoryRouter = require('./productCategoryRouter');
 const productFilterRouter = require('./productFilterRouter');
 const productRouter = require('./productRouter');
-const importCategoryRouter = require('./importCategoryRouter');
+const importRouter = require('./importRouter');
 
 
 
@@ -18,7 +18,7 @@ router.use('/filterField', filterFieldsRouter);
 router.use('/productCategory', productCategoryRouter);
 router.use('/productFilter', productFilterRouter);
 router.use('/products', productRouter);
-router.use('/upload-csv', importCategoryRouter);
+router.use('/upload-csv', importRouter);
 
 
 

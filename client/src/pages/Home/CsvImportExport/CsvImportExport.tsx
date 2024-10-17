@@ -14,23 +14,67 @@ const CsvImportExport: React.FC = () => {
         }
     };
 
+    // Determine upload type based on file name
+    const getUploadType = (fileName: string): string => {
+        console.log(fileName);
+        if (fileName.includes('categories')) return 'category';
+        if (fileName.includes('product-categories')) return 'product-category';
+        if (fileName.includes('product-filters')) return 'product-filter';
+        if (fileName.includes('filter-fields')) return 'filter-field';
+        if (fileName.includes('products')) return 'product';
+        return 'unknown';
+    };
+
     // Handle file upload (import)
     const handleFileUpload = async () => {
-        if (!file) return;
+        if (!file) {
+            toast.error('Please select a file!');
+            return;
+        }
+
+        const fileName = file.name.toLowerCase();
+        const uploadType = getUploadType(fileName);
+
+        if (uploadType === 'unknown') {
+            toast.error(
+                <div>
+                    <p><strong>Invalid file name!</strong></p>
+                    <p>Allowed file names are:</p>
+                    <ul>
+                        <li><strong>"categories.csv"</strong> for uploading categories</li>
+                        <li><strong>"product-categories.csv"</strong> for uploading product categories</li>
+                        <li><strong>"product-filters.csv"</strong> for uploading product filters</li>
+                        <li><strong>"filter-fields.csv"</strong> for uploading filter fields</li>
+                        <li><strong>"products.csv"</strong> for uploading products</li>
+                    </ul>
+                </div>,
+                {
+                    position: "top-right",
+                    autoClose: 5000,
+                    hideProgressBar: false,
+                    closeOnClick: true,
+                    pauseOnHover: true,
+                    draggable: true,
+                    progress: undefined,
+                }
+            );
+            return;
+        }
+
 
         const formData = new FormData();
         formData.append('file', file);
-        console.log(file);
+
         try {
-            const response = await axios.post('http://localhost:5000/api/upload-csv', formData, {
+            const response = await axios.post(`http://localhost:5000/api/upload-csv/${uploadType}`, formData, {
                 headers: {
                     'Content-Type': 'multipart/form-data',
                 },
             });
-            console.log(response);
-            toast.success('File uploaded successfully!'); 
+            //console.log(response);
+            toast.success('File uploaded successfully!');
         } catch (error) {
-            toast.error('Error uploading file'); 
+            toast.error('Error uploading file');
         }
     };
 
@@ -45,9 +89,9 @@ const CsvImportExport: React.FC = () => {
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
-            toast.success(`${type} data exported successfully!`); 
+            toast.success(`${type} data exported successfully!`);
         } catch (error) {
-            toast.error(`Error exporting ${type} data`); 
+            toast.error(`Error exporting ${type} data`);
         }
     };
 
@@ -76,7 +120,7 @@ const CsvImportExport: React.FC = () => {
                 <button onClick={() => handleExport('products')}>Export Products</button>
                 <button onClick={() => handleExport('categories')}>Export Categories</button>
                 <button onClick={() => handleExport('productCategories')}>Export Product Categories</button>
-                <button onClick={() => handleExport('filterFields')}>Export Filter Fields</button> 
+                <button onClick={() => handleExport('filterFields')}>Export Filter Fields</button>
                 <button onClick={() => handleExport('productFilters')}>Export Product Filter</button>
             </div>
         </div>
