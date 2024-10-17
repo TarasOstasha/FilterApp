@@ -1,104 +1,88 @@
-import React, { useState } from 'react';
-import styles from './Home.module.scss';
-import ProductList from '../../components/ProductList/ProductList';
-
+import React, { useState, useEffect } from 'react';
+import axios from 'axios';  
 import FilterSidebar from '../../components/FilterSidebar/FilterSidebar';
-
-
+import ProductList from '../../components/ProductList/ProductList';
 import SortDropdown from '../../components/SortDropdown/SortDropdown';
 import ItemsPerPageDropdown from '../../components/ItemsPerPageDropdown/ItemsPerPageDropdown';
 import PaginationControls from '../../components/PaginationControls/PaginationControls';
 
+
+interface Product {
+  id: number;
+  product_name: string;
+  product_code: string;
+  product_link: string;
+  product_img_link: string;
+  product_price: number;
+}
+
 const Home: React.FC = () => {
   const [selectedFilters, setSelectedFilters] = useState<{ [key: string]: string[] }>({});
+  const [products, setProducts] = useState<Product[]>([]);
   const [itemsPerPage, setItemsPerPage] = useState(27); // Set default items per page
   const [currentPage, setCurrentPage] = useState(1); // Set current page
   const [visibleProducts, setVisibleProducts] = useState(itemsPerPage);
+  const [totalProducts, setTotalProducts] = useState(0); // Track total products
+  const [loading, setLoading] = useState(false);
+  const [sortBy, setSortBy] = useState('price_asc');
 
-  //https://apgexhibits.com/ProductDetails.asp?ProductCode=WLM-ACH2420-TDK
-  const BASE_PRODUCT_IMG_URL = 'https://cdn4.volusion.store/wgjfq-aujvw/v/vspfiles/photos/';
-  const BASE_PRODUCT_URL = 'https://www.xyzdisplays.com/ProductDetails.asp?ProductCode=';
-  const products = [
-    { id: 1,productCode: 'MK5200', name: '24in x 60in Waveline Tension Fabric Banner Stand (Single-Sided)', productLink: `${BASE_PRODUCT_URL}MK5200`, productImgLink:`${BASE_PRODUCT_IMG_URL}MK5200-1.jpg?v-cache=1717581834`, price: 222 },
-    { id: 2,productCode: 'MK5530', name: '24in x 60in Banner Stand w/ Hand Sanitizer Dispenser', productLink: `${BASE_PRODUCT_URL}MK5530`, productImgLink:`${BASE_PRODUCT_IMG_URL}MK5530-1.jpg?v-cache=1717581834`, price: 286 },
-    { id: 3,productCode: 'MK5480', name: '48in x 89in Waveline Tension Fabric Banner Stand (Double-Sided)', productLink: `${BASE_PRODUCT_URL}MK5200`, productImgLink:`${BASE_PRODUCT_IMG_URL}MK5480-1.jpg?v-cache=1717581834`, price: 347 },
-    { id: 4,productCode: 'MK5200', name: '24in x 60in Waveline Tension Fabric Banner Stand (Single-Sided)', productLink: `${BASE_PRODUCT_URL}MK5200`, productImgLink:`${BASE_PRODUCT_IMG_URL}MK5200-1.jpg?v-cache=1717581834`, price: 222 },
-    { id: 5,productCode: 'MK5282', name: '24in x 116in Waveline Tension Fabric Banner Stand (Double-Sided)', productLink: `${BASE_PRODUCT_URL}MK5282`, productImgLink:`${BASE_PRODUCT_IMG_URL}MK5280-1.jpg?v-cache=1717581834`, price: 297 },
-    { id: 6,productCode: 'MK5200', name: '24in x 60in Waveline Tension Fabric Banner Stand (Single-Sided)', productLink: `${BASE_PRODUCT_URL}MK5200`, productImgLink:`${BASE_PRODUCT_IMG_URL}MK5200-1.jpg?v-cache=1717581834`, price: 222 },
-    { id: 7,productCode: 'MK5200', name: '24in x 60in Waveline Tension Fabric Banner Stand (Single-Sided)', productLink: `${BASE_PRODUCT_URL}MK5200`, productImgLink:`${BASE_PRODUCT_IMG_URL}MK5200-1.jpg?v-cache=1717581834`, price: 222 },
-    { id: 8,productCode: 'MK5530', name: '24in x 60in Banner Stand w/ Hand Sanitizer Dispenser', productLink: `${BASE_PRODUCT_URL}MK5530`, productImgLink:`${BASE_PRODUCT_IMG_URL}MK5530-1.jpg?v-cache=1717581834`, price: 286 },
-    { id: 9,productCode: 'MK5480', name: '48in x 89in Waveline Tension Fabric Banner Stand (Double-Sided)', productLink: `${BASE_PRODUCT_URL}MK5200`, productImgLink:`${BASE_PRODUCT_IMG_URL}MK5480-1.jpg?v-cache=1717581834`, price: 347 },
-    { id: 10,productCode: 'MK5200', name: '24in x 60in Waveline Tension Fabric Banner Stand (Single-Sided)', productLink: `${BASE_PRODUCT_URL}MK5200`, productImgLink:`${BASE_PRODUCT_IMG_URL}MK5200-1.jpg?v-cache=1717581834`, price: 222 },
-    { id: 11,productCode: 'MK5282', name: '24in x 116in Waveline Tension Fabric Banner Stand (Double-Sided)', productLink: `${BASE_PRODUCT_URL}MK5282`, productImgLink:`${BASE_PRODUCT_IMG_URL}MK5280-1.jpg?v-cache=1717581834`, price: 297 },
-    { id: 12,productCode: 'MK5200', name: '24in x 60in Waveline Tension Fabric Banner Stand (Single-Sided)', productLink: `${BASE_PRODUCT_URL}MK5200`, productImgLink:`${BASE_PRODUCT_IMG_URL}MK5200-1.jpg?v-cache=1717581834`, price: 222 },
-    { id: 13,productCode: 'MK5200', name: '24in x 60in Waveline Tension Fabric Banner Stand (Single-Sided)', productLink: `${BASE_PRODUCT_URL}MK5200`, productImgLink:`${BASE_PRODUCT_IMG_URL}MK5200-1.jpg?v-cache=1717581834`, price: 222 },
-    { id: 14,productCode: 'MK5530', name: '24in x 60in Banner Stand w/ Hand Sanitizer Dispenser', productLink: `${BASE_PRODUCT_URL}MK5530`, productImgLink:`${BASE_PRODUCT_IMG_URL}MK5530-1.jpg?v-cache=1717581834`, price: 286 },
-    { id: 15,productCode: 'MK5480', name: '48in x 89in Waveline Tension Fabric Banner Stand (Double-Sided)', productLink: `${BASE_PRODUCT_URL}MK5200`, productImgLink:`${BASE_PRODUCT_IMG_URL}MK5480-1.jpg?v-cache=1717581834`, price: 347 },
-    { id: 16,productCode: 'MK5200', name: '24in x 60in Waveline Tension Fabric Banner Stand (Single-Sided)', productLink: `${BASE_PRODUCT_URL}MK5200`, productImgLink:`${BASE_PRODUCT_IMG_URL}MK5200-1.jpg?v-cache=1717581834`, price: 222 },
-    { id: 17,productCode: 'MK5282', name: '24in x 116in Waveline Tension Fabric Banner Stand (Double-Sided)', productLink: `${BASE_PRODUCT_URL}MK5282`, productImgLink:`${BASE_PRODUCT_IMG_URL}MK5280-1.jpg?v-cache=1717581834`, price: 297 },
-    { id: 18,productCode: 'MK5200', name: '24in x 60in Waveline Tension Fabric Banner Stand (Single-Sided)', productLink: `${BASE_PRODUCT_URL}MK5200`, productImgLink:`${BASE_PRODUCT_IMG_URL}MK5200-1.jpg?v-cache=1717581834`, price: 222 },
-    { id: 19,productCode: 'MK5200', name: '24in x 60in Waveline Tension Fabric Banner Stand (Single-Sided)', productLink: `${BASE_PRODUCT_URL}MK5200`, productImgLink:`${BASE_PRODUCT_IMG_URL}MK5200-1.jpg?v-cache=1717581834`, price: 222 },
-    { id: 20,productCode: 'MK5530', name: '24in x 60in Banner Stand w/ Hand Sanitizer Dispenser', productLink: `${BASE_PRODUCT_URL}MK5530`, productImgLink:`${BASE_PRODUCT_IMG_URL}MK5530-1.jpg?v-cache=1717581834`, price: 286 },
-    { id: 21,productCode: 'MK5480', name: '48in x 89in Waveline Tension Fabric Banner Stand (Double-Sided)', productLink: `${BASE_PRODUCT_URL}MK5200`, productImgLink:`${BASE_PRODUCT_IMG_URL}MK5480-1.jpg?v-cache=1717581834`, price: 347 },
-    { id: 22,productCode: 'MK5200', name: '24in x 60in Waveline Tension Fabric Banner Stand (Single-Sided)', productLink: `${BASE_PRODUCT_URL}MK5200`, productImgLink:`${BASE_PRODUCT_IMG_URL}MK5200-1.jpg?v-cache=1717581834`, price: 222 },
-    { id: 23,productCode: 'MK5282', name: '24in x 116in Waveline Tension Fabric Banner Stand (Double-Sided)', productLink: `${BASE_PRODUCT_URL}MK5282`, productImgLink:`${BASE_PRODUCT_IMG_URL}MK5280-1.jpg?v-cache=1717581834`, price: 297 },
-    { id: 24,productCode: 'MK5200', name: '24in x 60in Waveline Tension Fabric Banner Stand (Single-Sided)', productLink: `${BASE_PRODUCT_URL}MK5200`, productImgLink:`${BASE_PRODUCT_IMG_URL}MK5200-1.jpg?v-cache=1717581834`, price: 222 },
-    { id: 25,productCode: 'MK5200', name: '24in x 60in Waveline Tension Fabric Banner Stand (Single-Sided)', productLink: `${BASE_PRODUCT_URL}MK5200`, productImgLink:`${BASE_PRODUCT_IMG_URL}MK5200-1.jpg?v-cache=1717581834`, price: 222 },
-    { id: 26,productCode: 'MK5530', name: '24in x 60in Banner Stand w/ Hand Sanitizer Dispenser', productLink: `${BASE_PRODUCT_URL}MK5530`, productImgLink:`${BASE_PRODUCT_IMG_URL}MK5530-1.jpg?v-cache=1717581834`, price: 286 },
-    { id: 27,productCode: 'MK5480', name: '48in x 89in Waveline Tension Fabric Banner Stand (Double-Sided)', productLink: `${BASE_PRODUCT_URL}MK5200`, productImgLink:`${BASE_PRODUCT_IMG_URL}MK5480-1.jpg?v-cache=1717581834`, price: 347 },
-    { id: 28,productCode: 'MK5200', name: '24in x 60in Waveline Tension Fabric Banner Stand (Single-Sided)', productLink: `${BASE_PRODUCT_URL}MK5200`, productImgLink:`${BASE_PRODUCT_IMG_URL}MK5200-1.jpg?v-cache=1717581834`, price: 222 },
-    { id: 29,productCode: 'MK5282', name: '24in x 116in Waveline Tension Fabric Banner Stand (Double-Sided)', productLink: `${BASE_PRODUCT_URL}MK5282`, productImgLink:`${BASE_PRODUCT_IMG_URL}MK5280-1.jpg?v-cache=1717581834`, price: 297 },
-    { id: 30,productCode: 'MK5200', name: '24in x 60in Waveline Tension Fabric Banner Stand (Single-Sided)', productLink: `${BASE_PRODUCT_URL}MK5200`, productImgLink:`${BASE_PRODUCT_IMG_URL}MK5200-1.jpg?v-cache=1717581834`, price: 222 },
-    { id: 31,productCode: 'MK5200', name: '24in x 60in Waveline Tension Fabric Banner Stand (Single-Sided)', productLink: `${BASE_PRODUCT_URL}MK5200`, productImgLink:`${BASE_PRODUCT_IMG_URL}MK5200-1.jpg?v-cache=1717581834`, price: 222 },
-    { id: 32,productCode: 'MK5530', name: '24in x 60in Banner Stand w/ Hand Sanitizer Dispenser', productLink: `${BASE_PRODUCT_URL}MK5530`, productImgLink:`${BASE_PRODUCT_IMG_URL}MK5530-1.jpg?v-cache=1717581834`, price: 286 },
-    { id: 33,productCode: 'MK5480', name: '48in x 89in Waveline Tension Fabric Banner Stand (Double-Sided)', productLink: `${BASE_PRODUCT_URL}MK5200`, productImgLink:`${BASE_PRODUCT_IMG_URL}MK5480-1.jpg?v-cache=1717581834`, price: 347 },
-    { id: 34,productCode: 'MK5200', name: '24in x 60in Waveline Tension Fabric Banner Stand (Single-Sided)', productLink: `${BASE_PRODUCT_URL}MK5200`, productImgLink:`${BASE_PRODUCT_IMG_URL}MK5200-1.jpg?v-cache=1717581834`, price: 222 },
-    { id: 35,productCode: 'MK5282', name: '24in x 116in Waveline Tension Fabric Banner Stand (Double-Sided)', productLink: `${BASE_PRODUCT_URL}MK5282`, productImgLink:`${BASE_PRODUCT_IMG_URL}MK5280-1.jpg?v-cache=1717581834`, price: 297 },
-    { id: 36,productCode: 'MK5200', name: '24in x 60in Waveline Tension Fabric Banner Stand (Single-Sided)', productLink: `${BASE_PRODUCT_URL}MK5200`, productImgLink:`${BASE_PRODUCT_IMG_URL}MK5200-1.jpg?v-cache=1717581834`, price: 222 },
-    { id: 37,productCode: 'MK5200', name: '24in x 60in Waveline Tension Fabric Banner Stand (Single-Sided)', productLink: `${BASE_PRODUCT_URL}MK5200`, productImgLink:`${BASE_PRODUCT_IMG_URL}MK5200-1.jpg?v-cache=1717581834`, price: 222 },
-    { id: 38,productCode: 'MK5530', name: '24in x 60in Banner Stand w/ Hand Sanitizer Dispenser', productLink: `${BASE_PRODUCT_URL}MK5530`, productImgLink:`${BASE_PRODUCT_IMG_URL}MK5530-1.jpg?v-cache=1717581834`, price: 286 },
-    { id: 39,productCode: 'MK5480', name: '48in x 89in Waveline Tension Fabric Banner Stand (Double-Sided)', productLink: `${BASE_PRODUCT_URL}MK5200`, productImgLink:`${BASE_PRODUCT_IMG_URL}MK5480-1.jpg?v-cache=1717581834`, price: 347 },
-    { id: 40,productCode: 'MK5200', name: '24in x 60in Waveline Tension Fabric Banner Stand (Single-Sided)', productLink: `${BASE_PRODUCT_URL}MK5200`, productImgLink:`${BASE_PRODUCT_IMG_URL}MK5200-1.jpg?v-cache=1717581834`, price: 222 },
-    { id: 41,productCode: 'MK5282', name: '24in x 116in Waveline Tension Fabric Banner Stand (Double-Sided)', productLink: `${BASE_PRODUCT_URL}MK5282`, productImgLink:`${BASE_PRODUCT_IMG_URL}MK5280-1.jpg?v-cache=1717581834`, price: 297 },
-    { id: 42,productCode: 'MK5200', name: '24in x 60in Waveline Tension Fabric Banner Stand (Single-Sided)', productLink: `${BASE_PRODUCT_URL}MK5200`, productImgLink:`${BASE_PRODUCT_IMG_URL}MK5200-1.jpg?v-cache=1717581834`, price: 222 },
-    { id: 43,productCode: 'MK5200', name: '24in x 60in Waveline Tension Fabric Banner Stand (Single-Sided)', productLink: `${BASE_PRODUCT_URL}MK5200`, productImgLink:`${BASE_PRODUCT_IMG_URL}MK5200-1.jpg?v-cache=1717581834`, price: 222 },
-    { id: 44,productCode: 'MK5530', name: '24in x 60in Banner Stand w/ Hand Sanitizer Dispenser', productLink: `${BASE_PRODUCT_URL}MK5530`, productImgLink:`${BASE_PRODUCT_IMG_URL}MK5530-1.jpg?v-cache=1717581834`, price: 286 },
-    { id: 45,productCode: 'MK5480', name: '48in x 89in Waveline Tension Fabric Banner Stand (Double-Sided)', productLink: `${BASE_PRODUCT_URL}MK5200`, productImgLink:`${BASE_PRODUCT_IMG_URL}MK5480-1.jpg?v-cache=1717581834`, price: 347 },
-    { id: 46,productCode: 'MK5200', name: '24in x 60in Waveline Tension Fabric Banner Stand (Single-Sided)', productLink: `${BASE_PRODUCT_URL}MK5200`, productImgLink:`${BASE_PRODUCT_IMG_URL}MK5200-1.jpg?v-cache=1717581834`, price: 222 },
-    { id: 47,productCode: 'MK5282', name: '24in x 116in Waveline Tension Fabric Banner Stand (Double-Sided)', productLink: `${BASE_PRODUCT_URL}MK5282`, productImgLink:`${BASE_PRODUCT_IMG_URL}MK5280-1.jpg?v-cache=1717581834`, price: 297 },
-    { id: 48,productCode: 'MK5200', name: '24in x 60in Waveline Tension Fabric Banner Stand (Single-Sided)', productLink: `${BASE_PRODUCT_URL}MK5200`, productImgLink:`${BASE_PRODUCT_IMG_URL}MK5200-1.jpg?v-cache=1717581834`, price: 222 },
-    { id: 49,productCode: 'MK5200', name: '24in x 60in Waveline Tension Fabric Banner Stand (Single-Sided)', productLink: `${BASE_PRODUCT_URL}MK5200`, productImgLink:`${BASE_PRODUCT_IMG_URL}MK5200-1.jpg?v-cache=1717581834`, price: 222 },
-    { id: 50,productCode: 'MK5530', name: '24in x 60in Banner Stand w/ Hand Sanitizer Dispenser', productLink: `${BASE_PRODUCT_URL}MK5530`, productImgLink:`${BASE_PRODUCT_IMG_URL}MK5530-1.jpg?v-cache=1717581834`, price: 286 },
-    { id: 51,productCode: 'MK5480', name: '48in x 89in Waveline Tension Fabric Banner Stand (Double-Sided)', productLink: `${BASE_PRODUCT_URL}MK5200`, productImgLink:`${BASE_PRODUCT_IMG_URL}MK5480-1.jpg?v-cache=1717581834`, price: 347 },
-    { id: 52,productCode: 'MK5200', name: '24in x 60in Waveline Tension Fabric Banner Stand (Single-Sided)', productLink: `${BASE_PRODUCT_URL}MK5200`, productImgLink:`${BASE_PRODUCT_IMG_URL}MK5200-1.jpg?v-cache=1717581834`, price: 222 },
-    { id: 53,productCode: 'MK5282', name: '24in x 116in Waveline Tension Fabric Banner Stand (Double-Sided)', productLink: `${BASE_PRODUCT_URL}MK5282`, productImgLink:`${BASE_PRODUCT_IMG_URL}MK5280-1.jpg?v-cache=1717581834`, price: 297 },
-    { id: 54,productCode: 'MK5200', name: '24in x 60in Waveline Tension Fabric Banner Stand (Single-Sided)', productLink: `${BASE_PRODUCT_URL}MK5200`, productImgLink:`${BASE_PRODUCT_IMG_URL}MK5200-1.jpg?v-cache=1717581834`, price: 222 },
-    { id: 55,productCode: 'MK5200', name: '24in x 60in Waveline Tension Fabric Banner Stand (Single-Sided)', productLink: `${BASE_PRODUCT_URL}MK5200`, productImgLink:`${BASE_PRODUCT_IMG_URL}MK5200-1.jpg?v-cache=1717581834`, price: 222 },
-    { id: 56,productCode: 'MK5530', name: '24in x 60in Banner Stand w/ Hand Sanitizer Dispenser', productLink: `${BASE_PRODUCT_URL}MK5530`, productImgLink:`${BASE_PRODUCT_IMG_URL}MK5530-1.jpg?v-cache=1717581834`, price: 286 },
-    { id: 57,productCode: 'MK5480', name: '48in x 89in Waveline Tension Fabric Banner Stand (Double-Sided)', productLink: `${BASE_PRODUCT_URL}MK5200`, productImgLink:`${BASE_PRODUCT_IMG_URL}MK5480-1.jpg?v-cache=1717581834`, price: 347 },
-    { id: 58,productCode: 'MK5200', name: '24in x 60in Waveline Tension Fabric Banner Stand (Single-Sided)', productLink: `${BASE_PRODUCT_URL}MK5200`, productImgLink:`${BASE_PRODUCT_IMG_URL}MK5200-1.jpg?v-cache=1717581834`, price: 222 },
-    { id: 59,productCode: 'MK5282', name: '24in x 116in Waveline Tension Fabric Banner Stand (Double-Sided)', productLink: `${BASE_PRODUCT_URL}MK5282`, productImgLink:`${BASE_PRODUCT_IMG_URL}MK5280-1.jpg?v-cache=1717581834`, price: 297 },
-    { id: 60,productCode: 'MK5200', name: '24in x 60in Waveline Tension Fabric Banner Stand (Single-Sided)', productLink: `${BASE_PRODUCT_URL}MK5200`, productImgLink:`${BASE_PRODUCT_IMG_URL}MK5200-1.jpg?v-cache=1717581834`, price: 222 },
-    { id: 61,productCode: 'MK5200', name: '24in x 60in Waveline Tension Fabric Banner Stand (Single-Sided)', productLink: `${BASE_PRODUCT_URL}MK5200`, productImgLink:`${BASE_PRODUCT_IMG_URL}MK5200-1.jpg?v-cache=1717581834`, price: 222 },
-    { id: 62,productCode: 'MK5530', name: '24in x 60in Banner Stand w/ Hand Sanitizer Dispenser', productLink: `${BASE_PRODUCT_URL}MK5530`, productImgLink:`${BASE_PRODUCT_IMG_URL}MK5530-1.jpg?v-cache=1717581834`, price: 286 },
-    { id: 63,productCode: 'MK5480', name: '48in x 89in Waveline Tension Fabric Banner Stand (Double-Sided)', productLink: `${BASE_PRODUCT_URL}MK5200`, productImgLink:`${BASE_PRODUCT_IMG_URL}MK5480-1.jpg?v-cache=1717581834`, price: 347 },
-    { id: 64,productCode: 'MK5200', name: '24in x 60in Waveline Tension Fabric Banner Stand (Single-Sided)', productLink: `${BASE_PRODUCT_URL}MK5200`, productImgLink:`${BASE_PRODUCT_IMG_URL}MK5200-1.jpg?v-cache=1717581834`, price: 222 },
-    { id: 65,productCode: 'MK5282', name: '24in x 116in Waveline Tension Fabric Banner Stand (Double-Sided)', productLink: `${BASE_PRODUCT_URL}MK5282`, productImgLink:`${BASE_PRODUCT_IMG_URL}MK5280-1.jpg?v-cache=1717581834`, price: 297 },
-    { id: 66,productCode: 'MK5200', name: '24in x 60in Waveline Tension Fabric Banner Stand (Single-Sided)', productLink: `${BASE_PRODUCT_URL}MK5200`, productImgLink:`${BASE_PRODUCT_IMG_URL}MK5200-1.jpg?v-cache=1717581834`, price: 222 },
-    { id: 67,productCode: 'MK5200', name: '24in x 60in Waveline Tension Fabric Banner Stand (Single-Sided)', productLink: `${BASE_PRODUCT_URL}MK5200`, productImgLink:`${BASE_PRODUCT_IMG_URL}MK5200-1.jpg?v-cache=1717581834`, price: 222 },
-    { id: 68,productCode: 'MK5530', name: '24in x 60in Banner Stand w/ Hand Sanitizer Dispenser', productLink: `${BASE_PRODUCT_URL}MK5530`, productImgLink:`${BASE_PRODUCT_IMG_URL}MK5530-1.jpg?v-cache=1717581834`, price: 286 },
-    { id: 69,productCode: 'MK5480', name: '48in x 89in Waveline Tension Fabric Banner Stand (Double-Sided)', productLink: `${BASE_PRODUCT_URL}MK5200`, productImgLink:`${BASE_PRODUCT_IMG_URL}MK5480-1.jpg?v-cache=1717581834`, price: 347 },
-    { id: 70,productCode: 'MK5200', name: '24in x 60in Waveline Tension Fabric Banner Stand (Single-Sided)', productLink: `${BASE_PRODUCT_URL}MK5200`, productImgLink:`${BASE_PRODUCT_IMG_URL}MK5200-1.jpg?v-cache=1717581834`, price: 222 },
-    { id: 71,productCode: 'MK5282', name: '24in x 116in Waveline Tension Fabric Banner Stand (Double-Sided)', productLink: `${BASE_PRODUCT_URL}MK5282`, productImgLink:`${BASE_PRODUCT_IMG_URL}MK5280-1.jpg?v-cache=1717581834`, price: 297 },
-    { id: 72,productCode: 'MK5200', name: '24in x 60in Waveline Tension Fabric Banner Stand (Single-Sided)', productLink: `${BASE_PRODUCT_URL}MK5200`, productImgLink:`${BASE_PRODUCT_IMG_URL}MK5200-1.jpg?v-cache=1717581834`, price: 222 }
-  ];
+  // const handleFilterChange = (filter: { field: string; value: string }) => {
+  //   setSelectedFilters((prevFilters) => {
+  //     const { field, value } = filter;
+  //     const newFilters = { ...prevFilters };
+  //     if (!newFilters[field]) {
+  //       newFilters[field] = [];
+  //     }
+  //     if (newFilters[field].includes(value)) {
+  //       newFilters[field] = newFilters[field].filter((v) => v !== value);
+  //     } else {
+  //       newFilters[field].push(value);
+  //     }
+  //     return newFilters;
+  //   });
+  // };
 
-  // const filters = ['Category 1', 'Category 2', 'Category 3'];
+  // const handleFilterChange = (filter: { field: string; value: string }) => {
+  //   console.log(filter);
+  //   setSelectedFilters((prevFilters) => {
+  //     const { field, value } = filter;
+  //     const newFilters = { ...prevFilters };
+      
+  //     // Update filters state
+  //     if (!newFilters[field]) {
+  //       newFilters[field] = [];
+  //     }
+  //     if (newFilters[field].includes(value)) {
+  //       newFilters[field] = newFilters[field].filter((v) => v !== value);
+  //     } else {
+  //       newFilters[field].push(value);
+  //     }
+  
+  //     // Update query string
+  //     const params = new URLSearchParams(window.location.search);
+      
+  //     // Remove the field if no values are selected, else update the query string
+  //     if (newFilters[field].length === 0) {
+  //       params.delete(field);
+  //     } else {
+  //       params.set(field, newFilters[field].join(','));
+  //     }
+      
+  //     // Update the URL with the new filters
+  //     window.history.pushState({}, '', `${window.location.pathname}?${params.toString()}`);
+      
+  //     fetchProducts(); // Fetch products with updated filters
+  //     return newFilters;
+  //   });
+  // };
 
   const handleFilterChange = (filter: { field: string; value: string }) => {
+    console.log(filter);
     setSelectedFilters((prevFilters) => {
       const { field, value } = filter;
       const newFilters = { ...prevFilters };
+      
+      // Update filters state
       if (!newFilters[field]) {
         newFilters[field] = [];
       }
@@ -107,33 +91,124 @@ const Home: React.FC = () => {
       } else {
         newFilters[field].push(value);
       }
+    
+      if (newFilters[field].length === 0) {
+        delete newFilters[field]; 
+      }
+  
+      // Rebuild the query parameters from newFilters
+      const params = new URLSearchParams();
+  
+      // Add all selected filters to params
+      for (const key in newFilters) {
+        if (newFilters.hasOwnProperty(key)) {
+          params.set(key, newFilters[key].join(','));
+        }
+      }
+      
+      // Update the URL with the new filters
+       window.history.pushState({}, '', `${window.location.pathname}?${params.toString()}`);
+      
+      //fetchProducts(); // Fetch products with updated filters
       return newFilters;
     });
   };
+  
 
-  const handleItemsPerPageChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    setItemsPerPage(Number(e.target.value));
-    setCurrentPage(1); 
-    setVisibleProducts(Number(e.target.value));
+
+  const handleSortChange = (sortMethod: string) => {
+    
+    setSortBy(sortMethod); // Set sort method when user changes the dropdown
+    const params = new URLSearchParams(window.location.search);
+    params.set('sortBy', sortMethod);
+    window.history.pushState({}, '', `${window.location.pathname}?${params.toString()}`);
+    fetchProducts();
   };
 
+  // const handleItemsPerPageChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+  //   setItemsPerPage(Number(e.target.value));
+  //   setCurrentPage(1); // Reset to first page when changing items per page
+  // };
+  const handleItemsPerPageChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const newItemsPerPage = Number(e.target.value);
+    setItemsPerPage(newItemsPerPage);
+    setCurrentPage(1); 
+    setVisibleProducts(newItemsPerPage);
+    
+    // Update the query parameters in the URL
+    const params = new URLSearchParams(window.location.search);
+    params.set('limit', newItemsPerPage.toString()); // Set new limit
+    params.set('offset', '0'); // Reset offset when items per page changes
+    window.history.pushState({}, '', `${window.location.pathname}?${params.toString()}`);
+    fetchProducts(); 
+  };
+  
+
+  // const handlePageChange = (page: number) => {
+  //   setCurrentPage(page);
+  // };
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
-    const newVisibleProducts = page * itemsPerPage;
-    setVisibleProducts(newVisibleProducts); // Update visible products according to the page
+    const newOffset = (page - 1) * itemsPerPage;
+    
+    // Update the query parameters in the URL
+    const params = new URLSearchParams(window.location.search);
+    params.set('limit', itemsPerPage.toString());
+    params.set('offset', newOffset.toString());
+  
+    window.history.pushState({}, '', `${window.location.pathname}?${params.toString()}`);
+    fetchProducts(); 
   };
+  
 
+  // const handleLoadMore = () => {
+  //   setVisibleProducts((prev) => prev + itemsPerPage);
+  // };
+ 
   const handleLoadMore = () => {
-    setVisibleProducts((prev) => prev + itemsPerPage); 
+    setCurrentPage((prevPage) => prevPage + 1); // Move to the next page
+    setVisibleProducts((prevVisible) => {
+      const newVisible = prevVisible + itemsPerPage;
+      return newVisible > totalProducts ? totalProducts : newVisible; // Cap visibleProducts at totalProducts
+    });
+    if (visibleProducts < totalProducts) {
+      fetchProducts(); // Fetch more products from the backend only if there are more to fetch
+    }
+    
+    // setVisibleProducts((prevVisible) => prevVisible + itemsPerPage); // Load more items
+    // setCurrentPage(currentPage + 1); // Move to next page
+    // fetchProducts(); // Fetch more products from backend
   };
 
-  // const paginatedProducts = products.slice(
-  //   (currentPage - 1) * itemsPerPage,
-  //   currentPage * itemsPerPage
-  // );
+  const fetchProducts = async () => {
+    setLoading(true);
+    try {
+      const queryParams = new URLSearchParams();
+      queryParams.append('limit', itemsPerPage.toString());
+      queryParams.append('offset', ((currentPage - 1) * itemsPerPage).toString());
+      queryParams.append('sortBy', sortBy);
+      //console.log(queryParams.toString(), '<< queryParams');
+      // Append selected filters to the query
+      Object.keys(selectedFilters).forEach((key) => {
+        queryParams.append(key, selectedFilters[key].join(','));
+      });
+     
+      const response = await axios.get(`http://localhost:5000/api/products?${queryParams.toString()}`);
+      console.log(response.data.products, '<< response.data.products');
+      setProducts(response.data.products); 
+      setTotalProducts(response.data.totalProducts); 
+    } catch (error) {
+      console.error('Error fetching products:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  const paginatedProducts = products.slice(0, visibleProducts);
-  const totalPages = Math.ceil(products.length / itemsPerPage);
+  useEffect(() => {
+    fetchProducts();
+  }, [selectedFilters, currentPage, itemsPerPage, sortBy, selectedFilters]); // Refetch when filters, page, or itemsPerPage changes
+
+  const totalPages = Math.ceil(totalProducts / itemsPerPage);
 
   return (
     <div className="container">
@@ -142,20 +217,18 @@ const Home: React.FC = () => {
           <FilterSidebar onFilterChange={handleFilterChange} />
         </div>
         <div className="col-md-9">
-          {/* <h2>Product List</h2> */}
-          {/* <ProductList filters={selectedFilters} /> */}
           <div className="controls d-flex justify-content-between">
-            <SortDropdown />
+            <SortDropdown handleSortChange={handleSortChange} currentSort={sortBy} />
             <ItemsPerPageDropdown itemsPerPage={itemsPerPage} handleItemsPerPageChange={handleItemsPerPageChange} />
           </div>
-          <ProductList products={paginatedProducts} filters={selectedFilters} />
+          <ProductList products={products} filters={selectedFilters} loading={loading} />
           <PaginationControls
-              visibleProducts={visibleProducts}
-              totalProducts={products.length}
-              onLoadMore={handleLoadMore}
-              currentPage={currentPage}
-              totalPages={totalPages}
-              onPageChange={handlePageChange}
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={handlePageChange}
+            visibleProducts={visibleProducts}
+            totalProducts={totalProducts}
+            onLoadMore={handleLoadMore}
           />
         </div>
       </div>
@@ -163,7 +236,7 @@ const Home: React.FC = () => {
   );
 };
 
+
+
+
 export default Home;
-
-
-

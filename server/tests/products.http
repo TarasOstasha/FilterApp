@@ -1,0 +1,16 @@
+### 200 []
+//GET http://localhost:5000/products?page=2&results=27
+GET http://localhost:5000/products?limit=27&offset=0
+
+###
+GET http://localhost:5000/products?page=50&results=-50
+
+### testing filters
+GET http://localhost:5000/products?productType=Display&graphicFinish=Fabric%20-%20Pillow%20Case&limit=27&offset=0
+###
+GET http://localhost:5000/products?productType=Display&graphicFinish=Fabric%20-%20Pillow%20Case&limit=27&offset=0
+###
+GET http://localhost:5000/products?limit=27&offset=0&sortBy=price_asc
+###
+GET http://localhost:5000/products?limit=27&offset=0&sortBy=price_desc
+

@@ -12,6 +12,41 @@ interface PaginationControlsProps {
 }
 
 
+// const PaginationControls: React.FC<PaginationControlsProps> = ({
+//   currentPage,
+//   totalPages,
+//   onPageChange,
+//   visibleProducts,
+//   totalProducts,
+//   onLoadMore,
+// }) => {
+//   const isNextDisabled = currentPage >= totalPages;
+//   const isPrevDisabled = currentPage <= 1;
+
+//   return (
+//     <div className="pagination-controls">
+//       <button
+//         onClick={() => onPageChange(currentPage - 1)}
+//         disabled={isPrevDisabled}
+//       >
+//         Previous
+//       </button>
+//       <span>
+//         Page {currentPage} of {totalPages}
+//       </span>
+//       <button
+//         onClick={() => onPageChange(currentPage + 1)}
+//         disabled={isNextDisabled}
+//       >
+//         Next
+//       </button>
+//       {visibleProducts < totalProducts && (
+//         <button onClick={onLoadMore}>Load More</button>
+//       )}
+//     </div>
+//   );
+// };
+
 const PaginationControls: React.FC<PaginationControlsProps> = ({ 
   visibleProducts,
   totalProducts,
@@ -30,32 +65,13 @@ const PaginationControls: React.FC<PaginationControlsProps> = ({
           <button onClick={onLoadMore}>View More Products</button>
         </div>
       )}
+      {/* <div>
+        <span>visibleProducts {visibleProducts} and totalProducts {totalProducts}</span>
+      </div> */}
       {/* <div className="pagination-info">
         <span>Page {currentPage} of {totalPages}</span>
       </div> */}
       <div className={styles['xyz-pagination-nav']}>
-        
-        {/* <button className="btn" onClick={() => handlePageChange(currentPage - 1)} disabled={currentPage === 1}>
-          Previous
-        </button>
-        <button className="btn btn-default btn-xs btn_prevpage" onClick={() => handlePageChange(currentPage + 1)} disabled={currentPage === totalPages}>
-          Next
-        </button> */}
-        {/* <button
-          onClick={() => onPageChange(currentPage - 1)}
-          disabled={currentPage === 1}
-          className="btn" 
-        >
-          Previous
-        </button>
-        <span>{`Page ${currentPage} of ${totalPages}`}</span>
-        <button
-          onClick={() => onPageChange(currentPage + 1)}
-          disabled={currentPage === totalPages}
-          className="btn btn-default btn-xs btn_prevpage"
-        >
-          Next
-        </button> */}
         <button
           onClick={() => onPageChange(currentPage - 1)}
           disabled={currentPage === 1}

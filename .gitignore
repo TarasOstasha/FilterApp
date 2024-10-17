@@ -8,6 +8,8 @@ client/dist/
 
 # Server build artifacts (if applicable)
 server/dist/
+server/services/import/data/
+server/services/export/data/
 
 # Ignore logs
 *.log
