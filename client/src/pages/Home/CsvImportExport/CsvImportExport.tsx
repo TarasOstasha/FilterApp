@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
 import axios from 'axios';
+import { AxiosResponse } from 'axios';
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import styles from './CsvImportExport.module.scss';
+import { exportData, uploadCSV } from '../../../api/index';
 
 const CsvImportExport: React.FC = () => {
     const [file, setFile] = useState<File | null>(null);
@@ -71,14 +73,16 @@ const CsvImportExport: React.FC = () => {
         formData.append('file', file);
 
         try {
-            const response = await axios.post(`http://localhost:5000/api/upload-csv/${uploadType}`, formData, {
-                headers: {
-                    'Content-Type': 'multipart/form-data',
-                },
-            });
+            
+            // const response = await axios.post(`http://localhost:5000/api/upload-csv/${uploadType}`, formData, {
+            //     headers: {
+            //         'Content-Type': 'multipart/form-data',
+            //     },
+            // });
+            const response = await uploadCSV(uploadType, formData);
             const uploadTime = new Date().toLocaleString();
             // toast.success(`File uploaded successfully at ${uploadTime}`);
-            if (response.data.errorRows && response.data.errorRows.length > 0) {
+            if (response?.data.errorRows && response.data.errorRows.length > 0) {
                 toast.warn(`File uploaded with errors. ${response.data.errorRows.length} rows had issues.`);
             } else {
                 toast.success(`File uploaded successfully at ${uploadTime}`);
@@ -96,17 +100,23 @@ const CsvImportExport: React.FC = () => {
 
     // Handle exporting data
     const handleExport = async (type: 'products' | 'categories' | 'product_categories' | 'filter_fields' | 'product_filters') => {
-        console.log(type, '<< type');
         try {
-            const response = await axios.get(`http://localhost:5000/api/export/${type}`, { responseType: 'blob' });
-            const url = window.URL.createObjectURL(new Blob([response.data]));
-            const link = document.createElement('a');
-            link.href = url;
-            link.setAttribute('download', `${type}.csv`);
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            toast.success(`${type} data exported successfully!`);
+            //const response = await axios.get(`http://localhost:5000/api/export/${type}`, { responseType: 'blob' });
+            const response: AxiosResponse<Blob> | undefined = await exportData(type)
+            console.log(response);
+            // exportData
+            if (response && response.data) {
+                const url = window.URL.createObjectURL(new Blob([response.data]));
+                const link = document.createElement('a');
+                link.href = url;
+                link.setAttribute('download', `${type}.csv`);
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                toast.success(`${type} data exported successfully!`);
+            } else {
+                toast.error(`Failed to export ${type} data`);
+            }
         } catch (error) {
             toast.error(`Error exporting ${type} data`);
         }

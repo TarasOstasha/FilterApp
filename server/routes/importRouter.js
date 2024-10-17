@@ -34,8 +34,8 @@ importRouter
     .post('/category', upload.single('file'), importController.importCategories)
     .post('/product', upload.single('file'), importController.importProducts)
     .post('/product-category', upload.single('file'), importController.importProductCategories)
-    // .post('/product-filter', upload.single('file'), importController.importProductFilters)
-    // .post('/filter-field', upload.single('file'), importController.importFilterFields);
+    .post('/product-filter', upload.single('file'), importController.importProductFilters)
+    .post('/filter-field', upload.single('file'), importController.importFilterFields);
 
 module.exports = importRouter;
 
