@@ -1,9 +1,9 @@
 const { Router } = require('express');
 const multer = require('multer');
-const { importController } = require('../controllers');
 const path = require('path');
+const { importCategoryController } = require('../controllers');
 
-const importRouter = Router();
+const importCategoryRouter = Router();
 
 // Multer configuration
 const storage = multer.diskStorage({
@@ -30,6 +30,6 @@ const upload = multer({
     fileFilter,
 });
 
-importRouter.post('/', upload.single('file'), importController.importFiles);
+importCategoryRouter.post('/', upload.single('file'), importCategoryController.importCategories);
 
-module.exports = importRouter;
+module.exports = importCategoryRouter;
