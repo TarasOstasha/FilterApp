@@ -58,3 +58,50 @@
     }
   }
   
+  .export-buttons {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px; // Space between elements
+
+    label {
+        font-size: 1.2rem;
+        font-weight: 500;
+        margin-bottom: 0.5rem;
+        color: #333;
+    }
+
+    select {
+        padding: 10px;
+        font-size: 1rem;
+        border: 2px solid #ccc;
+        border-radius: 4px;
+        background-color: #fff;
+        transition: border 0.3s ease;
+
+        &:focus {
+            border-color: #4CAF50;
+            outline: none;
+        }
+    }
+
+    button {
+        padding: 10px 20px;
+        font-size: 1rem;
+        color: #fff;
+        background-color: #4CAF50;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        transition: background-color 0.3s ease;
+
+        &:hover {
+            background-color: #45a049;
+        }
+
+        &:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+    }
+}

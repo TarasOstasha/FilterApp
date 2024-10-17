@@ -37,9 +37,11 @@ const exportProductDataToCSV = async () => {
     console.log(chalk.green(`Data successfully exported to ${filePath}`));
   } catch (error) {
     console.error(chalk.red('Error exporting data to CSV:', error));
-  } finally {
-    pool.end(); 
-  }
+    throw error;
+  } 
+  // finally {
+  //   pool.end(); 
+  // }
 };
 
 

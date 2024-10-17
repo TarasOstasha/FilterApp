@@ -6,6 +6,7 @@ import styles from './CsvImportExport.module.scss';
 
 const CsvImportExport: React.FC = () => {
     const [file, setFile] = useState<File | null>(null);
+    const [selectedExportType, setSelectedExportType] = useState<string>('');
 
     // Handle file selection for import
     const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -16,12 +17,16 @@ const CsvImportExport: React.FC = () => {
 
     // Determine upload type based on file name
     const getUploadType = (fileName: string): string => {
-        console.log(fileName);
-        if (fileName.includes('categories')) return 'category';
-        if (fileName.includes('product-categories')) return 'product-category';
-        if (fileName.includes('product-filters')) return 'product-filter';
-        if (fileName.includes('filter-fields')) return 'filter-field';
-        if (fileName.includes('products')) return 'product';
+        
+        // Remove the extension if necessary, like '.csv', for comparison
+        const cleanFileName = fileName.split('.')[0];
+    
+        if (cleanFileName === 'products') return 'product';
+        if (cleanFileName === 'categories') return 'category';
+        if (cleanFileName === 'product_categories') return 'product-category';
+        if (cleanFileName === 'product_filters') return 'product-filter';
+        if (cleanFileName === 'filter_fields') return 'filter-field';
+    
         return 'unknown';
     };
 
@@ -42,9 +47,9 @@ const CsvImportExport: React.FC = () => {
                     <p>Allowed file names are:</p>
                     <ul>
                         <li><strong>"categories.csv"</strong> for uploading categories</li>
-                        <li><strong>"product-categories.csv"</strong> for uploading product categories</li>
-                        <li><strong>"product-filters.csv"</strong> for uploading product filters</li>
-                        <li><strong>"filter-fields.csv"</strong> for uploading filter fields</li>
+                        <li><strong>"product_categories.csv"</strong> for uploading product categories</li>
+                        <li><strong>"product_filters.csv"</strong> for uploading product filters</li>
+                        <li><strong>"filter_fields.csv"</strong> for uploading filter fields</li>
                         <li><strong>"products.csv"</strong> for uploading products</li>
                     </ul>
                 </div>,
@@ -90,19 +95,29 @@ const CsvImportExport: React.FC = () => {
     };
 
     // Handle exporting data
-    const handleExport = async (type: 'products' | 'categories' | 'productCategories' | 'filterFields' | 'productFilters') => {
+    const handleExport = async (type: 'products' | 'categories' | 'product_categories' | 'filter_fields' | 'product_filters') => {
+        console.log(type, '<< type');
         try {
-            const response = await axios.get(`/api/export-${type}`, { responseType: 'blob' });
+            const response = await axios.get(`http://localhost:5000/api/export/${type}`, { responseType: 'blob' });
             const url = window.URL.createObjectURL(new Blob([response.data]));
             const link = document.createElement('a');
             link.href = url;
-            link.setAttribute('download', `${type}_data.csv`);
+            link.setAttribute('download', `${type}.csv`);
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
             toast.success(`${type} data exported successfully!`);
         } catch (error) {
             toast.error(`Error exporting ${type} data`);
+        }
+    };
+    
+
+    const handleExportClick = () => {
+        if (selectedExportType) {
+            handleExport(selectedExportType as any);
+        } else {
+            toast.error('Please select an export type.');
         }
     };
 
@@ -127,12 +142,28 @@ const CsvImportExport: React.FC = () => {
             </button>
 
             <h2>Export Data</h2>
-            <div className={styles['export-buttons']}>
+            {/* <div className={styles['export-buttons']}>
                 <button onClick={() => handleExport('products')}>Export Products</button>
                 <button onClick={() => handleExport('categories')}>Export Categories</button>
                 <button onClick={() => handleExport('productCategories')}>Export Product Categories</button>
                 <button onClick={() => handleExport('filterFields')}>Export Filter Fields</button>
                 <button onClick={() => handleExport('productFilters')}>Export Product Filter</button>
+            </div> */}
+            <div className={styles['export-buttons']}>
+                <label htmlFor="exportType">Select Export Type:</label>
+                <select
+                    id="exportType"
+                    value={selectedExportType}
+                    onChange={(e) => setSelectedExportType(e.target.value)}
+                >
+                    <option value="">--Select an option--</option>
+                    <option value="products">Export Products</option>
+                    <option value="categories">Export Categories</option>
+                    <option value="product_categories">Export Product Categories</option>
+                    <option value="filter_fields">Export Filter Fields</option>
+                    <option value="product_filters">Export Product Filter</option>
+                </select>
+                <button onClick={handleExportClick}>Export</button>
             </div>
         </div>
     );

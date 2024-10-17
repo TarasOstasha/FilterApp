@@ -4,3 +4,4 @@ module.exports.productCategoryController = require('./productCategoryController'
 module.exports.productFilterController = require('./productFilterController');
 module.exports.productController = require('./productController');
 module.exports.importController = require('./importController');
+module.exports.exportController = require('./exportController');

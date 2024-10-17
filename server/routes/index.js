@@ -6,6 +6,7 @@ const productCategoryRouter = require('./productCategoryRouter');
 const productFilterRouter = require('./productFilterRouter');
 const productRouter = require('./productRouter');
 const importRouter = require('./importRouter');
+const exportRouter = require('./exportRouter');
 
 
 
@@ -19,6 +20,7 @@ router.use('/productCategory', productCategoryRouter);
 router.use('/productFilter', productFilterRouter);
 router.use('/products', productRouter);
 router.use('/upload-csv', importRouter);
+router.use('/export', exportRouter);
 
 
 

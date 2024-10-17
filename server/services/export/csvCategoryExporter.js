@@ -38,9 +38,11 @@ const exportCategoryDataToCSV = async () => {
     console.log(chalk.green(`Category data successfully exported to ${filePath}`));
   } catch (error) {
     console.error(chalk.red('Error exporting data to CSV:', error));
-  } finally {
-    pool.end(); 
-  }
+    throw error;
+  } 
+  // finally {
+  //   pool.end(); 
+  // }
 };
 
 module.exports = exportCategoryDataToCSV;

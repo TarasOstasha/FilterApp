@@ -45,9 +45,11 @@ const exportProductCategoriesToCSV = async () => {
     )
   } catch (error) {
     console.error(chalk.red('Error exporting data to CSV:', error))
-  } finally {
-    pool.end()
-  }
+    throw error;
+  } 
+  // finally {
+  //   pool.end()
+  // }
 }
 
 module.exports = exportProductCategoriesToCSV
