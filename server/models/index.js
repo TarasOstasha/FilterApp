@@ -5,6 +5,7 @@ const FilterField = require('./filterField');
 const ProductCategory = require('./productCategory');
 const ProductFilter = require('./productFilter');
 const Product = require('./product');
+const Authentication = require('./authentication');
 
 
 
@@ -29,6 +30,7 @@ db.FilterField = FilterField;
 db.ProductCategory = ProductCategory;
 db.ProductFilter = ProductFilter;
 db.Product = Product;
+db.Authentication = Authentication;
 
 
 Category.pool = pool;
@@ -36,5 +38,6 @@ FilterField.pool = pool;
 ProductCategory.pool = pool;
 ProductFilter.pool = pool;
 Product.pool = pool;
+Authentication.pool = pool;
 
 module.exports = db;

@@ -7,6 +7,7 @@ const productFilterRouter = require('./productFilterRouter');
 const productRouter = require('./productRouter');
 const importRouter = require('./importRouter');
 const exportRouter = require('./exportRouter');
+const authRouter = require('./authRouter');
 
 
 
@@ -21,6 +22,7 @@ router.use('/productFilter', productFilterRouter);
 router.use('/products', productRouter);
 router.use('/upload-csv', importRouter);
 router.use('/export', exportRouter);
+router.use('/admin', authRouter);
 
 
 
