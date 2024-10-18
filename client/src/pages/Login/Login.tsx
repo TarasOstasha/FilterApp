@@ -7,6 +7,7 @@ import { toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import styles from './Login.module.scss';
 import { LOGIN_USER_VALIDATION_SCHEMA } from '../../utils/validatedSchemas';
+import { loginUser } from '../../api';
 
 
 const Login: React.FC = () => {
@@ -15,12 +16,20 @@ const Login: React.FC = () => {
     // Correct handleSubmit that works with Formik
     const handleSubmit = async (values: { username: string; password: string }) => {
         try {
-            const response = await axios.post('http://localhost:5000/api/admin/login', values);
-            // Save token to localStorage
-            localStorage.setItem('authToken', response.data.token);
-            toast.success('Login successful!');
-            // Redirect to admin page
-            navigate('/admin');
+            // const response = await axios.post('http://localhost:5000/api/admin/login', values);
+            // localStorage.setItem('authToken', response.data.token);
+            // toast.success('Login successful!');
+            // navigate('/admin');
+
+            const response = await loginUser(values);
+            if (response) {
+                
+                localStorage.setItem('authToken', response.data.token);
+                toast.success('Login successful!');
+           
+                navigate('/admin');
+            }
+
         } catch (error) {
             toast.error('Invalid credentials');
         }

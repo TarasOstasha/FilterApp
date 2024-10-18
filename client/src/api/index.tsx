@@ -3,35 +3,19 @@ import axios, { AxiosResponse } from 'axios';
 
 const axiosInstance = axios.create({
     baseURL: 'http://localhost:5000/api',
-    headers: {
-        'Content-Type': 'multipart/form-data', 
-    },
+    // headers: {
+    //     'Content-Type': 'multipart/form-data', 
+    // },
 });
-
-
-
-// export const uploadCSV = (uploadType: string, formData: FormData) => {
-//     try {
-//         return axiosInstance.post(`/upload-csv/${uploadType}`, formData);
-//     } catch (error) {
-//         console.error(error);
-//     }
-// };
-
-// export const exportData = (type: string) => {
-//     try {
-//         return axiosInstance.get(`/export/${type}`, {
-//             responseType: 'blob', 
-//         });
-//     } catch (error) {
-//         console.error(error);
-//     }
-// };
 
 
 export const uploadCSV = async (uploadType: string, formData: FormData): Promise<AxiosResponse<any> | undefined> => {
     try {
-        return await axiosInstance.post(`/upload-csv/${uploadType}`, formData);
+        return await axiosInstance.post(`/upload-csv/${uploadType}`, formData, {
+            headers: {
+                'Content-Type': 'multipart/form-data', 
+            },
+        });
     } catch (error) {
         console.error('Error uploading CSV:', error);
         return undefined; 
@@ -62,6 +46,13 @@ export const fetchProductsFromAPI = async (
 };
 
 
+export const loginUser = async (values: { username: string; password: string }): Promise<AxiosResponse<any> | undefined> => {
+    console.log(values);
+    try {
+        return await axiosInstance.post('/admin/login', values);
+    } catch (error) {
+        console.error('Error during login:', error);
+        return undefined; 
+    }
+};
 
-
-// const response = await axios.post('http://localhost:5000/api/admin/login', values);
