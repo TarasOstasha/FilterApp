@@ -10,6 +10,7 @@ client/dist/
 server/dist/
 server/services/import/data/
 server/services/export/data/
+server/notes.txt
 
 # Ignore logs
 *.log

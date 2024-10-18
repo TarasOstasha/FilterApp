@@ -9,6 +9,17 @@ const axiosInstance = axios.create({
 });
 
 
+export const fetchProductsFromAPI = async (
+    queryParams: URLSearchParams
+): Promise<AxiosResponse<any> | undefined> => {
+    try {
+        return await axiosInstance.get(`/products?${queryParams.toString()}`);
+    } catch (error) {
+        console.error('Error fetching products:', error);
+        return undefined;
+    }
+};
+
 export const uploadCSV = async (uploadType: string, formData: FormData): Promise<AxiosResponse<any> | undefined> => {
     try {
         return await axiosInstance.post(`/upload-csv/${uploadType}`, formData, {
@@ -22,7 +33,6 @@ export const uploadCSV = async (uploadType: string, formData: FormData): Promise
     }
 };
 
-
 export const exportData = async (type: string): Promise<AxiosResponse<Blob> | undefined> => {
     try {
         return await axiosInstance.get<Blob>(`/export/${type}`, {
@@ -34,20 +44,7 @@ export const exportData = async (type: string): Promise<AxiosResponse<Blob> | un
     }
 };
 
-export const fetchProductsFromAPI = async (
-    queryParams: URLSearchParams
-): Promise<AxiosResponse<any> | undefined> => {
-    try {
-        return await axiosInstance.get(`/products?${queryParams.toString()}`);
-    } catch (error) {
-        console.error('Error fetching products:', error);
-        return undefined;
-    }
-};
-
-
 export const loginUser = async (values: { username: string; password: string }): Promise<AxiosResponse<any> | undefined> => {
-    console.log(values);
     try {
         return await axiosInstance.post('/admin/login', values);
     } catch (error) {
