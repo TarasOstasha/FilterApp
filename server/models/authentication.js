@@ -1,7 +1,5 @@
 class Authentication {
     static async getUserByUsername(username) {
-      //testQuery();
-      //console.log(username, '<< username model');
       try {
         const query = `
           SELECT * 

@@ -5,6 +5,7 @@ import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import styles from './CsvImportExport.module.scss';
 import { exportData, uploadCSV } from '../../../api/index';
+import Admin from '../../Admin/Admin';
 
 const CsvImportExport: React.FC = () => {
     const [file, setFile] = useState<File | null>(null);
@@ -143,7 +144,7 @@ const CsvImportExport: React.FC = () => {
                 draggable
                 pauseOnHover
             />
-
+            <Admin />
             <h2>Import CSV</h2>
             <input type="file" onChange={handleFileChange} />
             <button onClick={handleFileUpload} disabled={!file}>

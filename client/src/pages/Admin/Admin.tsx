@@ -13,7 +13,7 @@ const Admin: React.FC = () => {
 
     return (
         <div className={styles['admin-panel']}>
-            <h2>Admin Panel</h2>
+            {/* <h2>Admin Panel</h2> */}
             <button onClick={handleLogout} className={styles['logout-button']}>
                 Logout
             </button>

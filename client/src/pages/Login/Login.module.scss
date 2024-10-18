@@ -15,7 +15,7 @@
   form {
     display: flex;
     flex-direction: column;
-    gap: 20px;  // Increases spacing between elements
+    gap: 20px;  
 
     input {
       padding: 10px;
@@ -26,7 +26,7 @@
       transition: border-color 0.3s;
       width: 100%;
       &::placeholder {
-        color: #6c757d;  // Placeholder color
+        color: #6c757d;
       }
 
       &:focus {
