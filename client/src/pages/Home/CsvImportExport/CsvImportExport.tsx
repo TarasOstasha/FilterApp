@@ -103,7 +103,6 @@ const CsvImportExport: React.FC = () => {
         try {
             //const response = await axios.get(`http://localhost:5000/api/export/${type}`, { responseType: 'blob' });
             const response: AxiosResponse<Blob> | undefined = await exportData(type)
-            console.log(response);
             // exportData
             if (response && response.data) {
                 const url = window.URL.createObjectURL(new Blob([response.data]));
