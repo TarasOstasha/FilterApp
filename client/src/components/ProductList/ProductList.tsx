@@ -19,17 +19,17 @@ interface ProductListProps {
 const ProductList: React.FC<ProductListProps> = ({ products = [], filters, loading }) => {
  
   // Function to check if a product matches the selected filters
-  const productMatchesFilters = (product: Product) => {
-    for (const [filterField, selectedValues] of Object.entries(filters)) {
-      if (filterField === 'Product Type' && !selectedValues.includes(product.product_name)) {
-        return false;
-      }
-    }
-    return true;
-  };
+  // const productMatchesFilters = (product: Product) => {
+  //   for (const [filterField, selectedValues] of Object.entries(filters)) {
+  //     if (filterField === 'Product Type' && !selectedValues.includes(product.product_name)) {
+  //       return false;
+  //     }
+  //   }
+  //   return true;
+  // };
 
-  // Filter the products based on the selected filters
-  const filteredProducts = products.filter(productMatchesFilters);
+  // // Filter the products based on the selected filters
+  // const filteredProducts = products.filter(productMatchesFilters);
   
   if (loading) {
     return <p>Loading products...</p>;

@@ -2,7 +2,7 @@ const { Router } = require('express');
 const multer = require('multer');
 const path = require('path');
 const { importController } = require('../controllers');
-const { upload } = require('../middleware');
+const { upload } = require('../middleware'); // multer config
 
 const importRouter = Router();
 

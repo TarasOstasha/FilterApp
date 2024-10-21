@@ -5,6 +5,7 @@ import SortDropdown from '../../components/SortDropdown/SortDropdown';
 import ItemsPerPageDropdown from '../../components/ItemsPerPageDropdown/ItemsPerPageDropdown';
 import PaginationControls from '../../components/PaginationControls/PaginationControls';
 import { fetchProductsFromAPI } from '../../api';
+import MegaFilter from '../../components/MegaFilter/MegaFilter';
 
 
 interface Product {
@@ -227,6 +228,8 @@ const Home: React.FC = () => {
             <SortDropdown handleSortChange={handleSortChange} currentSort={sortBy} />
             <ItemsPerPageDropdown itemsPerPage={itemsPerPage} handleItemsPerPageChange={handleItemsPerPageChange} />
           </div>
+          <MegaFilter products={products} filters={selectedFilters} loading={loading} />
+          <hr />
           <ProductList products={products} filters={selectedFilters} loading={loading} />
           <PaginationControls
             currentPage={currentPage}
