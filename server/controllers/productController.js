@@ -110,3 +110,16 @@ module.exports.getProducts = async (req, res, next) => {
     next(err) // Forward error to the error handler middleware
   }
 }
+
+module.exports.getMegaFilteredProductItems = async (req, res, next) => {
+
+  const limit = 27;
+  const { sortBy = 'price_asc', searchTerms = '' } = req.query;
+  
+  try {
+    const foundProducts = await Product.getMegaFilteredProducts(sortBy, searchTerms, limit) // sortBy, searchTerms, limit
+    res.status(200).send(foundProducts)
+  } catch(err) {
+    next(err)
+  }
+}

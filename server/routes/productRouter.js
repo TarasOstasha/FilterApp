@@ -11,5 +11,8 @@ productRouter
     //.get(paginate.paginateProducts, productController.getAllProducts)
     .get(paginate.paginateProducts, productController.getProducts)
 
+productRouter
+    .route('/mega')
+    .get(productController.getMegaFilteredProductItems)
 
 module.exports = productRouter;

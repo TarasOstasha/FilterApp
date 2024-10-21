@@ -1,4 +1,3 @@
-
 const chalk = require('chalk')
 class Product {
   static async getAll(limit, offset, sortBy) {
@@ -262,95 +261,97 @@ class Product {
   //   }
   // }
 
-
   static async getFilteredProducts(
     limit,
     offset,
     filters = {},
     sortBy = 'price_asc',
   ) {
-    console.log(chalk.white('Filtered Params:', JSON.stringify(filters), '<< filters'));
-  
+    console.log(
+      chalk.white('Filtered Params:', JSON.stringify(filters), '<< filters'),
+    )
+
     try {
       let query = `
         SELECT p.*, c.category_name
         FROM products p
         JOIN product_categories pc ON p.id = pc.product_id
         JOIN categories c ON pc.category_id = c.id
-      `;
-      const values = [];
-      let filterConditions = [];
-      let index = 1;
-  
+      `
+      const values = []
+      let filterConditions = []
+      let index = 1
+
       // Define sort options mapping
       const sortOptions = {
-        'price_asc': 'product_price ASC',
-        'price_desc': 'product_price DESC',
-        'name_asc': 'p.product_name ASC',
-        'name_desc': 'p.product_name DESC',
+        price_asc: 'product_price ASC',
+        price_desc: 'product_price DESC',
+        name_asc: 'p.product_name ASC',
+        name_desc: 'p.product_name DESC',
         // Add more mappings as needed
-      };
-  
+      }
+
       // Validate sortBy
       if (sortOptions.hasOwnProperty(sortBy)) {
-        sortBy = sortOptions[sortBy];
+        sortBy = sortOptions[sortBy]
       } else {
         // Default to a safe sort option or handle the error
-        sortBy = 'product_price ASC';
+        sortBy = 'product_price ASC'
       }
-  
+
       // Process filters
       if (Object.keys(filters).length > 0) {
         Object.keys(filters).forEach((filterField) => {
           const filterValues = Array.isArray(filters[filterField])
             ? filters[filterField]
-            : [filters[filterField]]; // Ensure filter values are in an array
-  
+            : [filters[filterField]] // Ensure filter values are in an array
+
           filterValues.forEach((value) => {
             if (filterField === 'category_name') {
               // Handle category filter
-              filterConditions.push(`c.category_name = $${index}`);
-              values.push(value);
-              index++;
+              filterConditions.push(`c.category_name = $${index}`)
+              values.push(value)
+              index++
             } else {
               // Handle other filters (if any)
               // Include joins with product_filters and filter_fields
               query += `
                 JOIN product_filters pf ON p.id = pf.product_id
                 JOIN filter_fields ff ON pf.filter_field_id = ff.id
-              `;
+              `
               filterConditions.push(
-                `(ff.field_name = $${index} AND pf.filter_value = $${index + 1})`,
-              );
-              values.push(filterField, value);
-              index += 2;
+                `(ff.field_name = $${index} AND pf.filter_value = $${
+                  index + 1
+                })`,
+              )
+              values.push(filterField, value)
+              index += 2
             }
-          });
-        });
+          })
+        })
       }
-  
+
       // Add filter conditions to the query
       if (filterConditions.length > 0) {
-        query += ` WHERE ${filterConditions.join(' AND ')}`;
+        query += ` WHERE ${filterConditions.join(' AND ')}`
       }
-  
+
       // Add ORDER BY, LIMIT, and OFFSET clauses
       query += `
         ORDER BY ${sortBy}
         LIMIT $${index} OFFSET $${index + 1}
-      `;
-      values.push(limit, offset);
-  
+      `
+      values.push(limit, offset)
+
       // console.log(values, '<< final values');
       console.log(query, '<< final query ')
       // Execute the query
-      const { rows } = await Product.pool.query(query, values);
-      return rows;
+      const { rows } = await Product.pool.query(query, values)
+      return rows
     } catch (err) {
-      throw err;
+      throw err
     }
   }
-  
 
   // old version
   // static async getTotalCount(filters = {}) {
@@ -489,12 +490,37 @@ class Product {
     }
   }
 
+  static async getMegaFilteredProducts(sortBy = 'price_asc', searchTerms, limit) {
+    console.log(sortBy, searchTerms, limit);
+    try {
+      let orderByClause = 'ORDER BY product_price ASC'
 
+      if (sortBy === 'price_desc') {
+        orderByClause = 'ORDER BY product_price DESC'
+      } else if (sortBy === 'price_asc') {
+        orderByClause = 'ORDER BY product_price ASC'
+      }
 
-
-
-  
-  
+      // Use parameterized query to avoid SQL injection
+      const query = `
+            SELECT *
+            FROM Products
+            WHERE product_name ILIKE $1
+            ${orderByClause}
+            LIMIT $2
+        `
+      console.log(query);
+      // Use '%' wildcards in the parameterized query
+      const { rows } = await Product.pool.query(query, [
+        `%${searchTerms}%`, // searchTerms goes as $1
+        limit               // limit goes as $2
+      ])
+      console.log(rows);
+      return rows
+    } catch (err) {
+      throw err
+    }
+  }
 }
 
 module.exports = Product

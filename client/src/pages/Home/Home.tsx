@@ -217,6 +217,8 @@ const Home: React.FC = () => {
 
   const totalPages = Math.ceil(totalProducts / itemsPerPage);
 
+
+  
   return (
     <div className="container">
       <div className="row">
@@ -228,8 +230,9 @@ const Home: React.FC = () => {
             <SortDropdown handleSortChange={handleSortChange} currentSort={sortBy} />
             <ItemsPerPageDropdown itemsPerPage={itemsPerPage} handleItemsPerPageChange={handleItemsPerPageChange} />
           </div>
-          <MegaFilter products={products} filters={selectedFilters} loading={loading} />
-          <hr />
+          {/* <MegaFilter products={products} filters={selectedFilters} loading={loading} /> */}
+          <br />
+          <MegaFilter filters={selectedFilters} loading={loading} />
           <ProductList products={products} filters={selectedFilters} loading={loading} />
           <PaginationControls
             currentPage={currentPage}

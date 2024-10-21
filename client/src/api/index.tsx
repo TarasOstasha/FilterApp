@@ -8,7 +8,7 @@ const axiosInstance = axios.create({
     // },
 });
 
-
+// fetch regular products
 export const fetchProductsFromAPI = async (
     queryParams: URLSearchParams
 ): Promise<AxiosResponse<any> | undefined> => {
@@ -19,6 +19,36 @@ export const fetchProductsFromAPI = async (
         return undefined;
     }
 };
+
+// fetch megafiltered products
+// export const fetchMegaFilteredProductsFromAPI = async (searchTerm: string): Promise<AxiosResponse<any> | undefined> => {
+//     const queryParams = new URLSearchParams();
+//     if (searchTerm) {
+//         queryParams.append('search', searchTerm);  // Pass the search term as a query parameter
+//     }
+//     console.log(searchTerm, '<<queryParams');
+//     try {
+//         return await axiosInstance.get(`/products/mega?${queryParams.toString()}`);
+//     } catch (error) {
+//         console.error('Error fetching filtered products:', error);
+//         return undefined;
+//     }
+// };
+export const fetchMegaFilteredProductsFromAPI = async (searchTerm: string): Promise<AxiosResponse<any> | undefined> => {
+    const queryParams = new URLSearchParams();
+    if (searchTerm) {
+        queryParams.append('searchTerms', searchTerm); 
+    }
+    try {
+        return await axiosInstance.get(`/products/mega?${queryParams.toString()}`);
+    } catch (error) {
+        console.error('Error fetching filtered products:', error);
+        return undefined;
+    }
+};
+
+
+
 
 export const uploadCSV = async (uploadType: string, formData: FormData): Promise<AxiosResponse<any> | undefined> => {
     try {
