@@ -113,7 +113,7 @@ module.exports.getProducts = async (req, res, next) => {
 
 module.exports.getMegaFilteredProductItems = async (req, res, next) => {
 
-  const limit = 27;
+  const limit = 54;
   const { sortBy = 'price_asc', searchTerms = '' } = req.query;
   
   try {

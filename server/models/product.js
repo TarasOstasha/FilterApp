@@ -490,8 +490,12 @@ class Product {
     }
   }
 
-  static async getMegaFilteredProducts(sortBy = 'price_asc', searchTerms, limit) {
-    console.log(sortBy, searchTerms, limit);
+  static async getMegaFilteredProducts(
+    sortBy = 'price_asc',
+    searchTerms,
+    limit,
+  ) {
+    const searchWords = searchTerms.split(' ').filter(Boolean)
     try {
       let orderByClause = 'ORDER BY product_price ASC'
 
@@ -500,22 +504,35 @@ class Product {
       } else if (sortBy === 'price_asc') {
         orderByClause = 'ORDER BY product_price ASC'
       }
-
+      const whereClause = searchWords
+        .map((_, index) => `product_name ILIKE $${index + 1}`)
+        .join(' AND ')
       // Use parameterized query to avoid SQL injection
+      // const query = `
+      //       SELECT *
+      //       FROM Products
+      //       WHERE product_name ILIKE $1
+      //       ${orderByClause}
+      //       LIMIT $2
+      //   `
       const query = `
-            SELECT *
-            FROM Products
-            WHERE product_name ILIKE $1
-            ${orderByClause}
-            LIMIT $2
-        `
-      console.log(query);
+          SELECT *
+          FROM Products
+          WHERE ${whereClause}
+          ${orderByClause}
+          LIMIT $${
+            searchWords.length + 1
+          }  
+      `
       // Use '%' wildcards in the parameterized query
-      const { rows } = await Product.pool.query(query, [
-        `%${searchTerms}%`, // searchTerms goes as $1
-        limit               // limit goes as $2
-      ])
-      console.log(rows);
+      // const { rows } = await Product.pool.query(query, [
+      //   `%${searchTerms}%`, // searchTerms goes as $1
+      //   limit, // limit goes as $2
+      // ])
+      // Prepare the parameters for the query
+      const params = searchWords.map(word => `%${word}%`);
+      params.push(limit); // Add the limit as the last parameter
+      const { rows } = await Product.pool.query(query, params);
       return rows
     } catch (err) {
       throw err

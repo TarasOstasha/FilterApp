@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import styles from './MegaFilter.module.scss';
 import { fetchMegaFilteredProductsFromAPI } from '../../api';
 import { debounce } from 'throttle-debounce';
@@ -25,6 +25,13 @@ const MegaFilter: React.FC<ProductListProps> = ({ filters, loading }) => {
     const [searchTerm, setSearchTerm] = useState('');  
     const [megaFilteredProducts, setMegaFilteredProducts] = useState<Product[]>([]);  
     const [isLoading, setIsLoading] = useState(false);  
+    const inputRef = useRef<HTMLInputElement>(null);
+
+    useEffect(() => {
+        if (inputRef.current) {
+            inputRef.current.focus();  
+        }
+    }, [searchTerm, megaFilteredProducts]);
 
     const debouncedFetchProducts = useCallback(
         debounce(1500, async (term: string) => {
@@ -60,10 +67,13 @@ const MegaFilter: React.FC<ProductListProps> = ({ filters, loading }) => {
         return <p>Loading products...</p>;  
     }
 
+
+
     return (
         <div>
             {/* Search Input */}
             <input
+                ref={inputRef}
                 type="text"
                 placeholder="Search products..."
                 value={searchTerm}
