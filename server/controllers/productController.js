@@ -115,7 +115,7 @@ module.exports.getMegaFilteredProductItems = async (req, res, next) => {
 
   const limit = 54;
   const { sortBy = 'price_asc', searchTerms = '' } = req.query;
-  
+  console.log(sortBy);
   try {
     const foundProducts = await Product.getMegaFilteredProducts(sortBy, searchTerms, limit) // sortBy, searchTerms, limit
     res.status(200).send(foundProducts)

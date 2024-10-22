@@ -495,6 +495,7 @@ class Product {
     searchTerms,
     limit,
   ) {
+
     const searchWords = searchTerms.split(' ').filter(Boolean)
     try {
       let orderByClause = 'ORDER BY product_price ASC'
@@ -505,8 +506,8 @@ class Product {
         orderByClause = 'ORDER BY product_price ASC'
       }
       const whereClause = searchWords
-        .map((_, index) => `product_name ILIKE $${index + 1}`)
-        .join(' AND ')
+      .map((_, index) => `(product_name ILIKE $${index + 1} OR product_code ILIKE $${index + 1})`)
+      .join(' AND ');
       // Use parameterized query to avoid SQL injection
       // const query = `
       //       SELECT *
@@ -520,10 +521,8 @@ class Product {
           FROM Products
           WHERE ${whereClause}
           ${orderByClause}
-          LIMIT $${
-            searchWords.length + 1
-          }  
-      `
+          LIMIT $${searchWords.length + 1}
+      `;
       // Use '%' wildcards in the parameterized query
       // const { rows } = await Product.pool.query(query, [
       //   `%${searchTerms}%`, // searchTerms goes as $1
@@ -541,3 +540,6 @@ class Product {
 }
 
 module.exports = Product
+
+// http://www.xyzDisplays.com/net/WebService.aspx?Login=tonyjoss1990@gmail.com&EncryptedPassword=10E3D99C2F6A05DC62ED6E81BE814668BF70F6ACC14E5DD100AC1B6D798B7927&EDI_Name=Generic\Products&
+// SELECT_Columns=p.ProductCode,p.ProductID,p.ProductName,p.Vendor_PartNo,pe.Vendor_Price,pe.ProductPrice,pe.EAN,pe.Google_Age_Group&WHERE_Column=p.ProductCode&WHERE_Value=

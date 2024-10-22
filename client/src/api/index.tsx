@@ -34,11 +34,16 @@ export const fetchProductsFromAPI = async (
 //         return undefined;
 //     }
 // };
-export const fetchMegaFilteredProductsFromAPI = async (searchTerm: string): Promise<AxiosResponse<any> | undefined> => {
+export const fetchMegaFilteredProductsFromAPI = async (searchTerm: string, sortBy: string): Promise<AxiosResponse<any> | undefined> => {
+    console.log(sortBy, '<< sortBy API');
     const queryParams = new URLSearchParams();
     if (searchTerm) {
         queryParams.append('searchTerms', searchTerm); 
     }
+    if (sortBy) {
+        queryParams.append('sortBy', sortBy);  // Pass the sort method as a query parameter
+    }
+    //console.log(sortBy, '<< sortBy');
     try {
         return await axiosInstance.get(`/products/mega?${queryParams.toString()}`);
     } catch (error) {

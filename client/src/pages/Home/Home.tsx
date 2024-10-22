@@ -123,7 +123,10 @@ const Home: React.FC = () => {
     const params = new URLSearchParams(window.location.search);
     params.set('sortBy', sortMethod);
     window.history.pushState({}, '', `${window.location.pathname}?${params.toString()}`);
-    fetchProducts();
+    // fetchProducts();
+  //   setTimeout(() => {
+  //     fetchProducts(); // Call fetchProducts after the state is updated
+  // }, 100);
   };
 
   // const handleItemsPerPageChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -232,7 +235,7 @@ const Home: React.FC = () => {
           </div>
           {/* <MegaFilter products={products} filters={selectedFilters} loading={loading} /> */}
           <br />
-          <MegaFilter filters={selectedFilters} loading={loading} />
+          <MegaFilter sortBy={sortBy} filters={selectedFilters} loading={loading} />
           <ProductList products={products} filters={selectedFilters} loading={loading} />
           <PaginationControls
             currentPage={currentPage}
