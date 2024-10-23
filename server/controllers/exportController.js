@@ -1,5 +1,10 @@
 
-const { exportCategoryDataToCSV, exportProductCategoriesToCSV, exportProductDataToCSV } = require('../services/export');
+const { 
+    exportCategoryDataToCSV, 
+    exportProductCategoriesToCSV, 
+    exportProductDataToCSV, 
+    exportProductFilterDataToCSV, 
+    exportFilterFieldDataToCSV } = require('../services/export');
 
 module.exports.exportData = async (req, res, next) => {
     const { type } = req.params;
@@ -8,7 +13,7 @@ module.exports.exportData = async (req, res, next) => {
 
         switch (type) {
             case 'products':
-                csvData = await exportProductDataToCSV();
+                csvData = await exportProductDataToCSV()
                 break;
             case 'categories':
                 csvData = await exportCategoryDataToCSV();
@@ -28,6 +33,7 @@ module.exports.exportData = async (req, res, next) => {
 
         res.setHeader('Content-Type', 'text/csv');
         res.setHeader('Content-Disposition', `attachment; filename=${type}.csv`);
+     
         res.status(200).send(csvData);
 
     } catch (error) {

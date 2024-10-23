@@ -46,6 +46,7 @@ const exportProductCategoriesToCSV = async () => {
       ),
     )
     manageExportedFiles();
+    return csv;
   } catch (error) {
     console.error(chalk.red('Error exporting data to CSV:', error))
     throw error;

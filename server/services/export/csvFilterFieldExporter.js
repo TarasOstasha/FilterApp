@@ -23,7 +23,7 @@ const exportFilterFieldDataToCSV = async () => {
     const data = result.rows;
 
     // Convert the data to CSV format using json2csv
-    const fields = ['id', 'field_name', 'fields_type', 'allowed_values']; 
+    const fields = ['id', 'field_name', 'field_type', 'allowed_values']; 
     const json2csvParser = new Parser({ fields });
     const csv = json2csvParser.parse(data);
 
@@ -39,6 +39,7 @@ const exportFilterFieldDataToCSV = async () => {
 
     console.log(chalk.green(`Category data successfully exported to ${filePath}`));
     manageExportedFiles();
+    return csv;
   } catch (error) {
     console.error(chalk.red('Error exporting data to CSV:', error));
     throw error;

@@ -1,5 +1,5 @@
 const chalk = require('chalk');
-const { Pool } = require('pg');
+//const { Pool } = require('pg');
 const fs = require('fs');
 const { Parser } = require('json2csv');
 const pool = require('../../config/dbConfig');
@@ -35,9 +35,9 @@ const exportProductDataToCSV = async () => {
     // Write CSV to a file
     const filePath = `${directoryPath}/exported_product_data_${timestamp}.csv`;
     fs.writeFileSync(filePath, csv);
-
     console.log(chalk.green(`Data successfully exported to ${filePath}`));
     manageExportedFiles();
+    return csv;
   } catch (error) {
     console.error(chalk.red('Error exporting data to CSV:', error));
     throw error;
