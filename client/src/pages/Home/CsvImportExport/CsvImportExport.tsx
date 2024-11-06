@@ -81,6 +81,7 @@ const CsvImportExport: React.FC = () => {
             //     },
             // });
             const response = await uploadCSV(uploadType, formData);
+            console.log(response);
             const uploadTime = new Date().toLocaleString();
             // toast.success(`File uploaded successfully at ${uploadTime}`);
             if (response?.data.errorRows && response.data.errorRows.length > 0) {
@@ -135,7 +136,7 @@ const CsvImportExport: React.FC = () => {
         <div className={styles['csv-import-export']}>
             <ToastContainer
                 position="top-right"
-                autoClose={5000}
+                autoClose={15000}
                 hideProgressBar={false}
                 newestOnTop={false}
                 closeOnClick
