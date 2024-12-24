@@ -77,42 +77,74 @@ const Home: React.FC = () => {
   //   });
   // };
 
+  // const handleFilterChange = (filter: { field: string; value: string }) => {
+
+  //   setSelectedFilters((prevFilters) => {
+  //     const { field, value } = filter;
+  //     const newFilters = { ...prevFilters };
+  //     console.log(newFilters, 'newFilters');
+  //     if (!newFilters[field]) {
+  //       newFilters[field] = [];
+  //     }
+  //     if (newFilters[field].includes(value)) {
+  //       newFilters[field] = newFilters[field].filter((v) => v !== value);
+  //     } else {
+  //       newFilters[field].push(value);
+  //     }
+
+  //     if (newFilters[field].length === 0) {
+  //       delete newFilters[field];
+  //     }
+
+  //     const params = new URLSearchParams();
+
+  //     for (const key in newFilters) {
+  //       if (newFilters[key]?.length) {
+  //         params.set(key, newFilters[key].join(','));
+  //       } else {
+  //         params.delete(key);
+  //       }
+  //     }
+
+  //     window.history.pushState({}, '', `${window.location.pathname}?${params.toString()}`);
+  //     return newFilters;
+  //   });
+  // };
+
   const handleFilterChange = (filter: { field: string; value: string }) => {
-
+    const { field, value } = filter;
+  
     setSelectedFilters((prevFilters) => {
-      const { field, value } = filter;
+      const currentValues = prevFilters[field] || [];
       const newFilters = { ...prevFilters };
-
-      if (!newFilters[field]) {
-        newFilters[field] = [];
-      }
-      if (newFilters[field].includes(value)) {
-        newFilters[field] = newFilters[field].filter((v) => v !== value);
+  
+      if (currentValues.includes(value)) {
+        newFilters[field] = currentValues.filter((v) => v !== value);
       } else {
-        newFilters[field].push(value);
+        newFilters[field] = [...currentValues, value];
       }
-
+  
       if (newFilters[field].length === 0) {
         delete newFilters[field];
       }
-
+  
+      // Update the query string in the URL
       const params = new URLSearchParams();
-
-      for (const key in newFilters) {
-        if (newFilters[key]?.length > 0) {
+      Object.keys(newFilters).forEach((key) => {
+        if (newFilters[key]?.length) {
           params.set(key, newFilters[key].join(','));
-        } else {
-          params.delete(key);
         }
-      }
-
+      });
       window.history.pushState({}, '', `${window.location.pathname}?${params.toString()}`);
-      return newFilters;
+  
+      return newFilters; // Update the state immutably
     });
   };
 
-
-
+  useEffect(() => {
+    console.log("Selected Filters:", selectedFilters);
+  }, [selectedFilters]);
+  
   const handleSortChange = (sortMethod: string) => {
 
     setSortBy(sortMethod); // Set sort method when user changes the dropdown
@@ -213,7 +245,7 @@ const Home: React.FC = () => {
 
   useEffect(() => {
     fetchProducts();
-  }, [selectedFilters, currentPage, itemsPerPage, sortBy, selectedFilters]); // Refetch when filters, page, or itemsPerPage changes
+  }, [selectedFilters, currentPage, itemsPerPage, sortBy]); // Refetch when filters, page, or itemsPerPage changes
 
   useEffect(() => {
     fetchFilterSidebarData();

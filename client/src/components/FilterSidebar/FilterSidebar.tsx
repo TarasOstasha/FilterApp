@@ -127,28 +127,13 @@ const filterFields: FilterField[] = [
     id: 13,
     field_name: 'Display Accessories',
     field_type: 'checkbox',
-    allowed_values: ['TV Mount', 'Shelves', 'Garment Bars', 'Doors'],
+    allowed_values: ['TV Mount','Shelves','Garment Bars','Doors'],
   },
   {
     id: 14,
     field_name: 'Hanging Sign Shapes',
     field_type: 'checkbox',
-    allowed_values: [
-      'Circle (Round Tube)',
-      'Circle (Tapered)',
-      'Designer',
-      'Disc',
-      'Ellipse',
-      'Eye',
-      'Football',
-      'Funnel & Cone',
-      'Hexagon',
-      'Panel (Curved)',
-      'Panel (S-Curve)',
-      'Panel (Straight)',
-      'Pinwheel (Four-Sided)',
-      'Pinwheel (Three-Sided)',
-      'Pyramid',
+    allowed_values: ['Circle (Round Tube)','Circle (Tapered)','Designer','Disc','Ellipse','Eye','Football','Funnel & Cone','Hexagon','Panel (Curved)','Panel (S-Curve)','Panel (Straight)','Pinwheel (Four-Sided)','Pinwheel (Three-Sided)','Pyramid',
       'Rectangle',
       'Square (Cube)',
       'Square (Curved Quad)',
@@ -231,6 +216,8 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({ onFilterChange, selectedF
   //   });
   // };
   function handleCheckboxChange(field: string, value: string) {
+    //console.log(field, value, 'field & value');
+    console.log('Checkbox clicked:', { field, value, length: value.length });
     onFilterChange({ field, value });
   }
   
