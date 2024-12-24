@@ -102,7 +102,6 @@ const Home: React.FC = () => {
         if (newFilters[key]?.length > 0) {
           params.set(key, newFilters[key].join(','));
         } else {
-          console.log(`Deleting key: ${key}`);
           params.delete(key);
         }
       }
@@ -218,7 +217,20 @@ const Home: React.FC = () => {
 
   useEffect(() => {
     fetchFilterSidebarData();
-  }, [])
+  }, []);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const restoredFilters: { [key: string]: string[] } = {};
+    
+    // For each param key, split its values
+    params.forEach((value, key) => {
+      restoredFilters[key] = value.split(',');
+    });
+    
+    setSelectedFilters(restoredFilters);
+  }, []);
+  
 
   const totalPages = Math.ceil(totalProducts / itemsPerPage);
 
