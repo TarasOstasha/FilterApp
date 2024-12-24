@@ -43,3 +43,47 @@
 .sidebar-checkbox-input {
   margin-right: 8px; /* Space between checkbox and label */
 }
+
+.range-slider {
+  width: 100%;
+  height: 25px;
+  margin-top: 10px;
+}
+
+.range-slider-thumb {
+  height: 15px;
+  width: 15px;
+  background-color: #fe0000;
+  border-radius: 50%;
+  cursor: pointer;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.range-slider-track {
+  top: 50%;
+  transform: translateY(-50%);
+  height: 5px;
+  background: #efece9;
+  border-radius: 2px;
+}
+
+.range-slider-track.range-slider-track-1 {
+  background: #3f51b5;
+}
+
+.range-values {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 5px;
+}
+
+
+.unit-switcher {
+  margin-bottom: 10px;
+}
+
+.unit-switcher button {
+  padding: 5px 10px;
+  cursor: pointer;
+}

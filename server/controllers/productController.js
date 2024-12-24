@@ -38,9 +38,12 @@ module.exports.getFilteredProducts = async (req, res, next) => {
       filters,
     )
     const totalProducts = await Product.getTotalCount(filters) // Get total product count with filters
-
+    // need to fix it later, duplicated values coming from server ***
+    const uniqueProducts = Array.from(
+      new Map(filteredProducts.map(product => [product.id, product])).values()
+    );
     res.status(200).json({
-      products: filteredProducts,
+      products: uniqueProducts,//filteredProducts,
       totalProducts: totalProducts, // Return total number of products
     })
   } catch (err) {
@@ -98,12 +101,16 @@ module.exports.getProducts = async (req, res, next) => {
       products = await Product.getAll(limit, offset, sortBy)
       totalProducts = await Product.getTotalCount() // Get total count for all products
     }
-
+    console.log(chalk.red(products, totalProducts));
     // Log for debugging
     //console.log(chalk.white(JSON.stringify(products), '<< - products'));
     // Respond with products and total count
+    // need to fix it later, duplicated values coming from server ***
+    const uniqueProducts = Array.from(
+      new Map(products.map(product => [product.id, product])).values()
+    );
     res.status(200).json({
-      products: products,
+      products: uniqueProducts,//products,
       totalProducts: totalProducts,
     })
   } catch (err) {

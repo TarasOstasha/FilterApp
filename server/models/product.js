@@ -273,7 +273,7 @@ class Product {
 
     try {
       let query = `
-        SELECT p.*, c.category_name
+        SELECT DISTINCT  p.*, c.category_name
         FROM products p
         JOIN product_categories pc ON p.id = pc.product_id
         JOIN categories c ON pc.category_id = c.id

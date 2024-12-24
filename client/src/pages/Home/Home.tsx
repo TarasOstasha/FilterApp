@@ -4,7 +4,7 @@ import ProductList from '../../components/ProductList/ProductList';
 import SortDropdown from '../../components/SortDropdown/SortDropdown';
 import ItemsPerPageDropdown from '../../components/ItemsPerPageDropdown/ItemsPerPageDropdown';
 import PaginationControls from '../../components/PaginationControls/PaginationControls';
-import { fetchProductsFromAPI } from '../../api';
+import { fetchFilterSidebarData, fetchProductsFromAPI } from '../../api';
 import MegaFilter from '../../components/MegaFilter/MegaFilter';
 
 
@@ -83,7 +83,6 @@ const Home: React.FC = () => {
       const { field, value } = filter;
       const newFilters = { ...prevFilters };
 
-      // Update filters state
       if (!newFilters[field]) {
         newFilters[field] = [];
       }
@@ -97,20 +96,18 @@ const Home: React.FC = () => {
         delete newFilters[field];
       }
 
-      // Rebuild the query parameters from newFilters
       const params = new URLSearchParams();
 
-      // Add all selected filters to params
       for (const key in newFilters) {
-        if (newFilters.hasOwnProperty(key)) {
+        if (newFilters[key]?.length > 0) {
           params.set(key, newFilters[key].join(','));
+        } else {
+          console.log(`Deleting key: ${key}`);
+          params.delete(key);
         }
       }
 
-      // Update the URL with the new filters
       window.history.pushState({}, '', `${window.location.pathname}?${params.toString()}`);
-
-      //fetchProducts(); // Fetch products with updated filters
       return newFilters;
     });
   };
@@ -124,9 +121,9 @@ const Home: React.FC = () => {
     params.set('sortBy', sortMethod);
     window.history.pushState({}, '', `${window.location.pathname}?${params.toString()}`);
     // fetchProducts();
-  //   setTimeout(() => {
-  //     fetchProducts(); // Call fetchProducts after the state is updated
-  // }, 100);
+    //   setTimeout(() => {
+    //     fetchProducts(); // Call fetchProducts after the state is updated
+    // }, 100);
   };
 
   // const handleItemsPerPageChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -191,8 +188,9 @@ const Home: React.FC = () => {
       queryParams.append('limit', itemsPerPage.toString());
       queryParams.append('offset', ((currentPage - 1) * itemsPerPage).toString());
       queryParams.append('sortBy', sortBy);
-      //console.log(queryParams.toString(), '<< queryParams');
+
       // Append selected filters to the query
+      //console.log(selectedFilters, 'selectedFilters');
       Object.keys(selectedFilters).forEach((key) => {
         queryParams.append(key, selectedFilters[key].join(','));
       });
@@ -218,15 +216,19 @@ const Home: React.FC = () => {
     fetchProducts();
   }, [selectedFilters, currentPage, itemsPerPage, sortBy, selectedFilters]); // Refetch when filters, page, or itemsPerPage changes
 
+  useEffect(() => {
+    fetchFilterSidebarData();
+  }, [])
+
   const totalPages = Math.ceil(totalProducts / itemsPerPage);
 
 
-  
+
   return (
     <div className="container">
       <div className="row">
         <div className="col-md-3">
-          <FilterSidebar onFilterChange={handleFilterChange} />
+          <FilterSidebar onFilterChange={handleFilterChange} selectedFilters={selectedFilters} />
         </div>
         <div className="col-md-9">
           <div className="controls d-flex justify-content-between">
