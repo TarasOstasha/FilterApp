@@ -19,11 +19,38 @@ const manageExportedFiles = require('./manageExportedFiles ');
 const exportProductDataToCSV = async () => {
   try {
     // Query all products (adjust the query to include the data you need)
-    const result = await pool.query('SELECT * FROM products');
+    //const result = await pool.query('SELECT * FROM products');
+    const result = await pool.query(`
+      SELECT 
+          p.id,
+          p.product_code, 
+          p.product_name, 
+          p.product_link, 
+          p.product_img_link, 
+          p.product_price, 
+          pc.category_id, 
+          pf.filter_field_id, 
+          pf.filter_value
+      FROM products p
+      LEFT JOIN product_categories pc ON p.id = pc.product_id
+      LEFT JOIN categories c ON pc.category_id = c.id
+      LEFT JOIN product_filters pf ON p.id = pf.product_id;
+    `);
     const data = result.rows;
 
     // Convert the data to CSV format using json2csv
-    const fields = ['id', 'product_code', 'product_name', 'product_link', 'product_img_link', 'product_price'];
+    //const fields = ['id', 'product_code', 'product_name', 'product_link', 'product_img_link', 'product_price'];
+    const fields = [
+      'id', 
+      'product_code', 
+      'product_name', 
+      'product_link', 
+      'product_img_link', 
+      'product_price', 
+      'category_id', 
+      'filter_field_id', 
+      'filter_value'
+    ];
     const json2csvParser = new Parser({ fields });
     const csv = json2csvParser.parse(data);
 
