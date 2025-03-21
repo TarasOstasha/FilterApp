@@ -18,6 +18,7 @@ module.exports.getAllProducts = async (req, res, next) => {
   }
 }
 
+
 // module.exports.getProducts = async (req, res, next) => {
 //   try {
 //     // Extract pagination & query params
@@ -57,11 +58,13 @@ module.exports.getAllProducts = async (req, res, next) => {
 //       });
 //     }
 
-//     // Otherwise, build the filter logic
-//     const where = {};   // for direct Product columns
-//     const include = []; // for Category / FilterField associations
+//     // We'll build "where" for direct columns if needed (like price, etc.)
+//     const where = {};
 
-//     // 1) Handle category_name (if present)
+//     // We'll build "include" for associations (Category, FilterField)
+//     const include = [];
+
+//     // 1) If you have a "category_name" filter, handle it separately
 //     if (filters.category_name) {
 //       let categoryValues = Array.isArray(filters.category_name)
 //         ? filters.category_name
@@ -73,73 +76,60 @@ module.exports.getAllProducts = async (req, res, next) => {
 //         where: {
 //           category_name: { [Op.in]: categoryValues },
 //         },
-//         required: true, // Inner join
+//         required: true, // must match category
 //       });
 
 //       delete filters.category_name;
 //     }
 
-//     // 2) Handle other filters that might map to FilterField
-//     // For example: ?boothSize=Large or ?frameType=Metal => boothSize/frameType are `field_name`, "Large"/"Metal" are `filter_value`.
-//     const filterFieldConditions = [];
-//     let hasFilterField = false;
-
-//     Object.entries(filters).forEach(([fieldName, rawValue]) => {
-//       let values = Array.isArray(rawValue)
+//     // 2) Handle all other filters as FilterField includes
+//     //    Each distinct field => one "include" => AND logic across fields
+//     for (const [fieldName, rawValue] of Object.entries(filters)) {
+//       // rawValue might be a string like "Kit" or "SEG (Fabric),Velcro (Fabric)"
+//       const values = Array.isArray(rawValue)
 //         ? rawValue
-//         : rawValue.split(',');
-//       values = values.map((v) => v.trim());
+//         : rawValue.split(',').map((v) => v.trim());
 
-//       filterFieldConditions.push({
-//         field_name: fieldName,
-//         filter_value: { [Op.in]: values },
-//       });
-//       hasFilterField = true;
-//     });
-
-//     if (hasFilterField) {
+//       // This create a separate "include" for each field
 //       include.push({
 //         model: FilterField,
+//         // If you used `as: 'FilterFields'` in your Product model, specify `as` here too
 //         where: {
-//           [Op.or]: filterFieldConditions.map((cond) => ({
-//             field_name: cond.field_name,
-//           })),
+//           field_name: fieldName, // e.g. "Product Details"
 //         },
 //         through: {
-//           attributes: [], // We don't need pivot columns in the result
+//           attributes: [],
 //           where: {
-//             [Op.or]: filterFieldConditions.map((cond) => ({
-//               filter_value: cond.filter_value,
-//             })),
+//             filter_value: { [Op.in]: values }, // OR logic within that field's checkboxes
 //           },
 //         },
-//         required: true,
+//         required: true, // must match this field => AND logic
 //       });
 //     }
 
-//     // 3) Run the query with the built-up `where` and `include`
+//     // 3) Run the query with the built-up "where" (for direct columns) and "include"
 //     const products = await Product.findAll({
 //       where,
 //       include,
 //       limit: parsedLimit,
 //       offset: parsedOffset,
 //       order: [order],
-//       //distinct: true, // avoid duplicates
+//       distinct: true, // helps avoid duplicates if a product matches multiple values
 //     });
 
 //     // 4) Count matching rows for pagination
 //     const totalProducts = await Product.count({
 //       where,
 //       include,
-//       //distinct: true,
+//       distinct: true,
 //     });
 
-//     // 5) Optional: deduplicate final result if still needed
+//     // 5) Optionally deduplicate final result if needed
 //     const uniqueProducts = Array.from(
 //       new Map(products.map((p) => [p.id, p])).values()
 //     );
 
-//     res.status(200).json({
+//     return res.status(200).json({
 //       products: uniqueProducts,
 //       totalProducts,
 //     });
@@ -149,10 +139,9 @@ module.exports.getAllProducts = async (req, res, next) => {
 // };
 
 
-
 module.exports.getProducts = async (req, res, next) => {
   try {
-    // Extract pagination & query params
+    // 1) Extract top-level query params
     const {
       limit = 27,
       offset = 0,
@@ -164,7 +153,7 @@ module.exports.getProducts = async (req, res, next) => {
     const parsedLimit = parseInt(limit, 10) || 10;
     const parsedOffset = parseInt(offset, 10) || 0;
 
-    // Build an ORDER array for sorting
+    // Build order array for sorting
     const sortOptions = {
       price_asc: ['product_price', 'ASC'],
       price_desc: ['product_price', 'DESC'],
@@ -174,28 +163,41 @@ module.exports.getProducts = async (req, res, next) => {
     const order = sortOptions[sortBy] || ['product_price', 'ASC'];
     console.log(chalk.red(order, '<< sort order for getProducts'));
 
-    // If no filters are provided, fetch all products unfiltered
-    if (Object.keys(filters).length === 0) {
-      const products = await Product.findAll({
-        limit: parsedLimit,
-        offset: parsedOffset,
-        order: [order],
-      });
-      const totalProducts = await Product.count();
-
-      return res.status(200).json({
-        products,
-        totalProducts,
-      });
-    }
-
-    // We'll build "where" for direct columns if needed (like price, etc.)
+    // We'll build "where" for direct numeric columns (like product_price)
     const where = {};
 
-    // We'll build "include" for associations (Category, FilterField)
+    // mapping from "Product Price" => product_price, "Display Width" => product_width...
+    const numericRanges = {
+      'Product Price': 'product_price',
+      'Display Width': 'product_width',
+      'Display Height': 'product_height',
+    };
+
+    // For each known numeric field, parse "min,max" if present in `filters`
+    for (const [paramName, columnName] of Object.entries(numericRanges)) {
+      if (filters[paramName]) {
+        // e.g. filters["Product Price"] = "0,98625" or an array like ["0,98625"]
+        const raw = filters[paramName];
+        const rangeString = Array.isArray(raw) ? raw[0] : raw; // We only expect one e.g. "0,98625"
+        const [minStr, maxStr] = rangeString.split(',');
+        const min = parseFloat(minStr) || 0;
+        const max = parseFloat(maxStr) || 9999999; // or a big default
+
+        // Build a where clause: product_price BETWEEN min AND max
+        where[columnName] = { [Op.between]: [min, max] };
+
+        // Remove it from `filters` so it doesn't go to the FilterField logic
+        delete filters[paramName];
+      }
+    }
+
+    // If no filters left after removing numeric ranges, maybe just fetch unfiltered
+    const hasRemainingFilters = Object.keys(filters).length > 0;
+
+    // Build "include" for associations (Category, FilterField)
     const include = [];
 
-    // 1) If you have a "category_name" filter, handle it separately
+    // If we have a category_name param, handle it separately
     if (filters.category_name) {
       let categoryValues = Array.isArray(filters.category_name)
         ? filters.category_name
@@ -204,61 +206,50 @@ module.exports.getProducts = async (req, res, next) => {
 
       include.push({
         model: Category,
-        where: {
-          category_name: { [Op.in]: categoryValues },
-        },
-        required: true, // must match category
+        where: { category_name: { [Op.in]: categoryValues } },
+        required: true,
       });
 
       delete filters.category_name;
     }
 
-    // 2) Handle all other filters as FilterField includes
-    //    Each distinct field => one "include" => AND logic across fields
+    // For any remaining filters, treat them as FilterField => each field => one include
     for (const [fieldName, rawValue] of Object.entries(filters)) {
-      // rawValue might be a string like "Kit" or "SEG (Fabric),Velcro (Fabric)"
+      // e.g. "Graphic Finish" => "SEG (Fabric),Velcro (Fabric)"
       const values = Array.isArray(rawValue)
         ? rawValue
         : rawValue.split(',').map((v) => v.trim());
 
-      // This create a separate "include" for each field
       include.push({
         model: FilterField,
-        // If you used `as: 'FilterFields'` in your Product model, specify `as` here too
-        where: {
-          field_name: fieldName, // e.g. "Product Details"
-        },
+        where: { field_name: fieldName },
         through: {
           attributes: [],
-          where: {
-            filter_value: { [Op.in]: values }, // OR logic within that field's checkboxes
-          },
+          where: { filter_value: { [Op.in]: values } },
         },
-        required: true, // must match this field => AND logic
+        required: true,
       });
     }
 
-    // 3) Run the query with the built-up "where" (for direct columns) and "include"
+    // Now run the main query
     const products = await Product.findAll({
-      where,
-      include,
+      where,             // numeric columns
+      include,           // category / filterfield associations
       limit: parsedLimit,
       offset: parsedOffset,
       order: [order],
-      distinct: true, // helps avoid duplicates if a product matches multiple values
+      distinct: true,    // avoid duplicates
     });
 
-    // 4) Count matching rows for pagination
+    // Count matching rows for pagination
     const totalProducts = await Product.count({
       where,
       include,
       distinct: true,
     });
 
-    // 5) Optionally deduplicate final result if needed
-    const uniqueProducts = Array.from(
-      new Map(products.map((p) => [p.id, p])).values()
-    );
+    // Deduplicate final results if needed
+    const uniqueProducts = Array.from(new Map(products.map((p) => [p.id, p])).values());
 
     return res.status(200).json({
       products: uniqueProducts,

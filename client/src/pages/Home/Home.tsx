@@ -33,63 +33,36 @@ const Home: React.FC = () => {
 
   const handleFilterChange = (filter: { field: string; value: string }) => {
     const { field, value } = filter;
-  
-    // setSelectedFilters((prevFilters) => {
-    //   const currentValues = prevFilters[field] || [];
-    //   const newFilters = { ...prevFilters };
-  
-    //   if (currentValues.includes(value)) {
-    //     newFilters[field] = currentValues.filter((v) => v !== value);
-    //   } else {
-    //     newFilters[field] = [...currentValues, value];
-    //   }
-  
-    //   if (newFilters[field].length === 0) {
-    //     delete newFilters[field];
-    //   }
-  
-    //   // Update the query string in the URL
-    //   const params = new URLSearchParams();
-    //   Object.keys(newFilters).forEach((key) => {
-    //     if (newFilters[key]?.length) {
-    //       params.set(key, newFilters[key].join(','));
-    //     }
-    //   });
     setSelectedFilters((prevFilters) => {
       const currentValues = prevFilters[field] || [];
       const newFilters = { ...prevFilters };
 
       if (value.includes(',')) {
-        // This is a range string like "0,96564"
-        // Always override with the new single range
+        // Range => override
         newFilters[field] = [value];
       } else {
-        // Checkbox logic (toggle)
+        // Checkbox => toggle
         if (currentValues.includes(value)) {
-          // If already in array, remove it
           newFilters[field] = currentValues.filter((v) => v !== value);
         } else {
-          // Otherwise, add it
           newFilters[field] = [...currentValues, value];
         }
       }
 
-      // If empty array, remove the field
       if (newFilters[field].length === 0) {
         delete newFilters[field];
       }
 
-      // Update the query string in the URL
+      // Update URL
       const params = new URLSearchParams();
       Object.keys(newFilters).forEach((key) => {
         if (newFilters[key]?.length) {
-          // join the array with commas
           params.set(key, newFilters[key].join(','));
         }
       });
       window.history.pushState({}, '', `${window.location.pathname}?${params.toString()}`);
-  
-      return newFilters; // Update the state immutably
+
+      return newFilters;
     });
   };
 

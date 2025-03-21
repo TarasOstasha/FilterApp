@@ -17,7 +17,7 @@ interface ProductListProps {
 }
 
 const ProductList: React.FC<ProductListProps> = ({ products = [], filters, loading }) => {
- 
+
   // Function to check if a product matches the selected filters
   // const productMatchesFilters = (product: Product) => {
   //   for (const [filterField, selectedValues] of Object.entries(filters)) {
@@ -30,7 +30,7 @@ const ProductList: React.FC<ProductListProps> = ({ products = [], filters, loadi
 
   // // Filter the products based on the selected filters
   // const filteredProducts = products.filter(productMatchesFilters);
-  
+
   if (loading) {
     return <p>Loading products...</p>;
   }
@@ -45,7 +45,13 @@ const ProductList: React.FC<ProductListProps> = ({ products = [], filters, loadi
           <a href={product.product_link} key={product.id} className={styles.xyzProductItem}>
             <img src={product.product_img_link} alt={product.product_name} />
             <h3 className={styles.xyzPname}>{product.product_name}</h3>
-            <p className={styles.xyzPprice}>Our Price: {`$${product.product_price.toFixed(2).toLocaleString()}`}</p>
+            <p className={styles.xyzPprice}>
+              Our Price: $
+              {product.product_price.toLocaleString('en-US', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+              })}
+            </p>
             {/* <p>{JSON.stringify(product)}</p> */}
           </a>
         ))

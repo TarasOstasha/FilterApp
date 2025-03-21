@@ -127,13 +127,13 @@ const filterFields: FilterField[] = [
     id: 13,
     field_name: 'Display Accessories',
     field_type: 'checkbox',
-    allowed_values: ['TV Mount','Shelves','Garment Bars','Doors'],
+    allowed_values: ['TV Mount', 'Shelves', 'Garment Bars', 'Doors'],
   },
   {
     id: 14,
     field_name: 'Hanging Sign Shapes',
     field_type: 'checkbox',
-    allowed_values: ['Circle (Round Tube)','Circle (Tapered)','Designer','Disc','Ellipse','Eye','Football','Funnel & Cone','Hexagon','Panel (Curved)','Panel (S-Curve)','Panel (Straight)','Pinwheel (Four-Sided)','Pinwheel (Three-Sided)','Pyramid',
+    allowed_values: ['Circle (Round Tube)', 'Circle (Tapered)', 'Designer', 'Disc', 'Ellipse', 'Eye', 'Football', 'Funnel & Cone', 'Hexagon', 'Panel (Curved)', 'Panel (S-Curve)', 'Panel (Straight)', 'Pinwheel (Four-Sided)', 'Pinwheel (Three-Sided)', 'Pyramid',
       'Rectangle',
       'Square (Cube)',
       'Square (Curved Quad)',
@@ -193,26 +193,31 @@ const filterFields: FilterField[] = [
 
 function parseRangeValue(
   field: FilterField,
+  currentUnit: 'ft' | 'in' | undefined,
   selectedFilters: { [key: string]: string[] }
 ): [number, number] {
-  const rangeString = selectedFilters[field.field_name]?.[0]; // e.g. "0,98625"
+  const fieldName = field.field_name;
+  const rangeString = selectedFilters[fieldName]?.[0]; // e.g. "0,98625"
+
   if (rangeString) {
     const [minStr, maxStr] = rangeString.split(',');
     return [parseFloat(minStr), parseFloat(maxStr)];
-  } else {
-    // Fallback to the default range from allowed_values
-    if (Array.isArray(field.allowed_values)) {
-      // e.g. ["0", "100000"]
-      const min = parseFloat(field.allowed_values[0]) || 0;
-      const max =
-        parseFloat(field.allowed_values[field.allowed_values.length - 1]) || 100000;
-      return [min, max];
-    } else {
-      // If you have a more complex structure for width/height, adapt accordingly
-      // For simplicity, default to [0, 100000]
-      return [0, 100000];
-    }
   }
+
+  // If no range stored, fallback
+  if (typeof field.allowed_values === 'object' && currentUnit && field.allowed_values[currentUnit]) {
+    // for Display Width/Height that have ft/in
+    const { min, max } = field.allowed_values[currentUnit];
+    return [min, max];
+  } else if (Array.isArray(field.allowed_values)) {
+    // e.g. ["0", "100000"] for Product Price
+    const min = parseFloat(field.allowed_values[0]) || 0;
+    const max = parseFloat(field.allowed_values[field.allowed_values.length - 1]) || 100000;
+    return [min, max];
+  }
+
+  // default fallback
+  return [0, 100000];
 }
 
 const FilterSidebar: React.FC<FilterSidebarProps> = ({
@@ -221,9 +226,11 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
 }) => {
   console.log(JSON.stringify(selectedFilters), 'selectedFilters');
 
-  /**
-   * handleCheckboxChange: toggles a checkbox value in the parent
-   */
+  const [unitSelections, setUnitSelections] = useState<{ [fieldName: string]: 'ft' | 'in' }>({
+    'Display Width': 'ft',
+    'Display Height': 'ft',
+  });
+
   function handleCheckboxChange(field: string, value: string) {
     onFilterChange({ field, value });
   }
@@ -234,32 +241,48 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
   function handleRangeSliderChange(fieldName: string, sliderValue: number | number[]) {
     if (Array.isArray(sliderValue) && sliderValue.length === 2) {
       const [min, max] = sliderValue;
-      const rangeStr = `${min},${max}`; 
+      const rangeStr = `${min},${max}`;
       onFilterChange({ field: fieldName, value: rangeStr });
     }
+  }
+
+  function handleUnitSwitch(fieldName: string) {
+    setUnitSelections((prev) => {
+      const currentUnit = prev[fieldName] === 'ft' ? 'in' : 'ft';
+      // We also want to reset the parent's range for that field
+      // e.g. if "in" => parse the field's allowed_values.in => "6,120"
+      const fieldDef = filterFields.find((f) => f.field_name === fieldName);
+      if (fieldDef && fieldDef.allowed_values[currentUnit]) {
+        const { min, max } = fieldDef.allowed_values[currentUnit];
+        const rangeStr = `${min},${max}`;
+        onFilterChange({ field: fieldName, value: rangeStr });
+      }
+      return { ...prev, [fieldName]: currentUnit };
+    });
   }
 
   return (
     <div className={styles.sidebar}>
       {filterFields.map((filterField) => {
-        const { field_name, field_type } = filterField;
+        const fieldName = filterField.field_name;
+        const { field_type } = filterField;
 
-        // Checkboxes
         if (field_type === 'checkbox') {
+          // Render checkboxes
           return (
             <div key={filterField.id} className={styles['filter-section']}>
-              <h4>{field_name}</h4>
+              <h4>{fieldName}</h4>
               <ul className={styles['filter-list']}>
-                {filterField.allowed_values.map((val: string, index: number) => (
-                  <li key={index} className={styles['filter-item']}>
+                {filterField.allowed_values.map((val: string, idx: number) => (
+                  <li key={idx} className={styles['filter-item']}>
                     <label>
                       <input
                         type="checkbox"
                         value={val}
                         checked={
-                          selectedFilters[field_name]?.includes(val) || false
+                          selectedFilters[fieldName]?.includes(val) || false
                         }
-                        onChange={() => handleCheckboxChange(field_name, val)}
+                        onChange={() => handleCheckboxChange(fieldName, val)}
                         className={styles['sidebar-checkbox-input']}
                       />
                       {val}
@@ -270,46 +293,77 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
             </div>
           );
         }
-
-        // Range
         if (field_type === 'range') {
-          const [currentMin, currentMax] = parseRangeValue(filterField, selectedFilters);
+          // Decide if we have ft/in or just an array
+          let currentUnit: 'ft' | 'in' | undefined;
+          let hasUnitSwitch = false;
+
+          if (
+            typeof filterField.allowed_values === 'object' &&
+            filterField.allowed_values.ft &&
+            filterField.allowed_values.in
+          ) {
+            // This field supports unit switching
+            hasUnitSwitch = true;
+            currentUnit = unitSelections[fieldName] || 'ft';
+          }
+
+          // parse the parent's range in the chosen unit (or no unit if "Product Price")
+          const [currentMin, currentMax] = parseRangeValue(
+            filterField,
+            currentUnit,
+            selectedFilters
+          );
 
           return (
             <div key={filterField.id} className={styles['filter-section']}>
-              <h4>{field_name}</h4>
+              <h4>{fieldName}</h4>
+
+              {hasUnitSwitch && (
+                <div className={styles['unit-switcher']}>
+                  <button onClick={() => handleUnitSwitch(fieldName)}>
+                    Switch to {currentUnit === 'ft' ? 'inches' : 'feet'}
+                  </button>
+                </div>
+              )}
+
               <div className={styles['range-slider-container']}>
                 <ReactSlider
                   className={styles['range-slider']}
                   thumbClassName={styles['range-slider-thumb']}
                   trackClassName={styles['range-slider-track']}
                   min={
-                    Array.isArray(filterField.allowed_values)
-                      ? parseFloat(filterField.allowed_values[0])
-                      : 0
+                    hasUnitSwitch
+                      ? filterField.allowed_values[currentUnit!].min
+                      : parseFloat(filterField.allowed_values[0]) // for Product Price
                   }
                   max={
-                    Array.isArray(filterField.allowed_values)
-                      ? parseFloat(
-                          filterField.allowed_values[
-                            filterField.allowed_values.length - 1
-                          ]
-                        )
-                      : 100000
+                    hasUnitSwitch
+                      ? filterField.allowed_values[currentUnit!].max
+                      : parseFloat(
+                        filterField.allowed_values[
+                        filterField.allowed_values.length - 1
+                        ]
+                      )
                   }
                   step={1}
-                  value={[currentMin, currentMax]} // controlled by parent's selectedFilters
-                  onChange={(val) => handleRangeSliderChange(field_name, val)}
-                  onAfterChange={(val) => {
-                    handleRangeSliderChange(field_name, val);
-                  }}
+                  value={[currentMin, currentMax]}
+                  onChange={(val) => handleRangeSliderChange(fieldName, val)}
+                  onAfterChange={(val) => handleRangeSliderChange(fieldName, val)}
                   minDistance={1}
                   pearling
                   withTracks
                 />
                 <div className={styles['range-values']}>
-                  <span>{currentMin}</span>
-                  <span>{currentMax}</span>
+                  {/* For fields with no unit (like Product Price), skip appending ft/in */}
+                  <span>
+                    {currentMin}
+                    {hasUnitSwitch ? currentUnit : ''}
+                  </span>
+                  <span>
+                    {currentMax}
+                    {hasUnitSwitch ? currentUnit : ''}
+                  </span>
                 </div>
               </div>
             </div>
