@@ -1,18 +1,45 @@
-class Category {
-    static async getAll (limit, offset) {
-        try {
-          const query = `
-            SELECT *
-            FROM Categories
-            ORDER BY id
-          `;
-          const { rows } = await Category.pool.query(query);
-    
-          return rows;
-        } catch (err) {
-          throw err;
-        }
-      }
-}
+'use strict';
+const { Model, DataTypes } = require('sequelize');
 
-module.exports = Category;
+module.exports = (sequelize) => {
+  class Category extends Model {
+
+    static associate(models) {
+      Category.belongsToMany(models.Product, {
+        through: 'product_categories',
+        foreignKey: {
+          name: 'category_id',
+          allowNull: false,
+        },
+        onUpdate: 'CASCADE',
+        onDelete: 'CASCADE',
+      });
+    }
+  }
+
+  Category.init(
+    {
+      id: {
+        type: DataTypes.INTEGER,
+        primaryKey: true,
+        autoIncrement: true,
+      },
+      category_id: {
+        type: DataTypes.INTEGER,
+        allowNull: true, 
+      },
+      category_name: {
+        type: DataTypes.STRING(255),
+        allowNull: false,
+      },
+    },
+    {
+      sequelize,
+      modelName: 'Category',
+      timestamps: false,
+      underscored: true 
+    }
+  );
+
+  return Category;
+};

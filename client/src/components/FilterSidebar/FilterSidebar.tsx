@@ -217,7 +217,7 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({ onFilterChange, selectedF
   // };
   function handleCheckboxChange(field: string, value: string) {
     //console.log(field, value, 'field & value');
-    console.log('Checkbox clicked:', { field, value, length: value.length });
+    //console.log('Checkbox clicked:', { field, value, length: value.length });
     onFilterChange({ field, value });
   }
   

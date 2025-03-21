@@ -13,7 +13,7 @@ export const fetchProductsFromAPI = async (
     queryParams: URLSearchParams
 ): Promise<AxiosResponse<any> | undefined> => {
     try {
-        //console.log(queryParams.toString(), 'queryParams api');
+        console.log(queryParams.toString(), 'queryParams api');
         return await axiosInstance.get(`/products?${queryParams.toString()}`);
     } catch (error) {
         console.error('Error fetching products:', error);
@@ -54,13 +54,13 @@ export const fetchMegaFilteredProductsFromAPI = async (searchTerm: string, sortB
 };
 
 // fetch filter fields
-export const fetchFilterSidebarData = async(): Promise<AxiosResponse<any> | undefined> => {
-    try {
-        return await axiosInstance.get('/filter');
-    } catch (error) {
-        console.log(error, 'error fetching filter data');
-    }
-}
+// export const fetchFilterSidebarData = async(): Promise<AxiosResponse<any> | undefined> => {
+//     try {
+//         return await axiosInstance.get('/filter');
+//     } catch (error) {
+//         console.log(error, 'error fetching filter data');
+//     }
+// }
 
 
 
