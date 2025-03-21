@@ -1,5 +1,5 @@
-import axios, { AxiosResponse } from 'axios';
-
+import axios, { AxiosResponse, AxiosError } from 'axios';
+import { toast } from 'react-toastify';
 
 const axiosInstance = axios.create({
     baseURL: 'http://localhost:5000/api',
@@ -94,6 +94,12 @@ export const loginUser = async (values: { username: string; password: string }):
         return await axiosInstance.post('/admin/login', values);
     } catch (error) {
         console.error('Error during login:', error);
+        const err = error as AxiosError; // type assertion
+        if (err.response && err.response.status === 401) {
+            toast.error('Invalid credentials');
+        } else {
+            toast.error('An error occurred while logging in');
+        }
         return undefined; 
     }
 };
