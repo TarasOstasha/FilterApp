@@ -63,7 +63,7 @@ const Home: React.FC = () => {
 
   
   const handleSortChange = (sortMethod: string) => {
-
+    console.log(sortMethod, 'sortMethod');
     setSortBy(sortMethod); // Set sort method when user changes the dropdown
 
     const params = new URLSearchParams(window.location.search);
@@ -71,13 +71,10 @@ const Home: React.FC = () => {
     window.history.pushState({}, '', `${window.location.pathname}?${params.toString()}`);
 
      // Fetch sorted products
-    fetchProducts();
+    //fetchProducts();
   };
 
-  // const handleItemsPerPageChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-  //   setItemsPerPage(Number(e.target.value));
-  //   setCurrentPage(1); // Reset to first page when changing items per page
-  // };
+
   const handleItemsPerPageChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const newItemsPerPage = Number(e.target.value);
     setItemsPerPage(newItemsPerPage);
@@ -138,6 +135,7 @@ const Home: React.FC = () => {
 
   const fetchProducts = async () => {
     setLoading(true);
+    console.log(sortBy, 'sortBy fetchProducts');
     try {
       const queryParams = new URLSearchParams();
       queryParams.set('limit', itemsPerPage.toString());
@@ -147,13 +145,17 @@ const Home: React.FC = () => {
       //queryParams.append('itemsPerPage', itemsPerPage.toString())
       // Append selected filters to the query
       
+      // Object.keys(selectedFilters).forEach((key) => {
+      //   queryParams.append(key, selectedFilters[key].join(','));
+      // });
       Object.keys(selectedFilters).forEach((key) => {
+        if (key === 'sortBy') return; // skip if for some reason it appears
         queryParams.append(key, selectedFilters[key].join(','));
       });
 
       //const response = await axios.get(`http://localhost:5000/api/products?${queryParams.toString()}`);
       const response = await fetchProductsFromAPI(queryParams);
-      console.log(response?.data, 'response products');
+      //console.log(response?.data, 'response products');
       if (response && response.data) {
         setProducts(response.data.products);
         setTotalProducts(response.data.totalProducts);
@@ -172,7 +174,7 @@ const Home: React.FC = () => {
   useEffect(() => {
     fetchProducts();
     //console.log(currentPage, 'currentPage');
-  }, [selectedFilters, currentPage, itemsPerPage]); // Refetch when filters, page, or itemsPerPage changes
+  }, [selectedFilters, currentPage, itemsPerPage, sortBy]); // Refetch when filters, page, or itemsPerPage changes
 
   // useEffect(() => {
   //   fetchFilterSidebarData();

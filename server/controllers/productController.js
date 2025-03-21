@@ -305,7 +305,7 @@ module.exports.getProducts = async (req, res, next) => {
       sortBy = 'price_asc',
       ...filters
     } = req.query;
-    console.log(req.query, 'REQ QUERY');
+    console.log(chalk.yellow(limit, offset, sortBy, 'REQ QUERY'));
     // Convert limit/offset to numbers
     const parsedLimit = parseInt(limit, 10) || 10;
     const parsedOffset = parseInt(offset, 10) || 0;
