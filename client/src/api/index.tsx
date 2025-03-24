@@ -54,13 +54,13 @@ export const fetchMegaFilteredProductsFromAPI = async (searchTerm: string, sortB
 };
 
 // fetch filter fields
-// export const fetchFilterSidebarData = async(): Promise<AxiosResponse<any> | undefined> => {
-//     try {
-//         return await axiosInstance.get('/filter');
-//     } catch (error) {
-//         console.log(error, 'error fetching filter data');
-//     }
-// }
+export const fetchFilterSidebarData = async(): Promise<AxiosResponse<any> | undefined> => {
+    try {
+        return await axiosInstance.get('/filterField');
+    } catch (error) {
+        console.log(error, 'error fetching filter data');
+    }
+}
 
 
 

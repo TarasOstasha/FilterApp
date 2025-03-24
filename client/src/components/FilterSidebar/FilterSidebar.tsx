@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import ReactSlider from 'react-slider';
 import styles from './FilterSidebar.module.scss';
+import { fetchFilterSidebarData } from '../../api';
 
 interface FilterField {
   id: number;
@@ -8,6 +9,7 @@ interface FilterField {
   //field_type: string;
   field_type: 'checkbox' | 'range';
   allowed_values: any; //string[];
+  sort_order: number;
 }
 
 interface FilterSidebarProps {
@@ -15,180 +17,182 @@ interface FilterSidebarProps {
   selectedFilters: { [key: string]: string[] };
 }
 
-const filterFields: FilterField[] = [
-  {
-    id: 1,
-    field_name: 'Product Price',
-    field_type: 'range',
-    allowed_values: ['0', '100000'],
-  },
-  {
-    id: 2,
-    field_name: 'Product Type',
-    field_type: 'checkbox',
-    allowed_values: [
-      'Backdrop',
-      'Booth Kit',
-      'Backlit',
-      'Counter',
-      'Tower/Arches',
-      'Banner Stand',
-      'Tabletop',
-      'Table Cloth',
-      'Hanging Sign',
-      'Outdoor (Tent, Flag)',
-      'Digital Kiosk',
-      'Turntable',
-      'Flooring',
-      'Case',
-      'Lights',
-      'Other Accessories',
-    ],
-  },
-  {
-    id: 3,
-    field_name: 'Display Width',
-    field_type: 'range',
-    allowed_values: {
-      ft: { min: 0.5, max: 40 },
-      in: { min: 6, max: 480 },
-    }
-  },
-  {
-    id: 5,
-    field_name: 'Display Height',
-    field_type: 'range',
-    allowed_values: {
-      ft: { min: 0.5, max: 20 },
-      in: { min: 6, max: 120 },
-    }
-  },
-  {
-    id: 7,
-    field_name: 'Print Type',
-    field_type: 'checkbox',
-    allowed_values: ['Single-Sided', 'Double-Sided'],
-  },
-  {
-    id: 8,
-    field_name: 'Graphic Finish',
-    field_type: 'checkbox',
-    allowed_values: [
-      'Pillow Case (Fabric)',
-      'Velcro (Fabric)',
-      'SEG (Fabric)',
-      'Multi Panel (Fabric)',
-      'Vinyl',
-      'Rollable',
-      'Outdoor',
-    ],
-  },
-  {
-    id: 9,
-    field_name: 'Product Details',
-    field_type: 'checkbox',
-    allowed_values: ['Kit', 'Graphic Only', 'Hardware Only'],
-  },
-  {
-    id: 10,
-    field_name: 'Frame Hardware',
-    field_type: 'checkbox',
-    allowed_values: [
-      'Popup',
-      'Tubes',
-      'SEG',
-      'Truss',
-      'Retractable',
-      'Inflatable',
-      'Tent',
-      'Flag',
-    ],
-  },
-  {
-    id: 11,
-    field_name: 'Display Shape',
-    field_type: 'checkbox',
-    allowed_values: ['Straight', 'Curved', 'Serpentine'],
-  },
-  {
-    id: 12,
-    field_name: 'Booth Size',
-    field_type: 'checkbox',
-    allowed_values: [
-      '8 x 8 (or smaller)',
-      '10 x 10',
-      '10 x 20',
-      '10 x 30',
-      '20 x 20',
-      'Larger',
-    ],
-  },
-  {
-    id: 13,
-    field_name: 'Display Accessories',
-    field_type: 'checkbox',
-    allowed_values: ['TV Mount', 'Shelves', 'Garment Bars', 'Doors'],
-  },
-  {
-    id: 14,
-    field_name: 'Hanging Sign Shapes',
-    field_type: 'checkbox',
-    allowed_values: ['Circle (Round Tube)', 'Circle (Tapered)', 'Designer', 'Disc', 'Ellipse', 'Eye', 'Football', 'Funnel & Cone', 'Hexagon', 'Panel (Curved)', 'Panel (S-Curve)', 'Panel (Straight)', 'Pinwheel (Four-Sided)', 'Pinwheel (Three-Sided)', 'Pyramid',
-      'Rectangle',
-      'Square (Cube)',
-      'Square (Curved Quad)',
-      'Square (Quad)',
-      'Square (Rounded)',
-      'Square (Tapered)',
-      'Triangle (Curved Trio)',
-      'Triangle (Tapered)',
-      'Triangle (Trio)',
-    ],
-  },
-  {
-    id: 15,
-    field_name: 'Turntable Type',
-    field_type: 'checkbox',
-    allowed_values: [
-      'Display',
-      'Hanging',
-      'Wall',
-      'Outdoor',
-      'Heavy Duty',
-    ],
-  },
-  {
-    id: 16,
-    field_name: 'Motor Capacity',
-    field_type: 'checkbox',
-    allowed_values: ['0-5000 lb', '>5,000 lb'],
-  },
-  {
-    id: 17,
-    field_name: 'Flooring Type',
-    field_type: 'checkbox',
-    allowed_values: ['Carpet', 'Vinyl', 'Printed', 'Rolls', 'Tiles'],
-  },
-  {
-    id: 18,
-    field_name: 'Print Facility',
-    field_type: 'checkbox',
-    allowed_values: ['OR', 'WS', 'BE', 'MK', 'NV', 'NA', 'TR', 'CB', 'ES'],
-  },
-  {
-    id: 19,
-    field_name: 'Lighting',
-    field_type: 'checkbox',
-    allowed_values: ['Backlit', 'Not Backlit'],
-  },
-  {
-    id: 20,
-    field_name: 'Graphic Type',
-    field_type: 'checkbox',
-    allowed_values: ['Fabric', 'Vinyl', 'Rollable/Magnetic', 'Outdoor'],
-  },
+// const filterFields: FilterField[] = [
+//   {
+//     id: 1,
+//     field_name: 'Product Price',
+//     field_type: 'range',
+//     allowed_values: ['0', '100000'],
+//   },
+//   {
+//     id: 2,
+//     field_name: 'Product Type',
+//     field_type: 'checkbox',
+//     allowed_values: [
+//       'Backdrop',
+//       'Booth Kit',
+//       'Backlit',
+//       'Counter',
+//       'Tower/Arches',
+//       'Banner Stand',
+//       'Tabletop',
+//       'Table Cloth',
+//       'Hanging Sign',
+//       'Outdoor (Tent/Flag)',
+//       'Digital Kiosk',
+//       'Turntable',
+//       'Flooring',
+//       'Case',
+//       'Lights',
+//       'Other Accessories',
+//     ],
+//   },
+//   {
+//     id: 3,
+//     field_name: 'Display Width',
+//     field_type: 'range',
+//     allowed_values: {
+//       ft: { min: 0.5, max: 40 },
+//       in: { min: 6, max: 480 },
+//     }
+//   },
+//   {
+//     id: 5,
+//     field_name: 'Display Height',
+//     field_type: 'range',
+//     allowed_values: {
+//       ft: { min: 0.5, max: 20 },
+//       in: { min: 6, max: 120 },
+//     }
+//   },
+//   {
+//     id: 7,
+//     field_name: 'Print Type',
+//     field_type: 'checkbox',
+//     allowed_values: ['Single-Sided', 'Double-Sided'],
+//   },
+//   {
+//     id: 8,
+//     field_name: 'Graphic Finish',
+//     field_type: 'checkbox',
+//     allowed_values: [
+//       'Pillow Case (Fabric)',
+//       'Velcro (Fabric)',
+//       'SEG (Fabric)',
+//       'Multi Panel (Fabric)',
+//       'Vinyl',
+//       'Rollable',
+//       'Outdoor',
+//     ],
+//   },
+//   {
+//     id: 9,
+//     field_name: 'Product Details',
+//     field_type: 'checkbox',
+//     allowed_values: ['Kit', 'Graphic Only', 'Hardware Only'],
+//   },
+//   {
+//     id: 10,
+//     field_name: 'Frame Hardware',
+//     field_type: 'checkbox',
+//     allowed_values: [
+//       'Popup',
+//       'Tubes',
+//       'SEG',
+//       'Truss',
+//       'Retractable',
+//       'Inflatable',
+//       'Tent',
+//       'Flag',
+//     ],
+//   },
+//   {
+//     id: 11,
+//     field_name: 'Display Shape',
+//     field_type: 'checkbox',
+//     allowed_values: ['Straight', 'Curved', 'Serpentine'],
+//   },
+//   {
+//     id: 12,
+//     field_name: 'Booth Size',
+//     field_type: 'checkbox',
+//     allowed_values: [
+//       '8 x 8 (or smaller)',
+//       '10 x 10',
+//       '10 x 20',
+//       '10 x 30',
+//       '20 x 20',
+//       'Larger',
+//     ],
+//   },
+//   {
+//     id: 13,
+//     field_name: 'Display Accessories',
+//     field_type: 'checkbox',
+//     allowed_values: ['TV Mount', 'Shelves', 'Garment Bars', 'Doors'],
+//   },
+//   {
+//     id: 14,
+//     field_name: 'Hanging Sign Shapes',
+//     field_type: 'checkbox',
+//     allowed_values: ['Circle (Round Tube)', 'Circle (Tapered)', 'Designer', 'Disc', 'Ellipse', 'Eye', 'Football', 'Funnel & Cone', 'Hexagon', 'Panel (Curved)', 'Panel (S-Curve)', 'Panel (Straight)', 'Pinwheel (Four-Sided)', 'Pinwheel (Three-Sided)', 'Pyramid',
+//       'Rectangle',
+//       'Square (Cube)',
+//       'Square (Curved Quad)',
+//       'Square (Quad)',
+//       'Square (Rounded)',
+//       'Square (Tapered)',
+//       'Triangle (Curved Trio)',
+//       'Triangle (Tapered)',
+//       'Triangle (Trio)',
+//     ],
+//   },
+//   {
+//     id: 15,
+//     field_name: 'Turntable Type',
+//     field_type: 'checkbox',
+//     allowed_values: [
+//       'Display',
+//       'Hanging',
+//       'Wall',
+//       'Outdoor',
+//       'Heavy Duty',
+//     ],
+//   },
+//   {
+//     id: 16,
+//     field_name: 'Motor Capacity',
+//     field_type: 'checkbox',
+//     allowed_values: ['0-5000 lb', '>5.000 lb'],
+//   },
+//   {
+//     id: 17,
+//     field_name: 'Flooring Type',
+//     field_type: 'checkbox',
+//     allowed_values: ['Carpet', 'Vinyl', 'Printed', 'Rolls', 'Tiles'],
+//   },
+//   {
+//     id: 18,
+//     field_name: 'Print Facility',
+//     field_type: 'checkbox',
+//     allowed_values: ['OR', 'WS', 'BE', 'MK', 'NV', 'NA', 'TR', 'CB', 'ES'],
+//   },
+//   {
+//     id: 19,
+//     field_name: 'Lighting',
+//     field_type: 'checkbox',
+//     allowed_values: ['Backlit', 'Not Backlit'],
+//   },
+//   {
+//     id: 20,
+//     field_name: 'Graphic Type',
+//     field_type: 'checkbox',
+//     allowed_values: ['Fabric', 'Vinyl', 'Rollable/Magnetic', 'Outdoor'],
+//   },
 
-];
+// ];
+
+
 
 
 function parseRangeValue(
@@ -220,10 +224,13 @@ function parseRangeValue(
   return [0, 100000];
 }
 
+
+
 const FilterSidebar: React.FC<FilterSidebarProps> = ({
   onFilterChange,
   selectedFilters,
 }) => {
+  const [filterFields, setFilterFields] = useState<FilterField[]>([]);
   console.log(JSON.stringify(selectedFilters), 'selectedFilters');
 
   const [unitSelections, setUnitSelections] = useState<{ [fieldName: string]: 'ft' | 'in' }>({
@@ -260,6 +267,21 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
       return { ...prev, [fieldName]: currentUnit };
     });
   }
+  
+
+  useEffect(() => {
+    const loadData = async () => {
+      const response = await fetchFilterSidebarData();
+      console.log(response?.data, 'response');
+      if (response) {
+        setFilterFields(response.data); 
+      }
+    };
+
+    loadData();
+  }, []);
+
+
 
   return (
     <div className={styles.sidebar}>
