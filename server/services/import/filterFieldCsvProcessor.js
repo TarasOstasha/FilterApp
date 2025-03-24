@@ -12,7 +12,7 @@ const processFilterFieldsCsvFile = (csvFilePath) => {
       .pipe(csv())
       .on('data', async (row) => {
         try {
-          const { id, field_name, field_type, allowed_values } = row;
+          const { id, field_name, field_type, allowed_values, sort_order } = row;
 
           // Validate that all necessary fields are present
           if (!id || !field_name || !field_type || !allowed_values) {
@@ -22,13 +22,15 @@ const processFilterFieldsCsvFile = (csvFilePath) => {
 
           // Insert data into the filter_fields table
           await db.pool.query(
-            `INSERT INTO filter_fields (field_name, field_type, allowed_values)
+            `INSERT INTO filter_fields (field_name, field_type, allowed_values, sort_order)
              VALUES ($1, $2, $3)
              ON CONFLICT (id) DO UPDATE 
              SET field_name = EXCLUDED.field_name, 
                  field_type = EXCLUDED.field_type, 
-                 allowed_values = EXCLUDED.allowed_values`,
-            [id, field_name, field_type, allowed_values]
+                 allowed_values = EXCLUDED.allowed_values
+                 sort_order = EXCLUDED.sort_order
+                 `,
+            [id, field_name, field_type, allowed_values, sort_order]
           );
           results.push(row);
         } catch (err) {
