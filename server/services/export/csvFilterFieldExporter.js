@@ -23,7 +23,7 @@ const exportFilterFieldDataToCSV = async () => {
     const data = result.rows;
 
     // Convert the data to CSV format using json2csv
-    const fields = ['id', 'field_name', 'field_type', 'allowed_values']; 
+    const fields = ['id', 'field_name', 'field_type', 'allowed_values', 'sort_order']; 
     const json2csvParser = new Parser({ fields });
     const csv = json2csvParser.parse(data);
 
