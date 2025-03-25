@@ -72,7 +72,6 @@ const CsvImportExport: React.FC = () => {
 
         const formData = new FormData();
         formData.append('file', file);
-
         try {
             
             // const response = await axios.post(`http://localhost:5000/api/upload-csv/${uploadType}`, formData, {
@@ -81,7 +80,6 @@ const CsvImportExport: React.FC = () => {
             //     },
             // });
             const response = await uploadCSV(uploadType, formData);
-            console.log(response);
             const uploadTime = new Date().toLocaleString();
             // toast.success(`File uploaded successfully at ${uploadTime}`);
             if (response?.data.errorRows && response.data.errorRows.length > 0) {

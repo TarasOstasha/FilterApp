@@ -18,7 +18,7 @@ module.exports.getAllProducts = async (req, res, next) => {
   }
 }
 
-
+// 1 old
 // module.exports.getProducts = async (req, res, next) => {
 //   try {
 //     // Extract pagination & query params
@@ -148,7 +148,7 @@ module.exports.getProducts = async (req, res, next) => {
       sortBy = 'price_asc',
       ...filters
     } = req.query;
-
+    console.log(chalk.yellow(JSON.stringify(req.query),': req.query'));
     // Convert limit/offset to numbers
     const parsedLimit = parseInt(limit, 10) || 10;
     const parsedOffset = parseInt(offset, 10) || 0;
@@ -251,7 +251,7 @@ module.exports.getProducts = async (req, res, next) => {
     // Deduplicate final results if needed
     const uniqueProducts = Array.from(new Map(products.map((p) => [p.id, p])).values());
 
-    return res.status(200).json({
+    return res.status(200).send({
       products: uniqueProducts,
       totalProducts,
     });
