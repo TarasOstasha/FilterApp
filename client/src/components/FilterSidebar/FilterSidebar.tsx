@@ -7,7 +7,7 @@ interface FilterField {
   id: number;
   field_name: string;
   field_type: 'checkbox' | 'range';
-  allowed_values: any;
+  allowed_values: any; // For "checkbox" => string[]; for "range" => object or array
   sort_order: number;
 }
 
@@ -18,34 +18,48 @@ interface FilterSidebarProps {
 
 /**
  * parseRangeValue:
- * - If we have "0,100" => [0, 100]
- * - If we have "100" => [0, 100]
- * - If none, fallback to field.allowed_values or [0, 100000]
+ * 1) If the user param is a single number (e.g. "5000"), interpret as [0, 5000].
+ * 2) If it's two numbers ("0,5000"), parse both.
+ *    - If min > max, swap them so the slider doesn't break.
+ * 3) Otherwise, fallback to field.allowed_values or [0,100000].
  */
-const parseRangeValue = (
+function parseRangeValue(
   field: FilterField,
   currentUnit: 'ft' | 'in' | undefined,
   selectedFilters: { [key: string]: string[] }
-): [number, number] => {
+): [number, number] {
   const fieldName = field.field_name;
-  const rangeString = selectedFilters[fieldName]?.[0];
-
+  const rangeString = selectedFilters[fieldName]?.[0]; // e.g. "0,5000" or "5000"
+  console.log('DEBUG parseRangeValue:', {
+    fieldName,
+    rangeString
+  });
   if (rangeString) {
-    const parts = rangeString.split(',');
-    // Single number => treat as [0, singleVal]
-    if (parts.length === 1) {
-      const singleVal = parseFloat(parts[0]);
-      if (isNaN(singleVal)) return [0, 100000];
-      return [0, singleVal];
+    if (!rangeString.includes(',')) {
+      // Single value => [0, singleVal]
+      const singleVal = parseFloat(rangeString);
+      if (!isNaN(singleVal)) {
+        return [0, singleVal];
+      }
+      return [0, 100000];
+    } else {
+      // Two values => parse them
+      const parts = rangeString.split(',');
+      let min = parseFloat(parts[0]);
+      let max = parseFloat(parts[1]);
+      if (isNaN(min)) min = 0;
+      if (isNaN(max)) max = 100000;
+
+      // Optional: if reversed, swap
+      if (min > max) {
+        [min, max] = [max, min];
+      }
+      return [min, max];
     }
-    // Two or more => parse the first two
-    const [minStr, maxStr] = parts;
-    const min = parseFloat(minStr);
-    const max = parseFloat(maxStr);
-    return [isNaN(min) ? 0 : min, isNaN(max) ? 100000 : max];
   }
 
-  // If no rangeString, fallback to field defaults
+  // If there's no rangeString, fallback:
+  // 1) If we have ft/in for this field
   if (
     typeof field.allowed_values === 'object' &&
     currentUnit &&
@@ -53,15 +67,24 @@ const parseRangeValue = (
   ) {
     const { min, max } = field.allowed_values[currentUnit];
     return [min, max];
-  } else if (Array.isArray(field.allowed_values)) {
-    const min = parseFloat(field.allowed_values[0]) || 0;
-    const max =
-      parseFloat(field.allowed_values[field.allowed_values.length - 1]) || 100000;
-    return [min, max];
   }
 
+  // 2) If it's "Product Price," do a wide default range
+  if (field.field_name === 'Product Price') {
+    return [0, 100000];
+  }
+
+  // 3) If it's a range with an array, use the first/last items
+  if (Array.isArray(field.allowed_values)) {
+    const arrMin = parseFloat(field.allowed_values[0]) || 0;
+    const arrMax =
+      parseFloat(field.allowed_values[field.allowed_values.length - 1]) || 100000;
+    return [arrMin, arrMax];
+  }
+
+  // Final fallback
   return [0, 100000];
-};
+}
 
 const FilterSidebar: React.FC<FilterSidebarProps> = ({
   onFilterChange,
@@ -75,12 +98,19 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
     'Display Height': 'ft',
   });
 
-  // Checkbox changes
+  /**
+   * handleCheckboxChange:
+   * - Toggle a value for a checkbox field
+   */
   function handleCheckboxChange(field: string, value: string) {
     onFilterChange({ field, value });
   }
 
-  // When user changes the slider or typed inputs
+  /**
+   * handleRangeSliderChange:
+   * - Called when the user moves the slider or types in a numeric input
+   * - We pass a "min,max" string to the parent
+   */
   function handleRangeSliderChange(fieldName: string, sliderValue: number | number[]) {
     if (Array.isArray(sliderValue) && sliderValue.length === 2) {
       const [min, max] = sliderValue;
@@ -89,7 +119,11 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
     }
   }
 
-  // Switch ft/in for fields that support it
+  /**
+   * handleUnitSwitch:
+   * - Switch between ft and in for fields that have both
+   * - Also reset the range to the default for the new unit
+   */
   function handleUnitSwitch(fieldName: string) {
     setUnitSelections((prev) => {
       const nextUnit = prev[fieldName] === 'ft' ? 'in' : 'ft';
@@ -103,7 +137,9 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
     });
   }
 
-  // Example: fetch & merge data
+  /**
+   * On mount, fetch filter data and merge ft/in fields for width/height
+   */
   useEffect(() => {
     const loadData = async () => {
       const response = await fetchFilterSidebarData();
@@ -111,7 +147,7 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
 
       let data = response.data as FilterField[];
 
-      // Merge "Display Width Ft" + "Display Width In"
+      // Merge "Display Width Ft" and "Display Width In"
       const widthFt = data.find((f) => f.field_name === 'Display Width Ft');
       const widthIn = data.find((f) => f.field_name === 'Display Width In');
       if (widthFt && widthIn) {
@@ -142,7 +178,7 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
         data.push(combinedWidth);
       }
 
-      // Merge "Display Height Ft" + "Display Height In"
+      // Merge "Display Height Ft" and "Display Height In"
       const heightFt = data.find((f) => f.field_name === 'Display Height Ft');
       const heightIn = data.find((f) => f.field_name === 'Display Height In');
       if (heightFt && heightIn) {
@@ -173,8 +209,9 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
         data.push(combinedHeight);
       }
 
-      // Sort
+      // Sort by sort_order so the sidebar fields appear in the intended sequence
       data.sort((a, b) => a.sort_order - b.sort_order);
+
       setFilterFields(data);
     };
 
@@ -187,7 +224,7 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
         const fieldName = filterField.field_name;
         const { field_type } = filterField;
 
-        // Render checkboxes
+        // 1) Checkbox fields
         if (field_type === 'checkbox') {
           return (
             <div key={filterField.id} className={styles['filter-section']}>
@@ -199,9 +236,7 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
                       <input
                         type="checkbox"
                         value={val}
-                        checked={
-                          selectedFilters[fieldName]?.includes(val) || false
-                        }
+                        checked={selectedFilters[fieldName]?.includes(val) || false}
                         onChange={() => handleCheckboxChange(fieldName, val)}
                         className={styles['sidebar-checkbox-input']}
                       />
@@ -214,11 +249,12 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
           );
         }
 
-        // Render range slider
+        // 2) Range fields
         if (field_type === 'range') {
           let currentUnit: 'ft' | 'in' | undefined;
           let hasUnitSwitch = false;
 
+          // If allowed_values has both ft & in, user can switch
           if (
             typeof filterField.allowed_values === 'object' &&
             filterField.allowed_values.ft &&
@@ -228,20 +264,36 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
             currentUnit = unitSelections[fieldName] || 'ft';
           }
 
+          // Parse the currently selected range from the parent's selectedFilters
           const [currentMin, currentMax] = parseRangeValue(
             filterField,
             currentUnit,
             selectedFilters
           );
 
-          const sliderMin = hasUnitSwitch
-            ? filterField.allowed_values[currentUnit!].min
-            : parseFloat(filterField.allowed_values[0]);
-          const sliderMax = hasUnitSwitch
-            ? filterField.allowed_values[currentUnit!].max
-            : parseFloat(
+          // Decide the overall slider bounds
+          let sliderMin: number;
+          let sliderMax: number;
+          const isProductPrice = fieldName === 'Product Price';
+
+          if (isProductPrice) {
+            // Product Price => 0..100000
+            sliderMin = 0;
+            sliderMax = 100000;
+          } else if (hasUnitSwitch) {
+            sliderMin = filterField.allowed_values[currentUnit!].min;
+            sliderMax = filterField.allowed_values[currentUnit!].max;
+          } else if (Array.isArray(filterField.allowed_values)) {
+            sliderMin = parseFloat(filterField.allowed_values[0]) || 0;
+            sliderMax =
+              parseFloat(
                 filterField.allowed_values[filterField.allowed_values.length - 1]
-              );
+              ) || 100000;
+          } else {
+            // fallback
+            sliderMin = 0;
+            sliderMax = 100000;
+          }
 
           return (
             <div key={filterField.id} className={styles['filter-section']}>
@@ -270,6 +322,8 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
                   pearling
                   withTracks
                 />
+
+                {/* Numeric inputs for user-typed min/max */}
                 <div className={styles['range-values']}>
                   <input
                     type="number"
@@ -294,9 +348,7 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
                     style={{ width: '80px' }}
                   />
                   {hasUnitSwitch && (
-                    <span style={{ marginLeft: '8px' }}>
-                      {currentUnit}
-                    </span>
+                    <span style={{ marginLeft: '8px' }}>{currentUnit}</span>
                   )}
                 </div>
               </div>

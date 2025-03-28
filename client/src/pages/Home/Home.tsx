@@ -61,7 +61,6 @@ const Home: React.FC = () => {
         }
       });
       window.history.pushState({}, '', `${window.location.pathname}?${params.toString()}`);
-
       return newFilters;
     });
   };
@@ -190,16 +189,27 @@ const Home: React.FC = () => {
   // }, []);
 
   useEffect(() => {
+    const valrangeDigits = ['Product Price', 'Display Width', 'Display Height'];
     const params = new URLSearchParams(window.location.search);
     const restoredFilters: { [key: string]: string[] } = {};
-    //console.log(window.location.search, 'window.location.search');
-    // For each param key, split its values
-    params.forEach((value, key) => {
-      restoredFilters[key] = value.split(',');
+
+    // params.forEach((value, key) => {
+    //   const decodedKey = key.replace(/\+/g, ' ');
+    //   restoredFilters[decodedKey] = value.split(',');
+    // });
+    params.forEach((val, key) => {
+      const decodedKey = key.replace(/\+/g, ' ');
+      if (valrangeDigits.includes(decodedKey)) {
+        // For range fields, store as a single string
+        restoredFilters[decodedKey] = [val];
+      } else {
+        // For checkbox fields, split them
+        restoredFilters[decodedKey] = val.split(',');
+      }
     });
     
     setSelectedFilters(restoredFilters);
-    //console.log(selectedFilters, 'params');
+
   }, []);
   
 
