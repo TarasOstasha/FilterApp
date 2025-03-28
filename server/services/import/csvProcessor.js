@@ -13,7 +13,7 @@ const processProductCsvFile = (csvFilePath) => {
     fs.createReadStream(csvFilePath)
       .pipe(csv())
       .on('data', async (row) => {
-        console.log('Processing row:', row); // Log the row being processed
+        //console.log('Processing row:', row); // Log the row being processed
         try {
           const { product_code, product_name, product_link, product_img_link, product_price, category_id, filter_field_id, filter_value } = row;
           
@@ -21,10 +21,10 @@ const processProductCsvFile = (csvFilePath) => {
             `INSERT INTO products (product_code, product_name, product_link, product_img_link, product_price)
             VALUES ($1, $2, $3, $4, $5)
             ON CONFLICT (product_code) DO UPDATE 
-            SET product_name = EXCLUDED.product_name, 
-                product_link = EXCLUDED.product_link, 
-                product_img_link = EXCLUDED.product_img_link, 
-                product_price = EXCLUDED.product_price
+            SET product_name = COALESCE(EXCLUDED.product_name, products.product_name), 
+                product_link = COALESCE(EXCLUDED.product_link, products.product_link), 
+                product_img_link = COALESCE(EXCLUDED.product_img_link, products.product_img_link), 
+                product_price = COALESCE(EXCLUDED.product_price, products.product_price)
             RETURNING id;`,
             [product_code, product_name, product_link, product_img_link, parseFloat(product_price)]
           );
@@ -43,9 +43,9 @@ const processProductCsvFile = (csvFilePath) => {
           if (filter_field_id && filter_value) {
             await pool.query(
               `INSERT INTO product_filters (product_id, filter_field_id, filter_value)
-              VALUES ($1, $2, $3)
-              ON CONFLICT (product_id, filter_field_id) DO UPDATE 
-              SET filter_value = EXCLUDED.filter_value WHERE product_filters.filter_value IS DISTINCT FROM EXCLUDED.filter_value;`,
+                VALUES ($1, $2, $3)
+                ON CONFLICT (product_id, filter_field_id, filter_value)
+                DO NOTHING;`,
               [productId, filter_field_id, filter_value]
             );
           }
