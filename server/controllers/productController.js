@@ -260,6 +260,7 @@ module.exports.getAllProducts = async (req, res, next) => {
 //   }
 // };
 
+
 module.exports.getProducts = async (req, res, next) => {
   try {
     const {
@@ -283,7 +284,28 @@ module.exports.getProducts = async (req, res, next) => {
     const whereClause = {};
     const include = [];
 
-    // Normalize frontend label names to DB field_name
+    // Convert inch filters to feet
+    if (filters['Display Width In']) {
+      const raw = filters['Display Width In'];
+      const rangeStr = Array.isArray(raw) ? raw[0] : raw;
+      const [minStr, maxStr] = rangeStr.split(',');
+      const minFt = parseFloat(minStr) / 12;
+      const maxFt = parseFloat(maxStr) / 12;
+      filters['Display Width Ft'] = `${minFt},${maxFt}`;
+      delete filters['Display Width In'];
+    }
+
+    if (filters['Display Height In']) {
+      const raw = filters['Display Height In'];
+      const rangeStr = Array.isArray(raw) ? raw[0] : raw;
+      const [minStr, maxStr] = rangeStr.split(',');
+      const minFt = parseFloat(minStr) / 12;
+      const maxFt = parseFloat(maxStr) / 12;
+      filters['Display Height Ft'] = `${minFt},${maxFt}`;
+      delete filters['Display Height In'];
+    }
+
+    // Normalize frontend labels to match DB field_name
     const labelAlias = {
       'Display Width': 'Display Width Ft',
       'Display Height': 'Display Height Ft',
@@ -299,7 +321,7 @@ module.exports.getProducts = async (req, res, next) => {
       }
     }
 
-    // Load filter field definitions
+    // Load filter field metadata
     const allFilterFields = await FilterField.findAll({
       attributes: ['id', 'field_name', 'field_type']
     });
@@ -314,18 +336,17 @@ module.exports.getProducts = async (req, res, next) => {
       }
     });
 
-    // Handle Product Price (direct column)
+    // Handle product_price column range
     if (filters['Product Price']) {
       const raw = Array.isArray(filters['Product Price']) ? filters['Product Price'][0] : filters['Product Price'];
       const [minStr, maxStr] = raw.split(',');
       const min = parseFloat(minStr) || 0;
       const max = parseFloat(maxStr) || 9999999;
-
       whereClause['product_price'] = { [Op.between]: [min, max] };
       delete filters['Product Price'];
     }
 
-    // Handle range-type filters from product_filters table
+    // Handle range-type filters from product_filters (ft only)
     for (const [paramName, rawValue] of Object.entries(filters)) {
       if (rangeFieldNames.has(paramName)) {
         const fieldId = fieldNameToId[paramName];
@@ -356,7 +377,7 @@ module.exports.getProducts = async (req, res, next) => {
       }
     }
 
-    // Handle category_name
+    // Handle category filters
     if (filters.category_name) {
       let categoryValues = Array.isArray(filters.category_name)
         ? filters.category_name
@@ -372,7 +393,7 @@ module.exports.getProducts = async (req, res, next) => {
       delete filters.category_name;
     }
 
-    // Handle checkbox-type filters (remaining)
+    // Checkbox-type filters (remaining filters)
     for (const [fieldName, rawValue] of Object.entries(filters)) {
       const values = Array.isArray(rawValue)
         ? rawValue
@@ -391,7 +412,7 @@ module.exports.getProducts = async (req, res, next) => {
       });
     }
 
-    // Final query
+    // Run the query
     const products = await Product.findAll({
       where: whereClause,
       include,
