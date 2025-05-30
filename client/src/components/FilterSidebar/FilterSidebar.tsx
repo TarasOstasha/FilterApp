@@ -30,10 +30,7 @@ function parseRangeValue(
 ): [number, number] {
   const fieldName = field.field_name;
   const rangeString = selectedFilters[fieldName]?.[0]; // e.g. "0,5000" or "5000"
-  console.log('DEBUG parseRangeValue:', {
-    fieldName,
-    rangeString
-  });
+
   if (rangeString) {
     if (!rangeString.includes(',')) {
       // Single value => [0, singleVal]

@@ -14,7 +14,6 @@ export const fetchProductsFromAPI = async (
 ): Promise<AxiosResponse<any> | undefined> => {
     try {
         const rawString = queryParams.toString().replace(/\+/g, '%20');
-        console.log(rawString, 'rawString');
         return await axiosInstance.get(`/products?${rawString}`);
     } catch (error) {
         console.error('Error fetching products:', error);

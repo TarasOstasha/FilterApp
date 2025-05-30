@@ -139,7 +139,7 @@ const Home: React.FC = () => {
 
   const fetchProducts = async () => {
     setLoading(true);
-    console.log(sortBy, 'sortBy fetchProducts');
+    //console.log(sortBy, 'sortBy fetchProducts');
     try {
       const queryParams = new URLSearchParams();
       queryParams.set('limit', itemsPerPage.toString());
