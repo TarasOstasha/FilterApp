@@ -86,7 +86,7 @@ const manageExportedFiles = require('./manageExportedFiles ');
 
 const exportProductDataToCSV = async () => {
   try {
-    // ✅ Step 1: Query only distinct products (no joins!)
+
     const result = await pool.query(`
       SELECT DISTINCT ON (product_code)
         id,
@@ -101,7 +101,7 @@ const exportProductDataToCSV = async () => {
 
     const data = result.rows;
 
-    // ✅ Step 2: Convert to CSV
+
     const fields = [
       'id', 
       'product_code', 
@@ -114,7 +114,7 @@ const exportProductDataToCSV = async () => {
     const json2csvParser = new Parser({ fields });
     const csv = json2csvParser.parse(data);
 
-    // ✅ Step 3: Write CSV to file
+
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
     const directoryPath = `${__dirname}/data`;
 
@@ -125,11 +125,11 @@ const exportProductDataToCSV = async () => {
     const filePath = `${directoryPath}/exported_product_data_${timestamp}.csv`;
     fs.writeFileSync(filePath, csv);
 
-    console.log(chalk.green(`✅ Data successfully exported to ${filePath}`));
+    console.log(chalk.green(`Data successfully exported to ${filePath}`));
     manageExportedFiles(); // Optional: rotate old files
     return csv;
   } catch (error) {
-    console.error(chalk.red('❌ Error exporting data to CSV:'), error);
+    console.error(chalk.red('Error exporting data to CSV:'), error);
     throw error;
   }
 };
