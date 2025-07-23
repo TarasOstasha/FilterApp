@@ -108,7 +108,7 @@ const processProductCategoriesCsvFile = (csvFilePath) => {
         if (!errorOccurred) {
           console.log(
             chalk.green(
-              '✅ CSV file processed successfully and product_categories inserted.'
+              'CSV file processed successfully and product_categories inserted.'
             )
           );
         }

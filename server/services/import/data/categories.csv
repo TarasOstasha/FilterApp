@@ -30,6 +30,7 @@ category_id,category_name
 9736,WaveLight LED Backlit Displays
 10284,Our Work
 11508,Step & Repeat Banner Displays
+15466,HOLD
 31205,One Choice
 33728,Wavelight Displays
 33729,Wavelight Tower
@@ -61,6 +62,7 @@ category_id,category_name
 46082,Timberline Exhibits
 46183,Sego8 Displays
 46186,Client Exhibits On Display
+46234,Flooring by xyzDisplays
 141,Truss Trade Show Exhibits
 149,Formulate Tension Fabric Displays
 171,Slim Tension Fabric Displays
@@ -261,6 +263,7 @@ category_id,category_name
 46231,BannerBug Retractable Banner Stands
 12003,Telescopic Retail banner Stand Displays - Graphic Only
 12065,Telescopic Retail Banner Stand Displays - Hardware Only
+12127,hold
 1629,Hardware Only
 1630,Replacement Banners Only
 11322,Backwall Banner Stand Displays - Replacement Graphic Only
@@ -290,11 +293,13 @@ category_id,category_name
 787,10ft Vibe Tension Fabric Displays
 907,Arches & Conference Walls
 908,Fabric Tower Displays
+913,hold
 914,Fusion 20x20 Tension Fabric Exhibits
 1633,Formulate Display Hardware Only
 1634,Formulate Display Replacement Fabric Print Only
 1676,10ft Formulate Designer Series Displays
 1677,20ft & 30ft Formulate Designer Series Displays
+1678,hold
 1968,20ft Formulate Master  Backwall Displays
 1969,All Formulate Kits
 1970,8ft & 10ft Formulate Essential and Master Backwall Exhibits
@@ -540,6 +545,7 @@ category_id,category_name
 6455,Waveline Banner Stand Displays
 7562,Brandcusi Fabric Banner Stand by Makitso
 7952,Modulate Magnetic Banners
+7953,hold
 32936,Econotube Tension Banner Stand
 33002,EZ Stand Banner Stands & Displays
 33007,Aspen Onyx Tension Fabric Banners
@@ -633,6 +639,7 @@ category_id,category_name
 45001,EuroFit Evolution Displays
 1672,Backlit Hanging Banner Displays Hardware Only
 1673,Backlit Hanging Banner Displays Replacement Fabric Only
+45492,hold
 1694,Eye Shaped Hanging Banner Displays Hardware Only
 1695,Replacement Graphic for Eye Shaped Hanging Banner Displays
 1697,Hexagon Formulate 3D Hanging Banner Displays Hardware Only
@@ -651,6 +658,7 @@ category_id,category_name
 6885,Waveline Media Packages
 7021,Waterfall Shelving Displays
 7022,Waveline InfoDesk Counters
+7501,hold
 7563,Brandcusi 3D Fabric Banner Stands
 7936,Hardware Only
 7937,Replacement Graphic Only
@@ -953,6 +961,7 @@ category_id,category_name
 33015,Inflatable Trade Show Furniture
 33537,Star Fabric Popup Displays (Hardware Only)
 33538,Star Fabric Popup Displays (Graphic Only)
+34081,HOLD
 1621,10x10 Orbital Express Truss Hardware Only
 1624,Orbital Express Truss Back Walls Hardware Only
 1627,20ft x 20ft Island Orbital Truss - Hardware Only

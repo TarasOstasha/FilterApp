@@ -23,7 +23,7 @@ const exportCategoryDataToCSV = async () => {
     const data = result.rows;
 
     // Convert the data to CSV format using json2csv
-    const fields = ['id', 'category_id', 'category_name']; 
+    const fields = ['category_id', 'category_name']; 
     const json2csvParser = new Parser({ fields });
     const csv = json2csvParser.parse(data);
 
