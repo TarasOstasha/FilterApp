@@ -82,7 +82,7 @@ const chalk = require('chalk');
 const fs = require('fs');
 const { Parser } = require('json2csv');
 const pool = require('../../config/dbConfig');
-const manageExportedFiles = require('./manageExportedFiles ');
+const manageExportedFiles = require('./manageExportedFiles');
 
 const exportProductDataToCSV = async () => {
   try {
@@ -126,7 +126,7 @@ const exportProductDataToCSV = async () => {
     fs.writeFileSync(filePath, csv);
 
     console.log(chalk.green(`Data successfully exported to ${filePath}`));
-    manageExportedFiles(); // Optional: rotate old files
+    manageExportedFiles(); 
     return csv;
   } catch (error) {
     console.error(chalk.red('Error exporting data to CSV:'), error);

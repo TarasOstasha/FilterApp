@@ -29,6 +29,7 @@
     "pg-hstore": "^2.3.4",
     "query-parser-express": "^1.0.7",
     "sequelize": "^6.37.6",
+    "xlsx": "^0.18.5",
     "yup": "^1.4.0"
   }
 }

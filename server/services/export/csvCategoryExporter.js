@@ -4,7 +4,7 @@ const { Pool } = require('pg');
 const fs = require('fs');
 const { Parser } = require('json2csv');
 const pool = require('../../config/dbConfig');
-const manageExportedFiles = require('./manageExportedFiles ');
+const manageExportedFiles = require('./manageExportedFiles');
 // require('dotenv').config(); 
 
 // const pool = new Pool({
