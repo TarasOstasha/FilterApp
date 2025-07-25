@@ -39,7 +39,7 @@ export const fetchMegaFilteredProductsFromAPI = async (searchTerm: string, sortB
     console.log(sortBy, '<< sortBy API');
     const queryParams = new URLSearchParams();
     if (searchTerm) {
-        queryParams.append('searchTerms', searchTerm); 
+        queryParams.append('searchTerms', searchTerm);
     }
     if (sortBy) {
         queryParams.append('sortBy', sortBy);  // Pass the sort method as a query parameter
@@ -54,7 +54,7 @@ export const fetchMegaFilteredProductsFromAPI = async (searchTerm: string, sortB
 };
 
 // fetch filter fields
-export const fetchFilterSidebarData = async(): Promise<AxiosResponse<any> | undefined> => {
+export const fetchFilterSidebarData = async (): Promise<AxiosResponse<any> | undefined> => {
     try {
         return await axiosInstance.get('/filterField');
     } catch (error) {
@@ -62,19 +62,29 @@ export const fetchFilterSidebarData = async(): Promise<AxiosResponse<any> | unde
     }
 }
 
-
+// fetch dynamic filters
+export const fetchDynamicFilters = async (
+    params: Record<string, string>
+) => {
+    try {
+        return await axiosInstance.get('/dynamic-filters', { params });
+    } catch (err) {
+        console.error('error fetching dynamic filters', err);
+        return undefined;
+    }
+};
 
 
 export const uploadCSV = async (uploadType: string, formData: FormData): Promise<AxiosResponse<any> | undefined> => {
     try {
         return await axiosInstance.post(`/upload-csv/${uploadType}`, formData, {
             headers: {
-                'Content-Type': 'multipart/form-data', 
+                'Content-Type': 'multipart/form-data',
             },
         });
     } catch (error) {
         console.error('Error uploading CSV:', error);
-        return undefined; 
+        return undefined;
     }
 };
 
@@ -100,7 +110,7 @@ export const loginUser = async (values: { username: string; password: string }):
         } else {
             toast.error('An error occurred while logging in');
         }
-        return undefined; 
+        return undefined;
     }
 };
 
