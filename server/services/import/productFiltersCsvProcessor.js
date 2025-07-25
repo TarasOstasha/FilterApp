@@ -84,50 +84,168 @@
 
 
 // server/services/import/productFiltersCsvProcessor.js
+// updated
+// const chalk = require('chalk');
+// const fs = require('fs');
+// const csv = require('csv-parser');
+// const { sequelize } = require('../../models');
 
-const chalk = require('chalk');
-const fs = require('fs');
-const csv = require('csv-parser');
+// const processProductFiltersCsvFile = (csvFilePath) =>
+//   new Promise((resolve, reject) => {
+//     const pending = [], results = [];
+//     let errorOccurred = false;
+
+//     fs.createReadStream(csvFilePath)
+//       .pipe(csv())
+//       .on('data', row => {
+//         const pi = parseInt(row.product_id, 10);
+//         const ff = parseInt(row.filter_field_id, 10);
+//         const fv = row.filter_value?.trim();
+//         if (!pi || !ff || !fv) return console.warn(`Skipping bad row: ${JSON.stringify(row)}`);
+
+//         // queue raw insert
+//         pending.push(
+//           sequelize.query(
+//             `INSERT INTO product_filters
+//                (product_id, filter_field_id, filter_value)
+//              VALUES (:pi, :ff, :fv)
+//              ON CONFLICT (product_id, filter_field_id, filter_value) DO NOTHING`,
+//             {
+//               replacements: { pi, ff, fv },
+//               type: sequelize.QueryTypes.INSERT
+//             }
+//           ).then(() => results.push(row))
+//            .catch(err => {
+//              errorOccurred = true;
+//              console.error(chalk.red('Insert failed:'), err.message);
+//            })
+//         );
+//       })
+//       .on('end', async () => {
+//         await Promise.all(pending);
+//         if (!errorOccurred) console.log(chalk.green('All filters imported.'));
+//         resolve(results);
+//       })
+//       .on('error', reject);
+//   });
+
+// module.exports = processProductFiltersCsvFile;
+
+
+
+
+const chalk       = require('chalk');
+const fs          = require('fs');
+const csv         = require('csv-parser');
 const { sequelize } = require('../../models');
+const { QueryTypes } = require('sequelize');
 
-const processProductFiltersCsvFile = (csvFilePath) =>
-  new Promise((resolve, reject) => {
-    const pending = [], results = [];
-    let errorOccurred = false;
+async function processProductFiltersCsvFile(csvFilePath) {
+  const successRows = [];
+  const errorRows   = [];
+  const pending     = [];
+  const seenPairs   = new Set();
 
+  return new Promise((resolve, reject) => {
     fs.createReadStream(csvFilePath)
       .pipe(csv())
       .on('data', row => {
-        const pi = parseInt(row.product_id, 10);
-        const ff = parseInt(row.filter_field_id, 10);
-        const fv = row.filter_value?.trim();
-        if (!pi || !ff || !fv) return console.warn(`Skipping bad row: ${JSON.stringify(row)}`);
+        const piRaw = row.product_id;
+        const ffRaw = row.filter_field_id;
+        const fvRaw = row.filter_value;
 
-        // queue raw insert
-        pending.push(
-          sequelize.query(
-            `INSERT INTO product_filters
-               (product_id, filter_field_id, filter_value)
-             VALUES (:pi, :ff, :fv)
-             ON CONFLICT (product_id, filter_field_id, filter_value) DO NOTHING`,
-            {
-              replacements: { pi, ff, fv },
-              type: sequelize.QueryTypes.INSERT
-            }
-          ).then(() => results.push(row))
-           .catch(err => {
-             errorOccurred = true;
-             console.error(chalk.red('Insert failed:'), err.message);
-           })
-        );
+        const product_id      = parseInt(piRaw, 10);
+        const filter_field_id = parseInt(ffRaw, 10);
+
+        if (!product_id || !filter_field_id || !fvRaw) {
+          errorRows.push({
+            row,
+            reason: 'Missing product_id, filter_field_id, or filter_value'
+          });
+          return;
+        }
+
+        const pairKey = `${product_id}::${filter_field_id}`;
+        if (!seenPairs.has(pairKey)) {
+          seenPairs.add(pairKey);
+
+          // delete any old rows for this product/field
+          pending.push(
+            sequelize.query(
+              `DELETE FROM product_filters
+                 WHERE product_id = :pi
+                   AND filter_field_id = :ff`,
+              {
+                replacements: { pi: product_id, ff: filter_field_id },
+                type: QueryTypes.DELETE
+              }
+            )
+            .then(() => console.log(
+              chalk.gray(`Cleared old values for ${pairKey}`)
+            ))
+            .catch(err => {
+              errorRows.push({ row, reason: err.message });
+              console.error(
+                chalk.red(`Failed clearing old for ${pairKey}:`),
+                err.message
+              );
+            })
+          );
+        }
+
+        // split on comma + optional whitespace
+        const values = fvRaw
+          .split(/\s*,\s*/)
+          .filter(v => v.length);
+
+        for (const filter_value of values) {
+          pending.push(
+            sequelize.query(
+              `INSERT INTO product_filters
+                 (product_id, filter_field_id, filter_value)
+               VALUES (:pi, :ff, :fv)
+               ON CONFLICT (product_id, filter_field_id, filter_value) DO NOTHING;`,
+              {
+                replacements: {
+                  pi: product_id,
+                  ff: filter_field_id,
+                  fv: filter_value
+                },
+                type: QueryTypes.INSERT
+              }
+            )
+            .then(() => {
+              successRows.push({ product_id, filter_field_id, filter_value });
+              console.log(
+                chalk.green(`Upserted ${pairKey} → "${filter_value}"`)
+              );
+            })
+            .catch(err => {
+              errorRows.push({ row, filter_value, reason: err.message });
+              console.error(
+                chalk.red(`Insert failed for ${pairKey}="${filter_value}":`),
+                err.message
+              );
+            })
+          );
+        }
       })
       .on('end', async () => {
         await Promise.all(pending);
-        if (!errorOccurred) console.log(chalk.green('All filters imported.'));
-        resolve(results);
+        console.log(chalk.blue(
+          `\n Import complete — ${successRows.length} rows upserted, ${errorRows.length} errors.`
+        ));
+        resolve({ successRows, errorRows });
       })
       .on('error', reject);
   });
+}
 
 module.exports = processProductFiltersCsvFile;
+
+
+
+
+
+
 

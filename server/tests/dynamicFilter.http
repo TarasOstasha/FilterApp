@@ -1,0 +1,45 @@
+
+### 200
+GET http://localhost:5000/api/dynamic-filters?productTypes=Banner%20Stand&productTypes=Backdrop
+
+
+### 200 with 1 parameter
+GET http://localhost:5000/api/dynamic-filters?productTypes=Banner%20Stand
+
+### 200 with 2 parameters
+GET http://localhost:5000/api/dynamic-filters?productTypes=Banner%20Stand%2CTabletop
+
+### 200 with 2 filters
+GET http://localhost:5000/api/dynamic-filters?productTypes=Banner%20Stand%2CTabletop%2CBackdrop&Print%20Type=Double-Sided
+
+### 200 with 3 filters
+GET http://localhost:5000/api/dynamic-filters?productTypes=Banner%20Stand%2CTabletop%2CBackdrop&Print%20Type=Double-Sided&Product%20Details=Kit
+
+
+### 200 with 4 filters
+GET http://localhost:5000/api/dynamic-filters?productTypes=Banner%20Stand%2CTabletop%2CBackdrop&Print%20Type=Double-Sided&Product%20Details=Kit&Frame%20Hardware=SEG
+
+### 200 with 4 filters and 2 parameters
+GET http://localhost:5000/api/dynamic-filters?productTypes=Banner%20Stand%2CTabletop%2CBackdrop&Print%20Type=Double-Sided&Product%20Details=Kit&Frame%20Hardware=SEG%2CFlag
+
+### 200 with 6 filters 
+GET http://localhost:5000/api/dynamic-filters?productTypes=Banner%20Stand%2CTabletop%2CBackdrop&Print%20Type=Double-Sided&Product%20Details=Kit&Frame%20Hardware=SEG%2CFlag&Display%20Shape=Straight&Booth%20Size=10%20x%2010
+
+### 200 with 6 filters and 4 parameters
+GET http://localhost:5000/api/dynamic-filters?productTypes=Banner%20Stand%2CTabletop%2CBackdrop&Print%20Type=Double-Sided&Product%20Details=Kit&Frame%20Hardware=SEG%2CFlag&Display%20Shape=Straight&Booth%20Size=10%20x%2010%2C10%20x%2020%2C10%20x%2030%2C20%20x%2020
+
+### 200 with 10 filters
+GET http://localhost:5000/api/dynamic-filters?Other%20%2F%20Accessories=Hard%20Case
+
+### 200 with 10 filters and 6 parameters
+
+
+### 200 with 15 filters
+GET http://localhost:5000/api/dynamic-filters?Other%20%2F%20Accessories=Hard%20Case&Hanging%20Sign%20Shapes=Panel%20%28Straight%29&Turntable%20Type=Display&Print%20Facility=OR&Backlit=Not%20Backlit&Product%20Line=StraightLine
+
+
+### 200
+GET http://localhost:5000/api/dynamic-filters?Product%20Type=Hanging%20Sign%2CWall%20Mounted%2CBackdrop
+
+### 200
+GET http://localhost:5000/api/dynamic-filters?Product%20Type=Backdrop%2CTabletop

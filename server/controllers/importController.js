@@ -54,28 +54,53 @@ module.exports.importProductCategories = async (req, res, next) => {
     }
 }
 
+// module.exports.importProductFilters = async (req, res, next) => {
+//     console.log(req.file, 'req.file.path from importProductFilters'); // To verify the uploaded file
+//     if (!req.file) {
+//         return next(createHttpError(400, 'No file uploaded or invalid file format (only .csv allowed)'));
+//     }
+//     try {
+//         const results = await processProductFiltersCsvFile(req.file.path);
+
+//         if (results.errorRows && results.errorRows.length > 0) {
+//             res.status(400).json({
+//                 message: `File processed with errors. ${results.errorRows.length} rows had issues.`,
+//                 errorRows: results.errorRows
+//             });
+//         } else {
+//             res.status(200).json({ message: 'File processed successfully', status: 'ok' });
+//         }
+
+//     } catch (err) {
+//         console.error('Error processing CSV file:', err);
+//         next(createHttpError(500, 'Error processing file'));
+//     }
+// };
+
 module.exports.importProductFilters = async (req, res, next) => {
-    console.log(req.file, 'req.file.path from importProductFilters'); // To verify the uploaded file
     if (!req.file) {
-        return next(createHttpError(400, 'No file uploaded or invalid file format (only .csv allowed)'));
+      return next(createHttpError(400, 'No file uploaded or invalid format'));
     }
+  
     try {
-        const results = await processProductFiltersCsvFile(req.file.path);
-
-        if (results.errorRows && results.errorRows.length > 0) {
-            res.status(400).json({
-                message: `File processed with errors. ${results.errorRows.length} rows had issues.`,
-                errorRows: results.errorRows
-            });
-        } else {
-            res.status(200).json({ message: 'File processed successfully', status: 'ok' });
-        }
-
+      const { successRows, errorRows } = await processProductFiltersCsvFile(req.file.path);
+  
+      if (errorRows.length > 0) {
+        return res.status(400).json({
+          message: `Processed with ${errorRows.length} errors.`,
+          errorRows
+        });
+      }
+  
+      res.status(200).json({
+        message: `Imported ${successRows.length} filters successfully.`,
+        status: 'ok'
+      });
     } catch (err) {
-        console.error('Error processing CSV file:', err);
-        next(createHttpError(500, 'Error processing file'));
+      console.error('Error processing CSV file:', err);
+      next(createHttpError(500, 'Error processing file'));
     }
-};
+  };
 
 module.exports.importFilterFields = async (req, res, next) => {
     //console.log(req.file.path); 
