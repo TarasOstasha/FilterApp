@@ -1,13 +1,373 @@
-import React, { useState, useEffect } from 'react';
+// import React, { useState, useEffect, useRef } from 'react';
+// import ReactSlider from 'react-slider';
+// import styles from './FilterSidebar.module.scss';
+// import {
+//   fetchFilterSidebarData,
+//   fetchDynamicFilters,
+//   fetchPriceRange,
+// } from '../../api';
+
+// interface FilterField {
+//   id: number;
+//   field_name: string;
+//   field_type: 'checkbox' | 'range';
+//   allowed_values: any; 
+//   sort_order: number;
+// }
+
+// interface FilterSidebarProps {
+//   onFilterChange: (filter: { field: string; value: any }) => void;
+//   selectedFilters: { [key: string]: string[] };
+// }
+
+// // parseRangeValue unchanged...
+// function parseRangeValue(
+//   field: FilterField,
+//   currentUnit: 'ft' | 'in' | undefined,
+//   selectedFilters: { [key: string]: string[] },
+//   priceMin: number,
+//   priceMax: number
+// ): [number, number] {
+//   // ... your existing implementation ...
+//   const fn = field.field_name;
+//   const sel = selectedFilters[fn]?.[0];
+//   if (sel) {
+//     if (!sel.includes(',')) {
+//       const v = parseFloat(sel);
+//       return [0, isNaN(v) ? priceMax : v];
+//     }
+//     let [min, max] = sel
+//       .split(',')
+//       .map((x) => parseFloat(x) || 0) as [number, number];
+//     if (min > max) [min, max] = [max, min];
+//     return [min, max];
+//   }
+//   if (
+//     typeof field.allowed_values === 'object' &&
+//     currentUnit &&
+//     field.allowed_values[currentUnit]
+//   ) {
+//     const { min, max } = field.allowed_values[currentUnit];
+//     return [min, max];
+//   }
+//   if (fn === 'Product Price') {
+//     return [priceMin, priceMax];
+//   }
+//   if (Array.isArray(field.allowed_values)) {
+//     const arr = field.allowed_values.map((x: any) => parseFloat(x) || 0);
+//     return [arr[0], arr[arr.length - 1]];
+//   }
+//   return [0, 0];
+// }
+
+// const FilterSidebar: React.FC<FilterSidebarProps> = ({
+//   onFilterChange,
+//   selectedFilters,
+// }) => {
+//   const [filterFields, setFilterFields] = useState<FilterField[]>([]);
+//   const [unitSelections, setUnitSelections] = useState<{
+//     [k: string]: 'ft' | 'in';
+//   }>({
+//     'Display Width': 'in',
+//     'Display Height': 'in',
+//   });
+//   const [priceMin, setPriceMin] = useState(0);
+//   const [priceMax, setPriceMax] = useState(0);
+//   const priceFetchTimeout = useRef<number>();
+//   const [priceBreakpoints, setPriceBreakpoints] = useState<number[]>([]);
+
+
+//   function handleCheckboxChange(field: string, value: string) {
+//     onFilterChange({ field, value });
+//   }
+
+//   function handleRangeSliderChange(
+//     fieldName: string,
+//     sliderValue: number | number[]
+//   ) {
+//     if (Array.isArray(sliderValue) && sliderValue.length === 2) {
+//       onFilterChange({
+//         field: fieldName,
+//         value: `${sliderValue[0]},${sliderValue[1]}`,
+//       });
+//     }
+//   }
+
+//   function handleUnitSwitch(fieldName: string) {
+//     setUnitSelections((prev) => {
+//       const next = prev[fieldName] === 'ft' ? 'in' : 'ft';
+//       const fd = filterFields.find((f) => f.field_name === fieldName);
+//       if (fd && fd.allowed_values[next]) {
+//         const { min, max } = fd.allowed_values[next];
+//         onFilterChange({ field: fieldName, value: `${min},${max}` });
+//       }
+//       return { ...prev, [fieldName]: next };
+//     });
+//   }
+
+//   // ─── REPLACED MOUNT‐EFFECT ─────────────────────────────────────────────
+//   // fetch the raw sidebar from the API (all in inches), then inject
+//   // a `.allowed_values = { in: {…}, ft: {…} }` for width & height
+//   useEffect(() => {
+//     async function load() {
+//       try {
+//         const res = await fetchFilterSidebarData();
+//         const arr = res?.data ?? [];
+//         const fields: FilterField[] = Array.isArray(arr) ? arr : [];
+
+//         const transformed = fields.map((f) => {
+//           // only for your inch‐only range fields:
+//           if (
+//             (f.field_name === 'Display Width' ||
+//               f.field_name === 'Display Height') &&
+//             Array.isArray(f.allowed_values)
+//           ) {
+//             // parse all inches:
+//             const inches = f.allowed_values.map((v: string) => parseFloat(v) || 0);
+//             const minIn  = Math.min(...inches);
+//             const maxIn  = Math.max(...inches);
+
+//             return {
+//               ...f,
+//               // new shape:
+//               allowed_values: {
+//                 in: { min: minIn, max: maxIn },
+//                 ft: { min: minIn / 12, max: maxIn / 12 },
+//               },
+//             };
+//           }
+//           return f;
+//         });
+//         transformed.sort((a, b) => a.sort_order - b.sort_order);
+//         setFilterFields(transformed);
+//       } catch (err) {
+//         console.warn('Failed to load static facets', err);
+//       }
+//     }
+//     load();
+//   }, []);
+//   // ────────────────────────────────────────────────────────────────────────
+
+//   // ─── PRICE + FACETS DEBOUNCE EFFECT (unchanged) ─────────────────────────
+//   useEffect(() => {
+//     const keys = Object.keys(selectedFilters);
+//     const nonPrice = keys.filter((k) => k !== 'Product Price');
+
+//     // pure price‐only: bail immediately
+//     if (keys.length === 1 && keys[0] === 'Product Price') {
+//       return;
+//     }
+
+//     window.clearTimeout(priceFetchTimeout.current);
+//     priceFetchTimeout.current = window.setTimeout(() => {
+//       // no filters → static sidebar
+//       if (keys.length === 0) {
+//         fetchFilterSidebarData()
+//           .then((r) => {
+//             const arr2 = r?.data ?? [];
+//             setFilterFields(Array.isArray(arr2) ? arr2 : []);
+//           })
+//           .catch(() => console.warn('Static reload failed'));
+//       }
+//       // dynamic facets
+//       else if (nonPrice.length > 0) {
+//         const params: Record<string, string> = {};
+//         nonPrice.forEach((f) => {
+//           params[f] = selectedFilters[f].join(',');
+//         });
+//         fetchDynamicFilters(params)
+//           .then((r) => {
+//             const d = r?.data;
+//             if (!Array.isArray(d)) {
+//               setFilterFields([]);
+//             } else {
+//               setFilterFields(
+//                 d.map((f) => ({
+//                   id: f.filter_field_id,
+//                   field_name: f.field_name,
+//                   field_type: f.field_type,
+//                   allowed_values: f.values,
+//                   sort_order: f.sort_order ?? 0,
+//                 }))
+//               );
+//             }
+//           })
+//           .catch(() => {
+//             // fallback →
+//             fetchFilterSidebarData()
+//               .then((r) => {
+//                 const arr3 = r?.data ?? [];
+//                 setFilterFields(Array.isArray(arr3) ? arr3 : []);
+//               })
+//               .catch(() =>
+//                 console.warn('Fallback static reload failed')
+//               );
+//           });
+//       }
+
+//       // always re-fetch price
+//       const priceParams =
+//         nonPrice.length > 0
+//           ? nonPrice.reduce(
+//               (p, f) => ({ ...p, [f]: selectedFilters[f].join(',') }),
+//               {} as Record<string, string>
+//             )
+//           : undefined;
+
+//       fetchPriceRange(priceParams)
+//         .then((pr) => {
+//           if (pr?.data) {
+//             setPriceMin(pr.data.min);
+//             setPriceMax(pr.data.max);
+//             setPriceBreakpoints(pr.data.breakpoints || []); 
+//           }
+//         })
+//         .catch(() =>
+//           console.warn('Filtered price fetch failed', priceParams)
+//         );
+//     }, 300);
+
+//     return () => window.clearTimeout(priceFetchTimeout.current);
+//   }, [selectedFilters]);
+//   // ────────────────────────────────────────────────────────────────────────
+
+//   // …the rest of your render logic remains exactly the same…
+//   return (
+//     <div className={styles.sidebar}>
+//       {filterFields.map((ff) => {
+//         const { field_name: fn, field_type: ft } = ff;
+//         if (ft === 'checkbox') {
+//           return (
+//             <div key={ff.id} className={styles['filter-section']}>
+//               <h4>{fn}</h4>
+//               <ul className={styles['filter-list']}>
+//                 {(ff.allowed_values as string[]).map((val, i) => (
+//                   <li key={i} className={styles['filter-item']}>
+//                     <label>
+//                       <input
+//                         type="checkbox"
+//                         value={val}
+//                         checked={selectedFilters[fn]?.includes(val) || false}
+//                         onChange={() => handleCheckboxChange(fn, val)}
+//                         className={styles['sidebar-checkbox-input']}
+//                       />
+//                       {val}
+//                     </label>
+//                   </li>
+//                 ))}
+//               </ul>
+//             </div>
+//           );
+//         }
+//         if (ft === 'range') {
+//           let hasUnit = false;
+//           let unit: 'ft' | 'in' | undefined;
+//           if (
+//             typeof ff.allowed_values === 'object' &&
+//             ff.allowed_values.ft &&
+//             ff.allowed_values.in
+//           ) {
+//             hasUnit = true;
+//             unit = unitSelections[fn] || 'ft';
+//           }
+//           const [curMin, curMax] = parseRangeValue(
+//             ff,
+//             unit,
+//             selectedFilters,
+//             priceMin,
+//             priceMax
+//           );
+//           let sliderMin: number, sliderMax: number;
+//           if (fn === 'Product Price') {
+//             sliderMin = priceMin;
+//             sliderMax = priceMax;
+//           } else if (hasUnit && unit) {
+//             sliderMin = ff.allowed_values[unit].min;
+//             sliderMax = ff.allowed_values[unit].max;
+//             console.log(sliderMin, sliderMin, '<< sliderMin');
+//             console.log(sliderMin, sliderMax, '<< sliderMax');
+//           } else if (Array.isArray(ff.allowed_values)) {
+//             const arr4 = ff.allowed_values.map((v: any) =>
+//               parseFloat(v) || 0
+//             );
+//             sliderMin = arr4[0];
+//             sliderMax = arr4[arr4.length - 1];
+//           } else {
+//             sliderMin = 0;
+//             sliderMax = 0;
+//           }
+//           return (
+//             <div key={ff.id} className={styles['filter-section']}>
+//               <h4>{fn}</h4>
+//               {hasUnit && (
+//                 <div className={styles['unit-switcher']}>
+//                   <button onClick={() => handleUnitSwitch(fn)}>
+//                     Switch to {unit === 'ft' ? 'inches' : 'feet'}
+//                   </button>
+//                 </div>
+//               )}
+//               <div className={styles['range-slider-container']}>
+//                 <ReactSlider
+//                   className={styles['range-slider']}
+//                   thumbClassName={styles['range-slider-thumb']}
+//                   trackClassName={styles['range-slider-track']}
+//                   min={sliderMin}
+//                   max={sliderMax}
+//                   step={1}
+//                   value={[curMin, curMax]}
+//                   onChange={(v) => handleRangeSliderChange(fn, v)}
+//                   onAfterChange={(v) => handleRangeSliderChange(fn, v)}
+//                   pearling
+//                   withTracks
+//                   minDistance={1}
+//                 />
+//                 <div className={styles['range-values']}>
+//                   <input
+//                     type="number"
+//                     value={curMin}
+//                     onChange={(e) => {
+//                       const v = parseFloat(e.target.value);
+//                       if (!isNaN(v)) handleRangeSliderChange(fn, [v, curMax]);
+//                     }}
+//                     style={{ width: 80, marginRight: 8 }}
+//                   />
+//                   <input
+//                     type="number"
+//                     value={curMax}
+//                     onChange={(e) => {
+//                       const v = parseFloat(e.target.value);
+//                       if (!isNaN(v)) handleRangeSliderChange(fn, [curMin, v]);
+//                     }}
+//                     style={{ width: 80 }}
+//                   />
+//                   {hasUnit && <span style={{ marginLeft: 8 }}>{unit}</span>}
+//                 </div>
+//               </div>
+//             </div>
+//           );
+//         }
+//         return null;
+//       })}
+//     </div>
+//   );
+// };
+
+// export default FilterSidebar;
+
+import React, { useState, useEffect, useRef } from 'react';
 import ReactSlider from 'react-slider';
 import styles from './FilterSidebar.module.scss';
-import { fetchFilterSidebarData } from '../../api';
+import {
+  fetchFilterSidebarData,
+  fetchDynamicFilters,
+  fetchPriceRange,
+} from '../../api';
 
 interface FilterField {
   id: number;
   field_name: string;
   field_type: 'checkbox' | 'range';
-  allowed_values: any; // For "checkbox" => string[]; for "range" => object or array
+  allowed_values: any; 
   sort_order: number;
 }
 
@@ -16,47 +376,26 @@ interface FilterSidebarProps {
   selectedFilters: { [key: string]: string[] };
 }
 
-/**
- * parseRangeValue:
- * 1) If the user param is a single number (e.g. "5000"), interpret as [0, 5000].
- * 2) If it's two numbers ("0,5000"), parse both.
- *    - If min > max, swap them so the slider doesn't break.
- * 3) Otherwise, fallback to field.allowed_values or [0,100000].
- */
 function parseRangeValue(
   field: FilterField,
   currentUnit: 'ft' | 'in' | undefined,
-  selectedFilters: { [key: string]: string[] }
+  selectedFilters: { [key: string]: string[] },
+  priceMin: number,
+  priceMax: number
 ): [number, number] {
-  const fieldName = field.field_name;
-  const rangeString = selectedFilters[fieldName]?.[0]; // e.g. "0,5000" or "5000"
-
-  if (rangeString) {
-    if (!rangeString.includes(',')) {
-      // Single value => [0, singleVal]
-      const singleVal = parseFloat(rangeString);
-      if (!isNaN(singleVal)) {
-        return [0, singleVal];
-      }
-      return [0, 100000];
-    } else {
-      // Two values => parse them
-      const parts = rangeString.split(',');
-      let min = parseFloat(parts[0]);
-      let max = parseFloat(parts[1]);
-      if (isNaN(min)) min = 0;
-      if (isNaN(max)) max = 100000;
-
-      // Optional: if reversed, swap
-      if (min > max) {
-        [min, max] = [max, min];
-      }
-      return [min, max];
+  const fn = field.field_name;
+  const sel = selectedFilters[fn]?.[0];
+  if (sel) {
+    if (!sel.includes(',')) {
+      const v = parseFloat(sel);
+      return [0, isNaN(v) ? priceMax : v];
     }
+    let [min, max] = sel
+      .split(',')
+      .map((x) => parseFloat(x) || 0) as [number, number];
+    if (min > max) [min, max] = [max, min];
+    return [min, max];
   }
-
-  // If there's no rangeString, fallback:
-  // 1) If we have ft/in for this field
   if (
     typeof field.allowed_values === 'object' &&
     currentUnit &&
@@ -65,22 +404,15 @@ function parseRangeValue(
     const { min, max } = field.allowed_values[currentUnit];
     return [min, max];
   }
-
-  // 2) If it's "Product Price," do a wide default range
-  if (field.field_name === 'Product Price') {
-    return [0, 100000];
+  if (fn === 'Product Price') {
+    //console.log(priceMin, priceMax, '<< priceMin, priceMax'); // shoulr be 0 and
+    return [priceMin, priceMax];
   }
-
-  // 3) If it's a range with an array, use the first/last items
   if (Array.isArray(field.allowed_values)) {
-    const arrMin = parseFloat(field.allowed_values[0]) || 0;
-    const arrMax =
-      parseFloat(field.allowed_values[field.allowed_values.length - 1]) || 100000;
-    return [arrMin, arrMax];
+    const arr = field.allowed_values.map((x: any) => parseFloat(x) || 0);
+    return [arr[0], arr[arr.length - 1]];
   }
-
-  // Final fallback
-  return [0, 100000];
+  return [0, 0];
 }
 
 const FilterSidebar: React.FC<FilterSidebarProps> = ({
@@ -88,153 +420,165 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
   selectedFilters,
 }) => {
   const [filterFields, setFilterFields] = useState<FilterField[]>([]);
-  const [unitSelections, setUnitSelections] = useState<{
-    [fieldName: string]: 'ft' | 'in';
-  }>({
-    'Display Width': 'ft',
-    'Display Height': 'ft',
+  const [unitSelections, setUnitSelections] = useState<{ [k: string]: 'ft' | 'in' }>({
+    'Display Width': 'in',
+    'Display Height': 'in',
   });
+  const [priceMin, setPriceMin] = useState(0);
+  const [priceMax, setPriceMax] = useState(0);
+  const [priceBreakpoints, setPriceBreakpoints] = useState<number[]>([]);
+  const priceFetchTimeout = useRef<number>();
 
-  /**
-   * handleCheckboxChange:
-   * - Toggle a value for a checkbox field
-   */
   function handleCheckboxChange(field: string, value: string) {
     onFilterChange({ field, value });
   }
 
-  /**
-   * handleRangeSliderChange:
-   * - Called when the user moves the slider or types in a numeric input
-   * - We pass a "min,max" string to the parent
-   */
   function handleRangeSliderChange(fieldName: string, sliderValue: number | number[]) {
     if (Array.isArray(sliderValue) && sliderValue.length === 2) {
-      const [min, max] = sliderValue;
-      const rangeStr = `${min},${max}`;
-      onFilterChange({ field: fieldName, value: rangeStr });
+      onFilterChange({
+        field: fieldName,
+        value: `${sliderValue[0]},${sliderValue[1]}`,
+      });
     }
   }
 
-  /**
-   * handleUnitSwitch:
-   * - Switch between ft and in for fields that have both
-   * - Also reset the range to the default for the new unit
-   */
   function handleUnitSwitch(fieldName: string) {
     setUnitSelections((prev) => {
-      const nextUnit = prev[fieldName] === 'ft' ? 'in' : 'ft';
-      const fieldDef = filterFields.find((f) => f.field_name === fieldName);
-      if (fieldDef && fieldDef.allowed_values[nextUnit]) {
-        const { min, max } = fieldDef.allowed_values[nextUnit];
-        const rangeStr = `${min},${max}`;
-        onFilterChange({ field: fieldName, value: rangeStr });
+      const next = prev[fieldName] === 'ft' ? 'in' : 'ft';
+      const fd = filterFields.find((f) => f.field_name === fieldName);
+      if (fd && fd.allowed_values[next]) {
+        const { min, max } = fd.allowed_values[next];
+        onFilterChange({ field: fieldName, value: `${min},${max}` });
       }
-      return { ...prev, [fieldName]: nextUnit };
+      return { ...prev, [fieldName]: next };
     });
   }
 
-  /**
-   * On mount, fetch filter data and merge ft/in fields for width/height
-   */
   useEffect(() => {
-    const loadData = async () => {
-      const response = await fetchFilterSidebarData();
-      if (!response?.data) return;
+    async function load() {
+      try {
+        const res = await fetchFilterSidebarData();
+        const arr = res?.data ?? [];
+        const fields: FilterField[] = Array.isArray(arr) ? arr : [];
 
-      let data = response.data as FilterField[];
-
-      // Merge "Display Width Ft" and "Display Width In"
-      const widthFt = data.find((f) => f.field_name === 'Display Width Ft');
-      const widthIn = data.find((f) => f.field_name === 'Display Width In');
-      if (widthFt && widthIn) {
-        const combinedWidth: FilterField = {
-          id: 9991,
-          field_name: 'Display Width',
-          field_type: 'range',
-          allowed_values: {
-            ft: {
-              min: parseFloat(widthFt.allowed_values[0]),
-              max: parseFloat(
-                widthFt.allowed_values[widthFt.allowed_values.length - 1]
-              ),
-            },
-            in: {
-              min: parseFloat(widthIn.allowed_values[0]),
-              max: parseFloat(
-                widthIn.allowed_values[widthIn.allowed_values.length - 1]
-              ),
-            },
-          },
-          sort_order: widthFt.sort_order,
-        };
-
-        data = data.filter(
-          (f) => !['Display Width Ft', 'Display Width In'].includes(f.field_name)
-        );
-        data.push(combinedWidth);
+        const transformed = fields.map((f) => {
+          if ((f.field_name === 'Display Width' || f.field_name === 'Display Height') && Array.isArray(f.allowed_values)) {
+            const inches = f.allowed_values.map((v: string) => parseFloat(v) || 0);
+            const minIn = Math.min(...inches);
+            const maxIn = Math.max(...inches);
+            return {
+              ...f,
+              allowed_values: {
+                in: { min: minIn, max: maxIn },
+                ft: { min: minIn / 12, max: maxIn / 12 },
+              },
+            };
+          }
+          return f;
+        });
+        transformed.sort((a, b) => a.sort_order - b.sort_order);
+        setFilterFields(transformed);
+      } catch (err) {
+        console.warn('Failed to load static facets', err);
       }
-
-      // Merge "Display Height Ft" and "Display Height In"
-      const heightFt = data.find((f) => f.field_name === 'Display Height Ft');
-      const heightIn = data.find((f) => f.field_name === 'Display Height In');
-      if (heightFt && heightIn) {
-        const combinedHeight: FilterField = {
-          id: 9992,
-          field_name: 'Display Height',
-          field_type: 'range',
-          allowed_values: {
-            ft: {
-              min: parseFloat(heightFt.allowed_values[0]),
-              max: parseFloat(
-                heightFt.allowed_values[heightFt.allowed_values.length - 1]
-              ),
-            },
-            in: {
-              min: parseFloat(heightIn.allowed_values[0]),
-              max: parseFloat(
-                heightIn.allowed_values[heightIn.allowed_values.length - 1]
-              ),
-            },
-          },
-          sort_order: heightFt.sort_order,
-        };
-
-        data = data.filter(
-          (f) => !['Display Height Ft', 'Display Height In'].includes(f.field_name)
-        );
-        data.push(combinedHeight);
-      }
-
-      // Sort by sort_order so the sidebar fields appear in the intended sequence
-      data.sort((a, b) => a.sort_order - b.sort_order);
-
-      setFilterFields(data);
-    };
-
-    loadData();
+    }
+    load();
   }, []);
+
+  useEffect(() => {
+    const keys = Object.keys(selectedFilters);
+    //console.log(keys, '<< selected filter keys in sidebar');
+    const nonPrice = keys.filter((k) => k !== 'Product Price');
+
+    if (keys.length === 1 && keys[0] === 'Product Price') return;
+
+    window.clearTimeout(priceFetchTimeout.current);
+    priceFetchTimeout.current = window.setTimeout(() => {
+      if (keys.length === 0) {
+        fetchFilterSidebarData()
+          .then((r) => {
+            const arr2 = r?.data ?? [];
+            setFilterFields(Array.isArray(arr2) ? arr2 : []);
+          })
+          .catch(() => console.warn('Static reload failed'));
+      } else if (nonPrice.length > 0) {
+        const params: Record<string, string> = {};
+        nonPrice.forEach((f) => {
+          console.log(f, '<< f in sidebar');
+          params[f] = selectedFilters[f].join(',');
+        });
+        fetchDynamicFilters(params)
+          .then((r) => {
+            const d = r?.data;
+            if (!Array.isArray(d)) {
+              setFilterFields([]);
+            } else {
+              setFilterFields(
+                d.map((f) => ({
+                  id: f.filter_field_id,
+                  field_name: f.field_name,
+                  field_type: f.field_type,
+                  allowed_values: f.values,
+                  sort_order: f.sort_order ?? 0,
+                }))
+              );
+            }
+          })
+          .catch(() => {
+            fetchFilterSidebarData()
+              .then((r) => {
+                const arr3 = r?.data ?? [];
+                setFilterFields(Array.isArray(arr3) ? arr3 : []);
+              })
+              .catch(() => console.warn('Fallback static reload failed'));
+          });
+      }
+
+      const priceParams =
+        nonPrice.length > 0
+          ? nonPrice.reduce((p, f) => ({ ...p, [f]: selectedFilters[f].join(',') }), {} as Record<string, string>)
+          : undefined;
+      //console.log(priceParams, '<< priceParams in sidebar');
+      fetchPriceRange(priceParams)
+        .then((pr) => {
+          if (pr?.data) {
+            if(Object.keys(selectedFilters).length === 0) {
+              const cleanedBreakpoints = pr.data.breakpoints.filter(n => typeof n === 'number' && !isNaN(n));
+              const min = Math.min(...cleanedBreakpoints);
+              const max = Math.max(...cleanedBreakpoints);
+              setPriceMin(min);
+              setPriceMax(max);
+            } else {
+              setPriceMin(pr.data.min);
+              setPriceMax(pr.data.max);
+              setPriceBreakpoints(pr.data.breakpoints || []);
+            }
+
+          }
+        })
+        .catch(() => console.warn('Filtered price fetch failed', priceParams));
+    }, 300);
+
+    return () => window.clearTimeout(priceFetchTimeout.current);
+  }, [selectedFilters]);
 
   return (
     <div className={styles.sidebar}>
-      {filterFields.map((filterField) => {
-        const fieldName = filterField.field_name;
-        const { field_type } = filterField;
-
-        // 1) Checkbox fields
-        if (field_type === 'checkbox') {
+      {filterFields.map((ff) => {
+        const { field_name: fn, field_type: ft } = ff;
+        if (ft === 'checkbox') {
           return (
-            <div key={filterField.id} className={styles['filter-section']}>
-              <h4>{fieldName}</h4>
+            <div key={ff.id} className={styles['filter-section']}>
+              <h4>{fn}</h4>
               <ul className={styles['filter-list']}>
-                {filterField.allowed_values.map((val: string, idx: number) => (
-                  <li key={idx} className={styles['filter-item']}>
+                {(ff.allowed_values as string[]).map((val, i) => (
+                  <li key={i} className={styles['filter-item']}>
                     <label>
                       <input
                         type="checkbox"
                         value={val}
-                        checked={selectedFilters[fieldName]?.includes(val) || false}
-                        onChange={() => handleCheckboxChange(fieldName, val)}
+                        checked={selectedFilters[fn]?.includes(val) || false}
+                        onChange={() => handleCheckboxChange(fn, val)}
                         className={styles['sidebar-checkbox-input']}
                       />
                       {val}
@@ -245,66 +589,90 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
             </div>
           );
         }
-
-        // 2) Range fields
-        if (field_type === 'range') {
-          let currentUnit: 'ft' | 'in' | undefined;
-          let hasUnitSwitch = false;
-
-          // If allowed_values has both ft & in, user can switch
-          if (
-            typeof filterField.allowed_values === 'object' &&
-            filterField.allowed_values.ft &&
-            filterField.allowed_values.in
-          ) {
-            hasUnitSwitch = true;
-            currentUnit = unitSelections[fieldName] || 'ft';
+        if (ft === 'range') {
+          let hasUnit = false;
+          let unit: 'ft' | 'in' | undefined;
+          if (typeof ff.allowed_values === 'object' && ff.allowed_values.ft && ff.allowed_values.in) {
+            hasUnit = true;
+            unit = unitSelections[fn] || 'ft';
           }
-
-          // Parse the currently selected range from the parent's selectedFilters
-          const [currentMin, currentMax] = parseRangeValue(
-            filterField,
-            currentUnit,
-            selectedFilters
+          const [curMin, curMax] = parseRangeValue(ff, unit, selectedFilters, priceMin, priceMax);
+          let sliderMin: number, sliderMax: number;
+          //console.log(curMin, curMax, '<< curMin, curMax');
+          const renderInputs = (
+            <div className={styles['range-values']}>
+              <input
+                type="number"
+                value={curMin}
+                onChange={(e) => {
+                  const v = parseFloat(e.target.value);
+                  if (!isNaN(v)) handleRangeSliderChange(fn, [v, curMax]);
+                }}
+                style={{ width: 80, marginRight: 8 }}
+              />
+              <input
+                type="number"
+                value={curMax}
+                onChange={(e) => {
+                  const v = parseFloat(e.target.value);
+                  if (!isNaN(v)) handleRangeSliderChange(fn, [curMin, v]);
+                }}
+                style={{ width: 80 }}
+              />
+              {hasUnit && <span style={{ marginLeft: 8 }}>{unit}</span>}
+            </div>
           );
 
-          // Decide the overall slider bounds
-          let sliderMin: number;
-          let sliderMax: number;
-          const isProductPrice = fieldName === 'Product Price';
-
-          if (isProductPrice) {
-            // Product Price => 0..100000
-            sliderMin = 0;
-            sliderMax = 100000;
-          } else if (hasUnitSwitch) {
-            sliderMin = filterField.allowed_values[currentUnit!].min;
-            sliderMax = filterField.allowed_values[currentUnit!].max;
-          } else if (Array.isArray(filterField.allowed_values)) {
-            sliderMin = parseFloat(filterField.allowed_values[0]) || 0;
-            sliderMax =
-              parseFloat(
-                filterField.allowed_values[filterField.allowed_values.length - 1]
-              ) || 100000;
-          } else {
-            // fallback
-            sliderMin = 0;
-            sliderMax = 100000;
-          }
-
-          return (
-            <div key={filterField.id} className={styles['filter-section']}>
-              <h4>{fieldName}</h4>
-
-              {hasUnitSwitch && (
-                <div className={styles['unit-switcher']}>
-                  <button onClick={() => handleUnitSwitch(fieldName)}>
-                    Switch to {currentUnit === 'ft' ? 'inches' : 'feet'}
-                  </button>
-                </div>
-              )}
-
-              <div className={styles['range-slider-container']}>
+          const renderSlider = () => {
+            if (fn === 'Product Price' && priceBreakpoints.length > 1) {
+              return (
+                <ReactSlider
+                  className={styles['range-slider']}
+                  thumbClassName={styles['range-slider-thumb']}
+                  trackClassName={styles['range-slider-track']}
+                  min={0}
+                  max={priceBreakpoints.length - 1}
+                  step={1}
+                  value={[
+                    priceBreakpoints.findIndex((v) => v >= curMin),
+                    priceBreakpoints.findIndex((v) => v >= curMax),
+                  ]}
+                  onChange={(indices) => {
+                    if (!Array.isArray(indices)) return;
+                  
+                    const [minIdx, maxIdx] = indices;
+                    if (
+                      typeof minIdx !== 'number' ||
+                      typeof maxIdx !== 'number' ||
+                      minIdx < 0 ||
+                      maxIdx < 0
+                    ) {
+                      return;
+                    }
+                  
+                    handleRangeSliderChange(fn, [
+                      priceBreakpoints[minIdx],
+                      priceBreakpoints[maxIdx],
+                    ]);
+                  }}
+                  pearling
+                  withTracks
+                  minDistance={1}
+                />
+              );
+            } else {
+              if (hasUnit && unit) {
+                sliderMin = ff.allowed_values[unit].min;
+                sliderMax = ff.allowed_values[unit].max;
+              } else if (Array.isArray(ff.allowed_values)) {
+                const arr = ff.allowed_values.map((v: any) => parseFloat(v) || 0);
+                sliderMin = arr[0];
+                sliderMax = arr[arr.length - 1];
+              } else {
+                sliderMin = 0;
+                sliderMax = 0;
+              }
+              return (
                 <ReactSlider
                   className={styles['range-slider']}
                   thumbClassName={styles['range-slider-thumb']}
@@ -312,47 +680,33 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
                   min={sliderMin}
                   max={sliderMax}
                   step={1}
-                  value={[currentMin, currentMax]}
-                  onChange={(val) => handleRangeSliderChange(fieldName, val)}
-                  onAfterChange={(val) => handleRangeSliderChange(fieldName, val)}
-                  minDistance={1}
+                  value={[curMin, curMax]}
+                  onChange={(v) => handleRangeSliderChange(fn, v)}
                   pearling
                   withTracks
+                  minDistance={1}
                 />
+              );
+            }
+          };
 
-                {/* Numeric inputs for user-typed min/max */}
-                <div className={styles['range-values']}>
-                  <input
-                    type="number"
-                    value={currentMin}
-                    onChange={(e) => {
-                      const typedMin = parseFloat(e.target.value);
-                      if (!isNaN(typedMin)) {
-                        handleRangeSliderChange(fieldName, [typedMin, currentMax]);
-                      }
-                    }}
-                    style={{ width: '80px', marginRight: '8px' }}
-                  />
-                  <input
-                    type="number"
-                    value={currentMax}
-                    onChange={(e) => {
-                      const typedMax = parseFloat(e.target.value);
-                      if (!isNaN(typedMax)) {
-                        handleRangeSliderChange(fieldName, [currentMin, typedMax]);
-                      }
-                    }}
-                    style={{ width: '80px' }}
-                  />
-                  {hasUnitSwitch && (
-                    <span style={{ marginLeft: '8px' }}>{currentUnit}</span>
-                  )}
+          return (
+            <div key={ff.id} className={styles['filter-section']}>
+              <h4>{fn}</h4>
+              {hasUnit && (
+                <div className={styles['unit-switcher']}>
+                  <button onClick={() => handleUnitSwitch(fn)}>
+                    Switch to {unit === 'ft' ? 'inches' : 'feet'}
+                  </button>
                 </div>
+              )}
+              <div className={styles['range-slider-container']}>
+                {renderSlider()}
+                {renderInputs}
               </div>
             </div>
           );
         }
-
         return null;
       })}
     </div>

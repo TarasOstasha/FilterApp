@@ -14,3 +14,5 @@ GET http://localhost:5000/products?limit=27&offset=0&sortBy=price_asc
 ###
 GET http://localhost:5000/products?limit=27&offset=0&sortBy=price_desc
 
+###
+GET http://localhost:5000/api/products?productType=Kiosk&Product%20Details=Kit

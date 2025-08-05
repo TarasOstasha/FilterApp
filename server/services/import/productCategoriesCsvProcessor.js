@@ -51,7 +51,7 @@
 
 // module.exports = processProductCategoriesCsvFile
 
-
+// main
 const chalk = require('chalk');
 const fs = require('fs');
 const csv = require('csv-parser');

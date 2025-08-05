@@ -15,4 +15,8 @@ productRouter
     .route('/mega')
     .get(productController.getMegaFilteredProductItems)
 
+productRouter
+    .route('/price-range')
+    .get(productController.getPriceRange)    
+
 module.exports = productRouter;

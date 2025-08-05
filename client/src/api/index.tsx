@@ -21,6 +21,20 @@ export const fetchProductsFromAPI = async (
     }
 };
 
+// price range
+export const fetchPriceRange = async (params?: Record<string,string>) => {
+    try {
+        console.log(params ? Object.values(params) : [], '<< params in fetchPriceRange');
+      return await axiosInstance.get<{
+        breakpoints: never[];min:number;max:number
+}>('/products/price-range',{ params });
+    } catch (err) {
+      console.error(err);
+      return undefined;
+    }
+  };
+  
+
 // fetch megafiltered products
 // export const fetchMegaFilteredProductsFromAPI = async (searchTerm: string): Promise<AxiosResponse<any> | undefined> => {
 //     const queryParams = new URLSearchParams();
@@ -73,7 +87,6 @@ export const fetchDynamicFilters = async (
         return undefined;
     }
 };
-
 
 export const uploadCSV = async (uploadType: string, formData: FormData): Promise<AxiosResponse<any> | undefined> => {
     try {

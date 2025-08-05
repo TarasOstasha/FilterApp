@@ -43,3 +43,6 @@ GET http://localhost:5000/api/dynamic-filters?Product%20Type=Hanging%20Sign%2CWa
 
 ### 200
 GET http://localhost:5000/api/dynamic-filters?Product%20Type=Backdrop%2CTabletop
+
+### 200
+GET http://localhost:5000/api/dynamic-filters?Other%20%2F%20Accessories=Soft%20Case

@@ -1,7 +1,8 @@
 const createHttpError = require('http-errors')
 const chalk = require('chalk')
-const { Product, Category, FilterField } = require('../models')
-const { Op, fn, col, where, cast } = require('sequelize');
+const { Product, Category, FilterField, ProductFilter, sequelize } = require('../models')
+const { Op, fn, col, where, cast, QueryTypes } = require('sequelize');
+
 
 module.exports.getAllProducts = async (req, res, next) => {
   const { limit, offset } = req.pagination
@@ -17,429 +18,6 @@ module.exports.getAllProducts = async (req, res, next) => {
     next(err)
   }
 }
-
-// 1 old
-// module.exports.getProducts = async (req, res, next) => {
-//   try {
-//     // Extract pagination & query params
-//     const {
-//       limit = 27,
-//       offset = 0,
-//       sortBy = 'price_asc',
-//       ...filters
-//     } = req.query;
-
-//     // Convert limit/offset to numbers
-//     const parsedLimit = parseInt(limit, 10) || 10;
-//     const parsedOffset = parseInt(offset, 10) || 0;
-
-//     // Build an ORDER array for sorting
-//     const sortOptions = {
-//       price_asc: ['product_price', 'ASC'],
-//       price_desc: ['product_price', 'DESC'],
-//       name_asc: ['product_name', 'ASC'],
-//       name_desc: ['product_name', 'DESC'],
-//     };
-//     const order = sortOptions[sortBy] || ['product_price', 'ASC'];
-//     console.log(chalk.red(order, '<< sort order for getProducts'));
-
-//     // If no filters are provided, fetch all products unfiltered
-//     if (Object.keys(filters).length === 0) {
-//       const products = await Product.findAll({
-//         limit: parsedLimit,
-//         offset: parsedOffset,
-//         order: [order],
-//       });
-//       const totalProducts = await Product.count();
-
-//       return res.status(200).json({
-//         products,
-//         totalProducts,
-//       });
-//     }
-
-//     // We'll build "where" for direct columns if needed (like price, etc.)
-//     const where = {};
-
-//     // We'll build "include" for associations (Category, FilterField)
-//     const include = [];
-
-//     // 1) If you have a "category_name" filter, handle it separately
-//     if (filters.category_name) {
-//       let categoryValues = Array.isArray(filters.category_name)
-//         ? filters.category_name
-//         : filters.category_name.split(',');
-//       categoryValues = categoryValues.map((v) => v.trim());
-
-//       include.push({
-//         model: Category,
-//         where: {
-//           category_name: { [Op.in]: categoryValues },
-//         },
-//         required: true, // must match category
-//       });
-
-//       delete filters.category_name;
-//     }
-
-//     // 2) Handle all other filters as FilterField includes
-//     //    Each distinct field => one "include" => AND logic across fields
-//     for (const [fieldName, rawValue] of Object.entries(filters)) {
-//       // rawValue might be a string like "Kit" or "SEG (Fabric),Velcro (Fabric)"
-//       const values = Array.isArray(rawValue)
-//         ? rawValue
-//         : rawValue.split(',').map((v) => v.trim());
-
-//       // This create a separate "include" for each field
-//       include.push({
-//         model: FilterField,
-//         // If you used `as: 'FilterFields'` in your Product model, specify `as` here too
-//         where: {
-//           field_name: fieldName, // e.g. "Product Details"
-//         },
-//         through: {
-//           attributes: [],
-//           where: {
-//             filter_value: { [Op.in]: values }, // OR logic within that field's checkboxes
-//           },
-//         },
-//         required: true, // must match this field => AND logic
-//       });
-//     }
-
-//     // 3) Run the query with the built-up "where" (for direct columns) and "include"
-//     const products = await Product.findAll({
-//       where,
-//       include,
-//       limit: parsedLimit,
-//       offset: parsedOffset,
-//       order: [order],
-//       distinct: true, // helps avoid duplicates if a product matches multiple values
-//     });
-
-//     // 4) Count matching rows for pagination
-//     const totalProducts = await Product.count({
-//       where,
-//       include,
-//       distinct: true,
-//     });
-
-//     // 5) Optionally deduplicate final result if needed
-//     const uniqueProducts = Array.from(
-//       new Map(products.map((p) => [p.id, p])).values()
-//     );
-
-//     return res.status(200).json({
-//       products: uniqueProducts,
-//       totalProducts,
-//     });
-//   } catch (err) {
-//     next(err);
-//   }
-// };
-
-// 2
-// module.exports.getProducts = async (req, res, next) => {
-//   try {
-//     // 1) Extract top-level query params
-//     const {
-//       limit = 27,
-//       offset = 0,
-//       sortBy = 'price_asc',
-//       ...filters
-//     } = req.query;
-//     console.log(chalk.yellow(JSON.stringify(req.query),': req.query'));
-//     // Convert limit/offset to numbers
-//     const parsedLimit = parseInt(limit, 10) || 10;
-//     const parsedOffset = parseInt(offset, 10) || 0;
-
-//     // Build order array for sorting
-//     const sortOptions = {
-//       price_asc: ['product_price', 'ASC'],
-//       price_desc: ['product_price', 'DESC'],
-//       name_asc: ['product_name', 'ASC'],
-//       name_desc: ['product_name', 'DESC'],
-//     };
-//     const order = sortOptions[sortBy] || ['product_price', 'ASC'];
-//     console.log(chalk.red(order, '<< sort order for getProducts'));
-
-//     // We'll build "where" for direct numeric columns (like product_price)
-//     const where = {};
-
-//     // mapping from "Product Price" => product_price, "Display Width" => product_width...
-//     const numericRanges = {
-//       'Product Price': 'product_price',
-//       'Display Width': 'product_width',
-//       'Display Height': 'product_height',
-//     };
-
-//     // For each known numeric field, parse "min,max" if present in `filters`
-//     for (const [paramName, columnName] of Object.entries(numericRanges)) {
-//       if (filters[paramName]) {
-//         // e.g. filters["Product Price"] = "0,98625" or an array like ["0,98625"]
-//         const raw = filters[paramName];
-//         const rangeString = Array.isArray(raw) ? raw[0] : raw; // We only expect one e.g. "0,98625"
-//         const [minStr, maxStr] = rangeString.split(',');
-//         const min = parseFloat(minStr) || 0;
-//         const max = parseFloat(maxStr) || 9999999; // or a big default
-
-//         // Build a where clause: product_price BETWEEN min AND max
-//         where[columnName] = { [Op.between]: [min, max] };
-
-//         // Remove it from `filters` so it doesn't go to the FilterField logic
-//         delete filters[paramName];
-//       }
-//     }
-
-//     // If no filters left after removing numeric ranges, maybe just fetch unfiltered
-//     const hasRemainingFilters = Object.keys(filters).length > 0;
-
-//     // Build "include" for associations (Category, FilterField)
-//     const include = [];
-
-//     // If we have a category_name param, handle it separately
-//     if (filters.category_name) {
-//       let categoryValues = Array.isArray(filters.category_name)
-//         ? filters.category_name
-//         : filters.category_name.split(',');
-//       categoryValues = categoryValues.map((v) => v.trim());
-
-//       include.push({
-//         model: Category,
-//         where: { category_name: { [Op.in]: categoryValues } },
-//         required: true,
-//       });
-
-//       delete filters.category_name;
-//     }
-
-//     // For any remaining filters, treat them as FilterField => each field => one include
-//     for (const [fieldName, rawValue] of Object.entries(filters)) {
-//       // e.g. "Graphic Finish" => "SEG (Fabric),Velcro (Fabric)"
-//       const values = Array.isArray(rawValue)
-//         ? rawValue
-//         : rawValue.split(',').map((v) => v.trim());
-
-//       include.push({
-//         model: FilterField,
-//         where: { field_name: fieldName },
-//         through: {
-//           attributes: [],
-//           where: { filter_value: { [Op.in]: values } },
-//         },
-//         required: true,
-//       });
-//     }
-
-//     // Now run the main query
-//     const products = await Product.findAll({
-//       where,             // numeric columns
-//       include,           // category / filterfield associations
-//       limit: parsedLimit,
-//       offset: parsedOffset,
-//       order: [order],
-//       distinct: true,    // avoid duplicates
-//     });
-
-//     // Count matching rows for pagination
-//     const totalProducts = await Product.count({
-//       where,
-//       include,
-//       distinct: true,
-//     });
-
-//     // Deduplicate final results if needed
-//     const uniqueProducts = Array.from(new Map(products.map((p) => [p.id, p])).values());
-
-//     return res.status(200).send({
-//       products: uniqueProducts,
-//       totalProducts,
-//     });
-//   } catch (err) {
-//     next(err);
-//   }
-// };
-
-
-module.exports.getProducts = async (req, res, next) => {
-  try {
-    const {
-      limit = 27,
-      offset = 0,
-      sortBy = 'price_asc',
-      ...filters
-    } = req.query;
-
-    const parsedLimit = parseInt(limit, 10) || 10;
-    const parsedOffset = parseInt(offset, 10) || 0;
-
-    const sortOptions = {
-      price_asc: ['product_price', 'ASC'],
-      price_desc: ['product_price', 'DESC'],
-      name_asc: ['product_name', 'ASC'],
-      name_desc: ['product_name', 'DESC'],
-    };
-    const order = sortOptions[sortBy] || ['product_price', 'ASC'];
-
-    const whereClause = {};
-    const include = [];
-
-    // Convert inch filters to feet
-    if (filters['Display Width In']) {
-      const raw = filters['Display Width In'];
-      const rangeStr = Array.isArray(raw) ? raw[0] : raw;
-      const [minStr, maxStr] = rangeStr.split(',');
-      const minFt = parseFloat(minStr) / 12;
-      const maxFt = parseFloat(maxStr) / 12;
-      filters['Display Width Ft'] = `${minFt},${maxFt}`;
-      delete filters['Display Width In'];
-    }
-
-    if (filters['Display Height In']) {
-      const raw = filters['Display Height In'];
-      const rangeStr = Array.isArray(raw) ? raw[0] : raw;
-      const [minStr, maxStr] = rangeStr.split(',');
-      const minFt = parseFloat(minStr) / 12;
-      const maxFt = parseFloat(maxStr) / 12;
-      filters['Display Height Ft'] = `${minFt},${maxFt}`;
-      delete filters['Display Height In'];
-    }
-
-    // Normalize frontend labels to match DB field_name
-    const labelAlias = {
-      'Display Width': 'Display Width Ft',
-      'Display Height': 'Display Height Ft',
-      'Width': 'Display Width Ft',
-      'Height': 'Display Height Ft',
-      'Price': 'Product Price',
-    };
-
-    for (const key in filters) {
-      if (labelAlias[key]) {
-        filters[labelAlias[key]] = filters[key];
-        delete filters[key];
-      }
-    }
-
-    // Load filter field metadata
-    const allFilterFields = await FilterField.findAll({
-      attributes: ['id', 'field_name', 'field_type']
-    });
-
-    const fieldNameToId = {};
-    const rangeFieldNames = new Set();
-
-    allFilterFields.forEach(field => {
-      fieldNameToId[field.field_name] = field.id;
-      if (field.field_type === 'range') {
-        rangeFieldNames.add(field.field_name);
-      }
-    });
-
-    // Handle product_price column range
-    if (filters['Product Price']) {
-      const raw = Array.isArray(filters['Product Price']) ? filters['Product Price'][0] : filters['Product Price'];
-      const [minStr, maxStr] = raw.split(',');
-      const min = parseFloat(minStr) || 0;
-      const max = parseFloat(maxStr) || 9999999;
-      whereClause['product_price'] = { [Op.between]: [min, max] };
-      delete filters['Product Price'];
-    }
-
-    // Handle range-type filters from product_filters (ft only)
-    for (const [paramName, rawValue] of Object.entries(filters)) {
-      if (rangeFieldNames.has(paramName)) {
-        const fieldId = fieldNameToId[paramName];
-        const rangeStr = Array.isArray(rawValue) ? rawValue[0] : rawValue;
-        const [minStr, maxStr] = rangeStr.split(',');
-        const min = parseFloat(minStr) || 0;
-        const max = parseFloat(maxStr) || 9999999;
-
-        include.push({
-          model: FilterField,
-          where: { id: fieldId },
-          through: {
-            attributes: [],
-            where: where(
-              cast(col('filter_value'), 'double precision'),
-              {
-                [Op.and]: [
-                  { [Op.gte]: min },
-                  { [Op.lte]: max }
-                ]
-              }
-            )
-          },
-          required: true
-        });
-
-        delete filters[paramName];
-      }
-    }
-
-    // Handle category filters
-    if (filters.category_name) {
-      let categoryValues = Array.isArray(filters.category_name)
-        ? filters.category_name
-        : filters.category_name.split(',');
-      categoryValues = categoryValues.map((v) => v.trim());
-
-      include.push({
-        model: Category,
-        where: { category_name: { [Op.in]: categoryValues } },
-        required: true,
-      });
-
-      delete filters.category_name;
-    }
-
-    // Checkbox-type filters (remaining filters)
-    for (const [fieldName, rawValue] of Object.entries(filters)) {
-      const values = Array.isArray(rawValue)
-        ? rawValue
-        : rawValue.split(',').map((v) => v.trim());
-
-      include.push({
-        model: FilterField,
-        where: { field_name: fieldName },
-        through: {
-          attributes: [],
-          where: {
-            filter_value: { [Op.in]: values },
-          },
-        },
-        required: true,
-      });
-    }
-
-    // Run the query
-    const products = await Product.findAll({
-      where: whereClause,
-      include,
-      limit: parsedLimit,
-      offset: parsedOffset,
-      order: [order],
-      distinct: true,
-    });
-
-    const totalProducts = await Product.count({
-      where: whereClause,
-      include,
-      distinct: true,
-    });
-
-    const uniqueProducts = Array.from(new Map(products.map(p => [p.id, p])).values());
-
-    res.status(200).send({
-      products: uniqueProducts,
-      totalProducts,
-    });
-  } catch (err) {
-    next(err);
-  }
-};
-
-
 
 module.exports.getMegaFilteredProductItems = async (req, res, next) => {
   try {
@@ -489,3 +67,371 @@ module.exports.getMegaFilteredProductItems = async (req, res, next) => {
     next(err);
   }
 };
+
+module.exports.getPriceRange = async (req, res, next) => {
+  // console.log(chalk.blue('getPriceRange called with query params:'), req.query);
+  // console.log(chalk.blue('Request query:', JSON.stringify(req.query, null, 2)));
+  try {
+    const priceField = await FilterField.findOne({
+      where: { field_name: 'Product Price' },
+      attributes: ['allowed_values'],
+      raw: true,
+    });
+    
+    const priceBreakpoints = priceField?.allowed_values
+      ?.split(',')
+      .map((v) => parseFloat(v.trim()))
+      .filter((n) => !isNaN(n))
+      .sort((a, b) => a - b);
+    const allFilterFields = await FilterField.findAll({
+      attributes: ['id', 'field_name', 'field_type', 'allowed_values'],
+      raw: true,
+    });
+   
+    const filterMap = {};
+    for (const f of allFilterFields) {
+      filterMap[f.field_name] = {
+        id: f.id,
+        type: f.field_type,
+        allowed_values: f.allowed_values,
+      };
+    }
+
+    let joins = '';
+    let productPriceCondition = '';
+    const replacements = {};
+    let checkIdx = 0;
+    let rangeIdx = 0;
+    //console.log(chalk.blue('Request query:', JSON.stringify(req.query, null, 2)));
+    // Handle Price (range slider) → forced to use known breakpoints
+    if (req.query['Product Price']) {
+      const [minInput, maxInput] = String(req.query['Product Price']).split(',').map((v) => parseFloat(v) || 0);
+      
+      // Find the next closest breakpoints
+      const minPrice = priceBreakpoints.find((v) => v >= minInput) ?? priceBreakpoints[0];
+      const maxPrice = [...priceBreakpoints].reverse().find((v) => v <= maxInput) ?? priceBreakpoints[priceBreakpoints.length - 1];
+      //console.log(chalk.green('Using Price range:', minPrice, maxPrice));
+      replacements.minPrice = minPrice;
+      replacements.maxPrice = maxPrice;
+      //console.log(chalk.yellow('Replacements for price range:', minPrice, maxPrice));
+      productPriceCondition = `WHERE p.product_price BETWEEN :minPrice AND :maxPrice`;
+      //console.log(chalk.red('Product Price condition:', productPriceCondition));
+    }
+
+    for (const fieldName of Object.keys(req.query)) {
+      if (fieldName === 'Product Price') continue;
+
+      const rawVal = req.query[fieldName];
+      const field = filterMap[fieldName];
+      if (!field || !rawVal) continue;
+
+      if (field.type === 'range') {
+        const [min, max] = String(rawVal).split(',').map((v) => parseFloat(v) || 0);
+        replacements[`min${rangeIdx}`] = min;
+        replacements[`max${rangeIdx}`] = max;
+        //console.log(chalk.green(Object.keys(replacements), '<< current replacements'));
+        joins += `
+          JOIN product_filters pf_range${rangeIdx}
+            ON pf_range${rangeIdx}.product_id = p.id
+           AND pf_range${rangeIdx}.filter_field_id = ${field.id}
+           AND CAST(
+             regexp_replace(pf_range${rangeIdx}.filter_value, '[^0-9\\.]', '', 'g') AS double precision
+           ) BETWEEN :min${rangeIdx} AND :max${rangeIdx}
+        `;
+        rangeIdx++;
+      } else {
+        const values = Array.isArray(rawVal)
+          ? rawVal
+          : String(rawVal).split(',').map((v) => v.trim());
+
+        replacements[`vals${checkIdx}`] = values;
+        //console.log(chalk.green(Object.keys(replacements), '<< current replacements'));
+        joins += `
+          JOIN product_filters pf_check${checkIdx}
+            ON pf_check${checkIdx}.product_id = p.id
+           AND pf_check${checkIdx}.filter_field_id = ${field.id}
+           AND pf_check${checkIdx}.filter_value = ANY(ARRAY[:vals${checkIdx}]::text[])
+        `;
+        checkIdx++;
+      }
+    }
+
+    // console.log(chalk.magenta('----- GENERATED SQL JOINS -----'));
+    // console.log(joins);
+    // console.log(chalk.yellow('Replacements:'), replacements);
+
+    const [filteredRow] = await sequelize.query(
+      `
+      WITH filtered_products AS (
+        SELECT DISTINCT p.id, p.product_price
+        FROM products p
+        ${joins}
+        ${productPriceCondition}
+      )
+      SELECT 
+        MIN(product_price)::numeric AS min, 
+        MAX(product_price)::numeric AS max 
+      FROM filtered_products;
+    `,
+      {
+        replacements,
+        type: QueryTypes.SELECT,
+      }
+    );
+
+    const [globalRow] = await sequelize.query(
+      `SELECT MIN(product_price)::numeric AS globalmin, MAX(product_price)::numeric AS globalmax FROM products;`,
+      { type: QueryTypes.SELECT }
+    );
+
+    // console.log(chalk.red('Global price range:', globalRow.globalmin, globalRow.globalmax));
+    // console.log(chalk.green('Filtered price range:', filteredRow.min, filteredRow.max));
+    // console.log(chalk.yellow('priceBreakpoints', priceBreakpoints));
+
+    if (Object.keys(replacements).length === 0) {
+      filteredRow.min = globalRow.globalmin;
+      filteredRow.max = globalRow.globalmax;
+      // console.log(chalk.yellow('No filters applied → using global price range'));
+    }
+    //console.log(chalk.red(filteredRow.min, '<< final min'));
+    //console.log(chalk.red(filteredRow.max, '<< final max'));
+
+    res.json({
+      min: parseFloat(filteredRow?.min) || 0,
+      max: parseFloat(filteredRow?.max) || 0,
+      breakpoints: priceBreakpoints || [],
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+module.exports.getProducts = async (req, res, next) => {
+  try {
+    const filters = req.query;
+    const limit = parseInt(req.query.limit, 10) || 27;
+    const offset = parseInt(req.query.offset, 10) || 0;
+    let sortDir = 'ASC';
+    if (req.query.sortBy === 'price_desc') {
+      sortDir = 'DESC';
+    }
+
+    const allFilterFields = await FilterField.findAll({ raw: true });
+
+    const fieldIdMap = allFilterFields.reduce((acc, field) => {
+      acc[field.field_name] = field.id;
+      return acc;
+    }, {});
+
+    let joinClauses = '';
+    let whereClauses = '';
+    const replacements = {};
+    let joinIndex = 0;
+
+    for (const [fieldName, rawValue] of Object.entries(filters)) {
+      if (fieldName === 'Product Price') {
+        const [minPrice, maxPrice] = String(rawValue)
+          .split(',')
+          .map((v) => parseFloat(v) || 0);
+    
+        whereClauses += `
+          AND p.product_price BETWEEN :minPrice AND :maxPrice
+        `;
+        replacements.minPrice = minPrice;
+        replacements.maxPrice = maxPrice;
+        continue;
+      }
+    
+      if (!fieldIdMap[fieldName]) continue;
+      const fieldId = fieldIdMap[fieldName];
+      const fieldDef = allFilterFields.find(f => f.field_name === fieldName);
+
+      if (fieldDef.field_type === 'checkbox') {
+        const values = String(rawValue).split(',');
+        const alias = `pf_check${joinIndex}`;
+
+        joinClauses += `
+          JOIN product_filters ${alias}
+            ON ${alias}.product_id = p.id
+           AND ${alias}.filter_field_id = ${fieldId}
+           AND ${alias}.filter_value IN (:checkVals${joinIndex})
+        `;
+
+        replacements[`checkVals${joinIndex}`] = values;
+        joinIndex++;
+      }
+
+      if (fieldDef.field_type === 'range') {
+        const [min, max] = String(rawValue).split(',').map(v => parseFloat(v) || 0);
+        const alias = `pf_range${joinIndex}`;
+
+        joinClauses += `
+          JOIN product_filters ${alias}
+            ON ${alias}.product_id = p.id
+           AND ${alias}.filter_field_id = ${fieldId}
+        `;
+
+        whereClauses += `
+          AND CAST(regexp_replace(${alias}.filter_value, '[^0-9.]', '', 'g') AS FLOAT)
+              BETWEEN :min${joinIndex} AND :max${joinIndex}
+        `;
+
+        replacements[`min${joinIndex}`] = min;
+        replacements[`max${joinIndex}`] = max;
+        joinIndex++;
+      }
+    }
+
+    const sql = `
+      SELECT DISTINCT p.*
+      FROM products p
+      ${joinClauses}
+      WHERE 1=1
+      ${whereClauses}
+      ORDER BY product_price ${sortDir}
+      LIMIT :limit OFFSET :offset
+    `;
+
+    const countSql = `
+      SELECT COUNT(DISTINCT p.id) AS total
+      FROM products p
+      ${joinClauses}
+      WHERE 1=1
+      ${whereClauses}
+    `;
+
+    replacements.limit = limit;
+    replacements.offset = offset;
+    console.log(chalk.yellow('Final Replacements:'), replacements);
+    const products = await sequelize.query(sql, {
+      replacements,
+      type: QueryTypes.SELECT,
+    });
+    console.log(chalk.green(`Fetched ${products} products`));
+    const totalProductsResult = await sequelize.query(countSql, {
+      replacements,
+      type: QueryTypes.SELECT,
+    });
+
+    const totalProducts = totalProductsResult[0]?.total || 0;
+
+    // === Price Breakpoint Snap Logic ===
+    const priceField = await FilterField.findOne({
+      where: { field_name: 'Product Price' },
+      attributes: ['allowed_values'],
+      raw: true,
+    });
+
+    const priceBreakpoints = priceField?.allowed_values
+      ?.split(',')
+      .map((v) => parseFloat(v.trim()))
+      .filter((n) => !isNaN(n))
+      .sort((a, b) => a - b) || [];
+
+    const actualPrices = products.map((p) => parseFloat(p.product_price)).filter((n) => !isNaN(n));
+    const minPrice = Math.min(...actualPrices);
+    const maxPrice = Math.max(...actualPrices);
+
+    const snappedMin = priceBreakpoints.find((v) => v >= minPrice) ?? priceBreakpoints[0];
+    const snappedMax = [...priceBreakpoints].reverse().find((v) => v <= maxPrice) ?? priceBreakpoints.at(-1);
+    // console.log(snappedMin, '<< snappedMin, ');
+    // console.log(snappedMax, '<< snappedMax, ');
+    // console.log(priceBreakpoints, '<< priceBreakpoints, ');
+    res.status(200).json({
+      products,
+      totalProducts,
+      priceRange: {
+        min: snappedMin,
+        max: snappedMax,
+        breakpoints: priceBreakpoints,
+      },
+    });
+  } catch (err) {
+    console.error(chalk.red('getProducts error:'), err);
+    next(err);
+  }
+};
+
+
+// module.exports.getPriceRange = async (req, res, next) => {
+//   try {
+//     const allFilterFields = await FilterField.findAll({
+//       attributes: ['id', 'field_name', 'field_type'],
+//       raw: true,
+//     });
+
+//     // Map field_name → { id, field_type }
+//     const filterMap = {};
+//     for (const f of allFilterFields) {
+//       filterMap[f.field_name] = { id: f.id, type: f.field_type };
+//     }
+
+//     let joins = '';
+//     const replacements = {};
+//     let checkIdx = 0;
+//     let rangeIdx = 0;
+
+//     for (const fieldName of Object.keys(req.query)) {
+//       const rawVal = req.query[fieldName];
+//       const field = filterMap[fieldName];
+//       if (!field || !rawVal) continue;
+
+//       if (field.type === 'range') {
+//         const [min, max] = String(rawVal)
+//           .split(',')
+//           .map((v) => parseFloat(v) || 0);
+
+//         replacements[`min${rangeIdx}`] = min;
+//         replacements[`max${rangeIdx}`] = max;
+
+//         joins += `
+//           JOIN product_filters pf_range${rangeIdx}
+//             ON pf_range${rangeIdx}.product_id = p.id
+//            AND pf_range${rangeIdx}.filter_field_id = ${field.id}
+//            AND CAST(
+//              regexp_replace(pf_range${rangeIdx}.filter_value, '[^0-9\\.]', '', 'g') AS double precision
+//            ) BETWEEN :min${rangeIdx} AND :max${rangeIdx}
+//         `;
+//         rangeIdx++;
+//       } else {
+//         const values = Array.isArray(rawVal)
+//           ? rawVal
+//           : String(rawVal).split(',').map((v) => v.trim());
+
+//         replacements[`vals${checkIdx}`] = values;
+
+//         joins += `
+//           JOIN product_filters pf_check${checkIdx}
+//             ON pf_check${checkIdx}.product_id = p.id
+//            AND pf_check${checkIdx}.filter_field_id = ${field.id}
+//            AND pf_check${checkIdx}.filter_value = ANY(:vals${checkIdx}::text[])
+//         `;
+//         checkIdx++;
+//       }
+//     }
+
+//     const sql = `
+//       WITH filtered_products AS (
+//         SELECT DISTINCT p.id, p.product_price
+//         FROM products p
+//         ${joins}
+//       )
+//       SELECT 
+//         MIN(product_price)::numeric AS min, 
+//         MAX(product_price)::numeric AS max 
+//       FROM filtered_products;
+//     `;
+
+//     const [row] = await sequelize.query(sql, {
+//       replacements,
+//       type: QueryTypes.SELECT,
+//     });
+
+//     res.json({
+//       min: parseFloat(row.min) || 0,
+//       max: parseFloat(row.max) || 0,
+//     });
+//   } catch (err) {
+//     next(err);
+//   }
+// };
