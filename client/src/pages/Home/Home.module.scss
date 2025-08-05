@@ -5,4 +5,16 @@
   .productList {
     flex-grow: 1;
   }
+  .clearFiltersButton {
+    margin-top: 1rem;
+    width: 100%;
+    padding: 10px;
+    background-color: #eee;
+    border: 1px solid #ccc;
+    cursor: pointer;
+    font-weight: bold;
   
+    &:hover {
+      background-color: #ddd;
+    }
+  }

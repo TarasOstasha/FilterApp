@@ -33,6 +33,36 @@ export const fetchPriceRange = async (params?: Record<string,string>) => {
       return undefined;
     }
   };
+
+  // width range
+export const fetchWidthRange = async (params?: Record<string, string>) => {
+    try {
+      console.log(params ? Object.values(params) : [], '<< params in fetchWidthRange');
+      return await axiosInstance.get<{
+        min: number;
+        max: number;
+      }>('/products/width-range', { params });
+    } catch (err) {
+      console.error(err);
+      return undefined;
+    }
+  };
+
+  // height range
+export const fetchHeightRange = async (params?: Record<string, string>) => {
+    try {
+      console.log(params ? Object.values(params) : [], '<< params in fetchHeightRange');
+      return await axiosInstance.get<{
+        min: number;
+        max: number;
+      }>('/products/height-range', { params });
+    } catch (err) {
+      console.error(err);
+      return undefined;
+    }
+  };
+  
+  
   
 
 // fetch megafiltered products

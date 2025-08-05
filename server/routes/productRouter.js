@@ -17,6 +17,14 @@ productRouter
 
 productRouter
     .route('/price-range')
-    .get(productController.getPriceRange)    
+    .get(productController.getPriceRange)   
+    
+productRouter
+    .route('/width-range')
+    .get(productController.getWidthRange);
+  
+productRouter
+    .route('/height-range')
+    .get(productController.getHeightRange);    
 
 module.exports = productRouter;

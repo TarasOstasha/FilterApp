@@ -209,6 +209,7 @@ module.exports.getPriceRange = async (req, res, next) => {
 module.exports.getProducts = async (req, res, next) => {
   try {
     const filters = req.query;
+    console.log(chalk.blue('getProducts called with filters:'), filters);
     const limit = parseInt(req.query.limit, 10) || 27;
     const offset = parseInt(req.query.offset, 10) || 0;
     let sortDir = 'ASC';
@@ -307,7 +308,7 @@ module.exports.getProducts = async (req, res, next) => {
       replacements,
       type: QueryTypes.SELECT,
     });
-    console.log(chalk.green(`Fetched ${products} products`));
+    //console.log(chalk.green(`Fetched ${products} products`));
     const totalProductsResult = await sequelize.query(countSql, {
       replacements,
       type: QueryTypes.SELECT,
@@ -435,3 +436,180 @@ module.exports.getProducts = async (req, res, next) => {
 //     next(err);
 //   }
 // };
+
+
+
+
+
+
+
+module.exports.getWidthRange = async (req, res, next) => {
+  try {
+    const allFilterFields = await FilterField.findAll({
+      attributes: ['id', 'field_name', 'field_type'],
+      raw: true,
+    });
+
+    const filterMap = {};
+    for (const f of allFilterFields) {
+      filterMap[f.field_name] = {
+        id: f.id,
+        type: f.field_type,
+      };
+    }
+
+    let joins = '';
+    const replacements = {};
+    let rangeIdx = 0;
+    let checkIdx = 0;
+
+    for (const fieldName of Object.keys(req.query)) {
+      const rawVal = req.query[fieldName];
+      const field = filterMap[fieldName];
+      if (!field || !rawVal || fieldName === 'Display Width') continue;
+
+      if (field.type === 'range') {
+        const [min, max] = String(rawVal).split(',').map((v) => parseFloat(v) || 0);
+        replacements[`min${rangeIdx}`] = min;
+        replacements[`max${rangeIdx}`] = max;
+
+        joins += `
+          JOIN product_filters pf_range${rangeIdx}
+            ON pf_range${rangeIdx}.product_id = p.id
+           AND pf_range${rangeIdx}.filter_field_id = ${field.id}
+           AND CAST(
+             regexp_replace(pf_range${rangeIdx}.filter_value, '[^0-9\\.]', '', 'g') AS double precision
+           ) BETWEEN :min${rangeIdx} AND :max${rangeIdx}
+        `;
+        rangeIdx++;
+      } else {
+        const values = Array.isArray(rawVal)
+          ? rawVal
+          : String(rawVal).split(',').map((v) => v.trim());
+
+        replacements[`vals${checkIdx}`] = values;
+
+        joins += `
+          JOIN product_filters pf_check${checkIdx}
+            ON pf_check${checkIdx}.product_id = p.id
+           AND pf_check${checkIdx}.filter_field_id = ${field.id}
+           AND pf_check${checkIdx}.filter_value = ANY(ARRAY[:vals${checkIdx}]::text[])
+        `;
+        checkIdx++;
+      }
+    }
+
+    const widthField = filterMap['Display Width'];
+    if (!widthField) throw new Error('Display Width filter field not found');
+
+    const [filteredRow] = await sequelize.query(
+      `
+      WITH filtered_products AS (
+        SELECT DISTINCT p.id
+        FROM products p
+        ${joins}
+      )
+      SELECT 
+        MIN(CAST(regexp_replace(pf.filter_value, '[^0-9\\.]', '', 'g') AS double precision)) AS min,
+        MAX(CAST(regexp_replace(pf.filter_value, '[^0-9\\.]', '', 'g') AS double precision)) AS max
+      FROM product_filters pf
+      JOIN filtered_products fp ON pf.product_id = fp.id
+      WHERE pf.filter_field_id = ${widthField.id};
+      `,
+      { replacements, type: QueryTypes.SELECT }
+    );
+
+    res.json({
+      min: parseFloat(filteredRow?.min) || 0,
+      max: parseFloat(filteredRow?.max) || 0,
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+
+module.exports.getHeightRange = async (req, res, next) => {
+  try {
+    const allFilterFields = await FilterField.findAll({
+      attributes: ['id', 'field_name', 'field_type'],
+      raw: true,
+    });
+
+    const filterMap = {};
+    for (const f of allFilterFields) {
+      filterMap[f.field_name] = {
+        id: f.id,
+        type: f.field_type,
+      };
+    }
+
+    let joins = '';
+    const replacements = {};
+    let rangeIdx = 0;
+    let checkIdx = 0;
+
+    for (const fieldName of Object.keys(req.query)) {
+      const rawVal = req.query[fieldName];
+      const field = filterMap[fieldName];
+      if (!field || !rawVal || fieldName === 'Display Height') continue;
+
+      if (field.type === 'range') {
+        const [min, max] = String(rawVal).split(',').map((v) => parseFloat(v) || 0);
+        replacements[`min${rangeIdx}`] = min;
+        replacements[`max${rangeIdx}`] = max;
+
+        joins += `
+          JOIN product_filters pf_range${rangeIdx}
+            ON pf_range${rangeIdx}.product_id = p.id
+           AND pf_range${rangeIdx}.filter_field_id = ${field.id}
+           AND CAST(
+             regexp_replace(pf_range${rangeIdx}.filter_value, '[^0-9\\.]', '', 'g') AS double precision
+           ) BETWEEN :min${rangeIdx} AND :max${rangeIdx}
+        `;
+        rangeIdx++;
+      } else {
+        const values = Array.isArray(rawVal)
+          ? rawVal
+          : String(rawVal).split(',').map((v) => v.trim());
+
+        replacements[`vals${checkIdx}`] = values;
+
+        joins += `
+          JOIN product_filters pf_check${checkIdx}
+            ON pf_check${checkIdx}.product_id = p.id
+           AND pf_check${checkIdx}.filter_field_id = ${field.id}
+           AND pf_check${checkIdx}.filter_value = ANY(ARRAY[:vals${checkIdx}]::text[])
+        `;
+        checkIdx++;
+      }
+    }
+
+    const heightField = filterMap['Display Height'];
+    if (!heightField) throw new Error('Display Height filter field not found');
+
+    const [filteredRow] = await sequelize.query(
+      `
+      WITH filtered_products AS (
+        SELECT DISTINCT p.id
+        FROM products p
+        ${joins}
+      )
+      SELECT 
+        MIN(CAST(regexp_replace(pf.filter_value, '[^0-9\\.]', '', 'g') AS double precision)) AS min,
+        MAX(CAST(regexp_replace(pf.filter_value, '[^0-9\\.]', '', 'g') AS double precision)) AS max
+      FROM product_filters pf
+      JOIN filtered_products fp ON pf.product_id = fp.id
+      WHERE pf.filter_field_id = ${heightField.id};
+      `,
+      { replacements, type: QueryTypes.SELECT }
+    );
+
+    res.json({
+      min: parseFloat(filteredRow?.min) || 0,
+      max: parseFloat(filteredRow?.max) || 0,
+    });
+  } catch (err) {
+    next(err);
+  }
+};

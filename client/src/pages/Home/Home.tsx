@@ -6,6 +6,7 @@ import ItemsPerPageDropdown from '../../components/ItemsPerPageDropdown/ItemsPer
 import PaginationControls from '../../components/PaginationControls/PaginationControls';
 import { fetchProductsFromAPI } from '../../api';
 import MegaFilter from '../../components/MegaFilter/MegaFilter';
+import styles from './Home.module.scss';
 
 
 interface Product {
@@ -93,7 +94,12 @@ const Home: React.FC = () => {
     fetchProducts();
   };
 
-
+  const handleClearFilters = () => {
+    console.log('clearing filters', selectedFilters);
+    setSelectedFilters({});
+    const newUrl = window.location.pathname;
+    window.history.replaceState({}, '', newUrl);
+  };
   // const handlePageChange = (page: number) => {
   //   setCurrentPage(page);
   // };
@@ -222,6 +228,9 @@ const Home: React.FC = () => {
       <div className="row">
         <div className="col-md-3">
           <FilterSidebar onFilterChange={handleFilterChange} selectedFilters={selectedFilters} />
+          <button className={styles.clearFiltersButton} onClick={handleClearFilters}>
+              Clear Filters
+          </button>
         </div>
         <div className="col-md-9">
           <div className="controls d-flex justify-content-between">

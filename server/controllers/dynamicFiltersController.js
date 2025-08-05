@@ -78,6 +78,10 @@ module.exports.getDynamicFilters = async (req, res, next) => {
         ON ff.id = pf.filter_field_id
 
       WHERE cleaned.val <> ''
+        AND (
+          ff.field_type = 'range'
+          OR (ff.field_type = 'checkbox' AND cleaned.val = ANY(string_to_array(ff.allowed_values, ',')))
+        )
       GROUP BY ff.id, ff.field_name, ff.field_type
       ORDER BY ff.sort_order;
     `;
