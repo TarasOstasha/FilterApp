@@ -24,7 +24,7 @@ export const fetchProductsFromAPI = async (
 // price range
 export const fetchPriceRange = async (params?: Record<string,string>) => {
     try {
-        console.log(params ? Object.values(params) : [], '<< params in fetchPriceRange');
+        //console.log(params ? Object.values(params) : [], '<< params in fetchPriceRange');
       return await axiosInstance.get<{
         breakpoints: never[];min:number;max:number
 }>('/products/price-range',{ params });
@@ -35,13 +35,16 @@ export const fetchPriceRange = async (params?: Record<string,string>) => {
   };
 
   // width range
+  interface WidthRangeResponse {
+    min: number;
+    max: number;
+    globalMin: number;
+    globalMax: number;
+  }
 export const fetchWidthRange = async (params?: Record<string, string>) => {
     try {
-      console.log(params ? Object.values(params) : [], '<< params in fetchWidthRange');
-      return await axiosInstance.get<{
-        min: number;
-        max: number;
-      }>('/products/width-range', { params });
+      //console.log(params ? Object.values(params) : [], '<< params in fetchWidthRange');
+      return await axiosInstance.get<WidthRangeResponse>('/products/width-range', { params });
     } catch (err) {
       console.error(err);
       return undefined;
@@ -51,11 +54,8 @@ export const fetchWidthRange = async (params?: Record<string, string>) => {
   // height range
 export const fetchHeightRange = async (params?: Record<string, string>) => {
     try {
-      console.log(params ? Object.values(params) : [], '<< params in fetchHeightRange');
-      return await axiosInstance.get<{
-        min: number;
-        max: number;
-      }>('/products/height-range', { params });
+      //console.log(params ? Object.values(params) : [], '<< params in fetchHeightRange');
+      return await axiosInstance.get<WidthRangeResponse>('/products/height-range', { params });
     } catch (err) {
       console.error(err);
       return undefined;

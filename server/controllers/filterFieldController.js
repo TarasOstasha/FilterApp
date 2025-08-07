@@ -1,5 +1,6 @@
 const createHttpError = require('http-errors')
-const { FilterField } = require('../models')
+const { FilterField } = require('../models');
+const chalk = require('chalk');
 
 module.exports.getAllFilterFields = async (req, res, next) => {
 
@@ -7,6 +8,7 @@ module.exports.getAllFilterFields = async (req, res, next) => {
     const foundFilterFields = await FilterField.findAll({
       order: [['sort_order', 'ASC']],
     });
+    //console.log(chalk.blue('Found filter fields:'), foundFilterFields);
     // i'm modifying data here becaouse i need allowed_values be array of string
     const modifiedFilterFields = foundFilterFields.map((field) => {
       return {

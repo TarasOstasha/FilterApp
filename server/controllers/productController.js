@@ -501,7 +501,7 @@ module.exports.getWidthRange = async (req, res, next) => {
 
     const widthField = filterMap['Display Width'];
     if (!widthField) throw new Error('Display Width filter field not found');
-
+    // get filteredRow
     const [filteredRow] = await sequelize.query(
       `
       WITH filtered_products AS (
@@ -518,10 +518,27 @@ module.exports.getWidthRange = async (req, res, next) => {
       `,
       { replacements, type: QueryTypes.SELECT }
     );
-
+    // get globalRow
+    const [result] = await sequelize.query(
+      `
+      SELECT
+        MIN(CAST(regexp_replace(filter_value, '[^0-9\\.]+', '', 'g') AS double precision)) AS min,
+        MAX(CAST(regexp_replace(filter_value, '[^0-9\\.]+', '', 'g') AS double precision)) AS max
+      FROM product_filters
+      WHERE filter_field_id = :widthFieldId
+      `,
+      {
+        replacements: { widthFieldId: widthField.id },
+        type: QueryTypes.SELECT,
+      }
+    );
+    console.log(chalk.blue('result:'), result?.min, result?.max);
+    console.log(chalk.blue('filteredRow:'), filteredRow?.min, filteredRow?.max);
     res.json({
       min: parseFloat(filteredRow?.min) || 0,
       max: parseFloat(filteredRow?.max) || 0,
+      globalMin: parseFloat(result?.min) || 0,
+      globalMax: parseFloat(result?.max) || 0,
     });
   } catch (err) {
     next(err);
@@ -604,8 +621,23 @@ module.exports.getHeightRange = async (req, res, next) => {
       `,
       { replacements, type: QueryTypes.SELECT }
     );
+    const [result] = await sequelize.query(
+      `
+      SELECT
+        MIN(CAST(regexp_replace(filter_value, '[^0-9\\.]+', '', 'g') AS double precision)) AS min,
+        MAX(CAST(regexp_replace(filter_value, '[^0-9\\.]+', '', 'g') AS double precision)) AS max
+      FROM product_filters
+      WHERE filter_field_id = :heightFieldId
+      `,
+      {
+        replacements: { heightFieldId: heightField.id },
+        type: QueryTypes.SELECT,
+      }
+    );
 
     res.json({
+      globalMin: parseFloat(result?.min) || 0,
+      globalMax: parseFloat(result?.max) || 0,
       min: parseFloat(filteredRow?.min) || 0,
       max: parseFloat(filteredRow?.max) || 0,
     });
