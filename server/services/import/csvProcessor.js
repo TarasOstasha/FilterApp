@@ -80,6 +80,8 @@ const processProductCsvFile = (csvFilePath) => {
     fs.createReadStream(csvFilePath)
       .pipe(csv())
       .on('data', (row) => {
+        //console.log('RAW ROW KEYS:', Object.keys(row));
+        //console.log('RAW ROW VALUES:', Object.values(row));
         const code = row.product_code;
         if (!productMap.has(code)) productMap.set(code, []);
         productMap.get(code).push(row);
@@ -93,7 +95,7 @@ const processProductCsvFile = (csvFilePath) => {
               product_img_link,
               product_price,
             } = rows[0]; // take first for product insert
-
+            //console.log(chalk.red('Processing product product_img_link:', Object.values(rows[0])));
             const productResult = await pool.query(
               `INSERT INTO products (product_code, product_name, product_link, product_img_link, product_price)
                VALUES ($1, $2, $3, $4, $5)
