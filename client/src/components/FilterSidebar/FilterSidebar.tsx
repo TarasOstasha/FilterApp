@@ -924,6 +924,7 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
   }
 
   useEffect(() => {
+    console.log(selectedFilters, 'selectedFilters');
     const keys = Object.keys(selectedFilters);
     const nonPrice = keys.filter((k) => k !== 'Product Price');
     if (keys.length === 1 && keys[0] === 'Product Price') return;
@@ -1038,7 +1039,7 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
   );
 
   return (
-    <div className={styles.sidebar} style={{ width: '250px' }}>
+    <div className={styles.sidebar} style={{ width: '250px' }} role="complementary" aria-label="Filters">
       {filterFields.map((ff) => {
         const { field_name: fn, field_type: ft } = ff;
 
