@@ -3,3 +3,4 @@ module.exports.processProductCategoriesCsvFile = require('./productCategoriesCsv
 module.exports.processCategoriesCsvFile = require('./categoriesCsvProcessor');
 module.exports.processProductFiltersCsvFile = require('./productFiltersCsvProcessor');
 module.exports.processFilterFieldsCsvFile = require('./filterFieldCsvProcessor');
+module.exports.processRemoveProductsCsvFile = require('./removeProductsCsvProcessor');
