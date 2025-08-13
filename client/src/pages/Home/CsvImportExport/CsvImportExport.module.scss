@@ -106,3 +106,137 @@
         }
     }
 }
+
+
+/* --- Allowed filenames note: visual polish --- */
+
+.note {
+  /* ensure left-aligned inside a centered page layout */
+  text-align: left;
+
+  /* card */
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 16px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, .08);
+  padding: 16px 18px;
+  position: relative;
+
+  /* subtle accent bar on the left */
+  &::after {
+    content: "";
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 4px;
+    border-radius: 16px 0 0 16px;
+    background: linear-gradient(180deg, #2563eb, #60a5fa);
+  }
+}
+
+.noteError {
+  border-color: #fecaca;
+  box-shadow: 0 8px 24px rgba(220, 38, 38, .18);
+
+  &::after {
+    background: linear-gradient(180deg, #dc2626, #f87171);
+  }
+}
+
+.noteHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.noteTitle {
+  font-size: 16px;
+  font-weight: 700;
+  color: #111827;
+}
+
+.noteBody {
+  font-size: 14px;
+  color: #374151;
+}
+
+/* Responsive, two-column grid of items (auto wraps to 1 col on small screens) */
+.noteList {
+  margin: 8px 0 0 0;
+  padding: 0;
+  list-style: none;
+
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 12px 18px;
+}
+
+.noteList li {
+  position: relative;
+  padding: 10px 12px 10px 36px;
+  border: 1px dashed #e5e7eb;
+  border-radius: 12px;
+  background: #fafafa;
+
+  /* green checkmark icon */
+  &::before {
+    content: "✓";
+    position: absolute;
+    left: 12px; top: 10px;
+    font-weight: 800;
+    color: #10b981;
+  }
+}
+
+/* when the whole note is in error mode, hint in red */
+.noteError .noteList li::before { color: #dc2626; }
+
+.noteDesc {
+  display: block;
+  color: #6b7280;
+  margin-top: 4px;
+}
+
+/* code chip */
+code {
+  background: #f8fafc;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  padding: 2px 8px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 13px;
+  color: #0f172a;
+}
+
+/* --- small helpers already used in JSX --- */
+
+.uploadRow {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin: 10px 0 14px;
+}
+
+.linkBtn {
+  padding: 6px 10px;
+  background: transparent;
+  border: 0;
+  color: #2563eb;
+  cursor: pointer;
+
+  &:disabled {
+    opacity: .45;
+    cursor: not-allowed;
+    text-decoration: none;
+    pointer-events: none;
+  }
+}
+
+.noteWrap { margin: 8px 0 16px; }
+
+.noteClose:disabled {
+  opacity: .45;
+  cursor: not-allowed;
+  pointer-events: none; 
+}

@@ -6,35 +6,38 @@ import 'react-toastify/dist/ReactToastify.css';
 import styles from './CsvImportExport.module.scss';
 import { exportData, uploadCSV } from '../../../api/index';
 import Admin from '../../Admin/Admin';
+import AllowedFilenamesNote, { isAllowedFileName, getUploadTypeFromName } from './AllowedFiles';
+
+
 
 const CsvImportExport: React.FC = () => {
     const [file, setFile] = useState<File | null>(null);
     const [selectedExportType, setSelectedExportType] = useState<string>('');
+    const [showRules, setShowRules] = useState(false);
 
-    // Handle file selection for import
+    const invalid = !!file && !isAllowedFileName(file.name);
+    const errorLock = invalid && !showRules;
+    const shouldShowNote = showRules || invalid;
+
     const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
         if (event.target.files) {
             setFile(event.target.files[0]);
         }
     };
 
-    // Determine upload type based on file name
-    const getUploadType = (fileName: string): string => {
-        
-        // Remove the extension if necessary, like '.csv', for comparison
-        const cleanFileName = fileName.split('.')[0];
-    
-        if (cleanFileName === 'products') return 'product';
-        if (cleanFileName === 'products-remove') return 'product-remove';
-        if (cleanFileName === 'categories') return 'category';
-        if (cleanFileName === 'product_categories') return 'product-category';
-        if (cleanFileName === 'product_filters') return 'product-filter';
-        if (cleanFileName === 'filter_fields') return 'filter-field';
-    
-        return 'unknown';
-    };
+    // const getUploadType = (fileName: string): string => {
+    //     const cleanFileName = fileName.split('.')[0];
 
-    // Handle file upload (import)
+    //     if (cleanFileName === 'products') return 'product';
+    //     if (cleanFileName === 'products-remove') return 'product-remove';
+    //     if (cleanFileName === 'categories') return 'category';
+    //     if (cleanFileName === 'product_categories') return 'product-category';
+    //     if (cleanFileName === 'product_filters') return 'product-filter';
+    //     if (cleanFileName === 'filter_fields') return 'filter-field';
+
+    //     return 'unknown';
+    // };
+
     const handleFileUpload = async () => {
         if (!file) {
             toast.error('Please select a file!');
@@ -42,45 +45,44 @@ const CsvImportExport: React.FC = () => {
         }
 
         const fileName = file.name.toLowerCase();
-        const uploadType = getUploadType(fileName);
-
+        const uploadType = getUploadTypeFromName(fileName); //getUploadType(fileName);
         if (uploadType === 'unknown') {
-            toast.error(
-                <div>
-                    <p><strong>Invalid file name!</strong></p>
-                    <p>Allowed file names are:</p>
-                    <ul>
-                        <li><strong>"categories.csv"</strong> for uploading categories</li>
-                        <li><strong>"product_categories.csv"</strong> for uploading product categories</li>
-                        <li><strong>"product_filters.csv"</strong> for uploading product filters</li>
-                        <li><strong>"filter_fields.csv"</strong> for uploading filter fields</li>
-                        <li><strong>"products.csv"</strong> for uploading products</li>
-                        <li><strong>"products-remove.csv"</strong> for uploading products</li>
-                    </ul>
-                </div>,
-                {
-                    position: "top-right",
-                    autoClose: 5000,
-                    hideProgressBar: false,
-                    closeOnClick: true,
-                    pauseOnHover: true,
-                    draggable: true,
-                    progress: undefined,
-                }
-            );
+            toast.error('Unsupported file name.');
+            setShowRules(true);
             return;
-        }
+          }
+
+        // if (uploadType === 'unknown') {
+        //     toast.error(
+        //         <div>
+        //             <p><strong>Invalid file name!</strong></p>
+        //             <p>Allowed file names are:</p>
+        //             <ul>
+        //                 <li><strong>"categories.csv"</strong> for uploading categories</li>
+        //                 <li><strong>"product_categories.csv"</strong> for uploading product categories</li>
+        //                 <li><strong>"product_filters.csv"</strong> for uploading product filters</li>
+        //                 <li><strong>"filter_fields.csv"</strong> for uploading filter fields</li>
+        //                 <li><strong>"products.csv"</strong> for uploading products</li>
+        //                 <li><strong>"products-remove.csv"</strong> for uploading products</li>
+        //             </ul>
+        //         </div>,
+        //         {
+        //             position: "top-right",
+        //             autoClose: 5000,
+        //             hideProgressBar: false,
+        //             closeOnClick: true,
+        //             pauseOnHover: true,
+        //             draggable: true,
+        //             progress: undefined,
+        //         }
+        //     );
+        //     return;
+        // }
 
 
         const formData = new FormData();
         formData.append('file', file);
         try {
-            
-            // const response = await axios.post(`http://localhost:5000/api/upload-csv/${uploadType}`, formData, {
-            //     headers: {
-            //         'Content-Type': 'multipart/form-data',
-            //     },
-            // });
             const response = await uploadCSV(uploadType, formData);
             const uploadTime = new Date().toLocaleString();
             // toast.success(`File uploaded successfully at ${uploadTime}`);
@@ -93,17 +95,15 @@ const CsvImportExport: React.FC = () => {
             if (axios.isAxiosError(error) && error.response?.data?.message) {
                 toast.error(error.response.data.message);
             } else if (error instanceof Error) {
-                toast.error(error.message); 
+                toast.error(error.message);
             } else {
                 toast.error('Error uploading file');
             }
         }
     };
 
-    // Handle exporting data
     const handleExport = async (type: 'products' | 'categories' | 'product_categories' | 'filter_fields' | 'product_filters') => {
         try {
-            //const response = await axios.get(`http://localhost:5000/api/export/${type}`, { responseType: 'blob' });
             const response: AxiosResponse<Blob> | undefined = await exportData(type)
             // exportData
             if (response && response.data) {
@@ -122,7 +122,7 @@ const CsvImportExport: React.FC = () => {
             toast.error(`Error exporting ${type} data`);
         }
     };
-    
+
 
     const handleExportClick = () => {
         if (selectedExportType) {
@@ -134,6 +134,7 @@ const CsvImportExport: React.FC = () => {
 
     return (
         <div className={styles['csv-import-export']}>
+
             <ToastContainer
                 position="top-right"
                 autoClose={15000}
@@ -148,10 +149,18 @@ const CsvImportExport: React.FC = () => {
             <Admin />
             <h2>Import CSV</h2>
             <input type="file" onChange={handleFileChange} />
-            <button onClick={handleFileUpload} disabled={!file}>
+            <button onClick={handleFileUpload} disabled={!file || invalid}>
                 Import CSV
             </button>
-
+            <button
+                type="button"
+                className={styles.linkBtn}
+                disabled={errorLock}                       
+                aria-disabled={errorLock}
+                onClick={() => setShowRules(v => !v)}
+            >
+                {showRules ? 'Hide allowed import names' : 'Show allowed import names'}
+            </button>
             <h2>Export Data</h2>
             {/* <div className={styles['export-buttons']}>
                 <button onClick={() => handleExport('products')}>Export Products</button>
@@ -176,6 +185,15 @@ const CsvImportExport: React.FC = () => {
                 </select>
                 <button onClick={handleExportClick}>Export</button>
             </div>
+            {shouldShowNote && (
+                <div className={styles.noteWrap}>
+                    <AllowedFilenamesNote
+                        file={file}
+                        open={showRules}
+                        onClose={() => setShowRules(false)}
+                    />
+                </div>
+            )}
         </div>
     );
 };
