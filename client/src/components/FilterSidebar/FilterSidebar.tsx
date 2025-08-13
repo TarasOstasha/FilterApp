@@ -1,815 +1,3 @@
-// import React, { useState, useEffect, useRef } from 'react';
-// import ReactSlider from 'react-slider';
-// import styles from './FilterSidebar.module.scss';
-// import {
-//   fetchFilterSidebarData,
-//   fetchDynamicFilters,
-//   fetchPriceRange,
-//   fetchWidthRange,
-//   fetchHeightRange
-// } from '../../api';
-// import { set } from 'lodash';
-// import { useDebouncedEffect } from '../../utils/useDebouncedEffect';
-
-// interface FilterField {
-//   id: number;
-//   field_name: string;
-//   field_type: 'checkbox' | 'range';
-//   allowed_values: any;
-//   sort_order: number;
-// }
-
-// interface FilterSidebarProps {
-//   onFilterChange: (filter: { field: string; value: any }) => void;
-//   selectedFilters: { [key: string]: string[] };
-// }
-
-
-
-// function parseRangeValue(
-//   field: FilterField,
-//   currentUnit: 'ft' | 'in' | undefined,
-//   selectedFilters: { [key: string]: string[] },
-//   // priceMin: number,
-//   // priceMax: number
-//   globalRanges: {
-//     'Product Price': [number, number],
-//     'Display Width': [number, number],
-//     'Display Height': [number, number],
-//   }
-// ): [number, number] {
-//   const fn = field.field_name;
-//   const sel = selectedFilters[fn]?.[0];
-
-//   if (sel) {
-//     const [min, max] = sel.split(',').map((x) => parseFloat(x));
-//     return [min || 0, max || 0];
-//   }
-
-//   //if (fn === 'Product Price') return [priceMin, priceMax];
-//   if (fn in globalRanges) {
-//     return globalRanges[fn as keyof typeof globalRanges];
-//   }
-  
-//    //if (fn === 'Display Width') return [priceMin, priceMax];
-//     //if (fn === 'Display Height') return [priceMin, priceMax];
-//   if (
-//     typeof field.allowed_values === 'object' &&
-//     currentUnit &&
-//     field.allowed_values[currentUnit]
-//   ) {
-//     const { min, max } = field.allowed_values[currentUnit];
-//     return [min, max];
-//   }
-
-//   if (Array.isArray(field.allowed_values)) {
-//     const arr = field.allowed_values.map((x: any) => parseFloat(x) || 0);
-//     return [arr[0], arr[arr.length - 1]];
-//   }
-//   return [0, 0];
-// }
-
-// const FilterSidebar: React.FC<FilterSidebarProps> = ({
-//   onFilterChange,
-//   selectedFilters
-// }) => {
-//   const [filterFields, setFilterFields] = useState<FilterField[]>([]);
-//   const [unitSelections, setUnitSelections] = useState<{ [k: string]: 'ft' | 'in' }>(
-//     {
-//       'Display Width': 'in',
-//       'Display Height': 'in'
-//     }
-//   );
-//   const [priceMin, setPriceMin] = useState(0);
-//   const [priceMax, setPriceMax] = useState(0);
-//   const [priceBreakpoints, setPriceBreakpoints] = useState<number[]>([]);
-//   const priceFetchTimeout = useRef<number>();
-
-//   const [globalMinWidth, setGlobalMinWidth] = useState(0);
-//   const [globalMaxWidth, setGlobalMaxWidth] = useState(0);
-//   const [globalMinHeight, setGlobalMinHeight] = useState(0);
-//   const [globalMaxHeight, setGlobalMaxHeight] = useState(0);
-
-//   const [widthMin, setWidthMin] = useState(0);
-//   const [widthMax, setWidthMax] = useState(0);
-//   const [heightMin, setHeightMin] = useState(0);
-//   const [heightMax, setHeightMax] = useState(0);
-
-
-//   function handleCheckboxChange(field: string, value: string) {
-//     onFilterChange({ field, value });
-//   }
-
-//   function handleRangeSliderChange(fieldName: string, sliderValue: number | number[]) {
-//     if (Array.isArray(sliderValue) && sliderValue.length === 2) {
-//       onFilterChange({
-//         field: fieldName,
-//         value: `${sliderValue[0]},${sliderValue[1]}`
-//       });
-//     }
-//   }
-
-//   function handleUnitSwitch(fieldName: string) {
-//     setUnitSelections((prev) => {
-//       const next = prev[fieldName] === 'ft' ? 'in' : 'ft';
-//       const fd = filterFields.find((f) => f.field_name === fieldName);
-//       console.log(Object.values(fd || {}), '<< fd keys in handleUnitSwitch');
-//       if (fd && fd.allowed_values[next]) {
-//         const { min, max } = fd.allowed_values[next];
-//         console.log(min, max, '<< min, max in handleUnitSwitch');
-//         onFilterChange({ field: fieldName, value: `${min},${max}` });
-//       }
-//       return { ...prev, [fieldName]: next };
-//     });
-//   }
-
-//   // useEffect(() => {
-//   //   async function load() {
-//   //     try {
-//   //       const res = await fetchFilterSidebarData();
-//   //       const fields = (res?.data ?? []) as FilterField[];
-
-//   //       const transformed = fields.map((f) => {
-//   //         console.log(f, '<< filter field in sidebar');
-//   //         if ((f.field_name === 'Display Width' || f.field_name === 'Display Height') && Array.isArray(f.allowed_values)) {
-//   //           const inches = f.allowed_values.map((v: string) => parseFloat(v) || 0);
-            
-//   //           const minIn = Math.min(...inches);
-//   //           const maxIn = Math.max(...inches);
-//   //           console.log(minIn, maxIn, '<< inches in sidebar');
-//   //           return {
-//   //             ...f,
-//   //             allowed_values: {
-//   //               in: { min: minIn, max: maxIn },
-//   //               ft: { min: minIn / 12, max: maxIn / 12 }
-//   //             }
-//   //           };
-//   //         }
-//   //         return f;
-//   //       });
-//   //       transformed.sort((a, b) => a.sort_order - b.sort_order);
-//   //       setFilterFields(transformed);
-//   //     } catch (err) {
-//   //       console.warn('Failed to load static facets', err);
-//   //     }
-//   //   }
-//   //   load();
-//   // }, []);
-
-//   useEffect(() => {
-//     const keys = Object.keys(selectedFilters);
-//     console.log(keys, '<< selectedFilters in useEffect');
-//     const nonPrice = keys.filter((k) => k !== 'Product Price');
-//     console.log(nonPrice, '<< nonPrice in useEffect');
-//     if (keys.length === 1 && keys[0] === 'Product Price') return;
-
-//     window.clearTimeout(priceFetchTimeout.current);
-//     priceFetchTimeout.current = window.setTimeout(() => {
-//       if (keys.length === 0) {
-//         fetchFilterSidebarData()
-//           .then((r) => setFilterFields(r?.data ?? []))
-//           .catch(() => console.warn('Static reload failed'));
-//       } else if (nonPrice.length > 0) {
-//         const params = Object.fromEntries(nonPrice.map((k) => [k, selectedFilters[k].join(',')]));
-
-//         fetchDynamicFilters(params)
-//           .then((r) => {
-//             const d = r?.data;
-//             if (Array.isArray(d)) {
-//               setFilterFields(
-//                 d.map((f) => ({
-//                   id: f.filter_field_id,
-//                   field_name: f.field_name,
-//                   field_type: f.field_type,
-//                   allowed_values: f.values,
-//                   sort_order: f.sort_order ?? 0
-//                 }))
-//               );
-//             }
-//           })
-//           .catch(() => fetchFilterSidebarData().then((r) => setFilterFields(r?.data ?? [])));
-//       }
-
-//       const priceParams =
-//         nonPrice.length > 0
-//           ? Object.fromEntries(nonPrice.map((k) => [k, selectedFilters[k].join(',')]))
-//           : undefined;
-//       console.log(priceParams, '<< priceParams in useEffect');
-//       fetchPriceRange(priceParams)
-//         .then((pr) => {
-//           //console.log(pr.data.breakpoints, '<< price breakpoints in fetchPriceRange');
-//           if (pr?.data) {
-//             setPriceMin(pr.data.min);
-//             setPriceMax(pr.data.max);
-//             setPriceBreakpoints(pr.data.breakpoints || []);
-//           }
-//         })
-//         .catch(() => console.warn('Filtered price fetch failed', priceParams));
-//     }, 500);
-
-//     return () => window.clearTimeout(priceFetchTimeout.current);
-//   }, [selectedFilters]);
-
-
-//   useEffect(() => {
-//     const fetchGlobalDefaultRanges = async () => {
-//       const resGlobalWidth = await fetchWidthRange();
-//       // set global ranges values for width
-//       setGlobalMinWidth(resGlobalWidth?.data.globalMin || 0);
-//       setGlobalMaxWidth(resGlobalWidth?.data.globalMax || 0);
-//       // set global ranges values for height
-//       const resGlobalHeight = await fetchHeightRange();
-//       setGlobalMinHeight(resGlobalHeight?.data.globalMin || 0);
-//       setGlobalMaxHeight(resGlobalHeight?.data.globalMax || 0);
-//     }
-//     fetchGlobalDefaultRanges();
-//   }, []);
-
-//   // useEffect(() => {
-//   //   const fetchWidthRangeResult = async () => {
-//   //     try {
-//   //       const res = await fetchWidthRange();
-//   //        // set local ranges values
-//   //       setWidthMin(res?.data.min || 0);
-//   //       setWidthMax(res?.data.max || 0);
-//   //     } catch (err) {
-//   //       console.error('Error fetching width range:', err);
-//   //     }
-//   //   };
-//   //   window.clearTimeout(widthFetchTimeout.current);
-//   //   widthFetchTimeout.current = window.setTimeout(() => {
-//   //     fetchWidthRangeResult();
-//   //   },300);
-  
-//   // }, [selectedFilters]);
-
-//   useDebouncedEffect(
-//     () => {
-//       (async () => {
-//         try {
-//           const otherFilters = Object.keys(selectedFilters)
-//           .filter((k) => k !== 'Display Width')                
-//           .reduce<Record<string,string>>(
-//             (acc, k) => ((acc[k] = selectedFilters[k].join(',')), acc),
-//             {}
-//           );
-
-//           const res = await fetchWidthRange(otherFilters)
-//           setWidthMin(res?.data.min ?? 0)
-//           setWidthMax(res?.data.max ?? 0)
-//         } catch (err) {
-//           console.error('Error fetching width range:', err)
-//         }
-//       })()
-//     },
-//     [selectedFilters],
-//     500
-//   )
-  
-//   useDebouncedEffect(
-//     () => {
-//       (async () => {
-//         try {
-//           const otherFilters = Object.keys(selectedFilters)
-//           .filter((k) => k !== 'Display Height')
-//           .reduce<Record<string,string>>(
-//             (acc, k) => ((acc[k] = selectedFilters[k].join(',')), acc),
-//             {}
-//           );
-
-//           const res = await fetchHeightRange(otherFilters)
-//           setHeightMin(res?.data.min ?? 0)
-//           setHeightMax(res?.data.max ?? 0)
-//         } catch (err) {
-//           console.error('Error fetching height range:', err)
-//         }
-//       })()
-//     },
-//     [selectedFilters],
-//     300
-//   )
-  
-
-//   // useEffect(() => {
-//   //   const fetchHeightRangeResult = async () => {
-//   //     try {
-//   //       const res = await fetchHeightRange();
-//   //       // set local ranges values
-//   //       setHeightMin(res?.data.min || 0);
-//   //       setHeightMax(res?.data.max || 0);
-//   //       //console.log(res?.data, '<< Height range data');
-//   //     } catch (err) {
-//   //       console.error('Error fetching width range:', err);
-//   //     }
-//   //   };
-  
-//   //   fetchHeightRangeResult(); 
-//   // }, [selectedFilters]);
-  
-
-//   return (
-//     <div className={styles.sidebar} style={{ width: '250px' }}>
-//       {filterFields.map((ff) => {
-//         //console.log(ff, '<< filter field in sidebar');
-//         const { field_name: fn, field_type: ft } = ff;
-//         if (ft === 'checkbox') {
-//           return (
-//             <div key={ff.id} className={styles['filter-section']}>
-//               <h4>{fn}</h4>
-//               <ul className={styles['filter-list']}>
-//                 {(ff.allowed_values as string[]).map((val, i) => (
-//                   <li key={i} className={styles['filter-item']}>
-//                     <label>
-//                       <input
-//                         type="checkbox"
-//                         value={val}
-//                         checked={selectedFilters[fn]?.includes(val) || false}
-//                         onChange={() => handleCheckboxChange(fn, val)}
-//                         className={styles['sidebar-checkbox-input']}
-//                       />
-//                       {val}
-//                     </label>
-//                   </li>
-//                 ))}
-//               </ul>
-//             </div>
-//           );
-//         }
-//         if (ft === 'range') {
-//           const [curMin, curMax] = parseRangeValue(
-//             ff,
-//             unitSelections[fn],
-//             selectedFilters,
-//             //priceMin,
-//             //priceMax
-//             {
-//               'Product Price': [priceMin, priceMax],
-//               'Display Width': [widthMin, widthMax],
-//               'Display Height': [heightMin, heightMax],
-//             }
-//           );
-
-//           // const renderSlider = () => {
-//           //   if (fn === 'Product Price') {
-//           //     const minIdx = priceBreakpoints.findIndex((v) => v >= curMin);
-//           //     const maxIdx = priceBreakpoints.findIndex((v) => v >= curMax);
-//           //     return (
-//           //       <ReactSlider
-//           //         className={styles['range-slider']}
-//           //         thumbClassName={styles['range-slider-thumb']}
-//           //         trackClassName={styles['range-slider-track']}
-//           //         min={0}
-//           //         max={priceBreakpoints.length - 1}
-//           //         step={1}
-//           //         value={[minIdx, maxIdx]}
-//           //         onChange={(indices) => {
-//           //           if (!Array.isArray(indices)) return;
-//           //           const [minIdx, maxIdx] = indices;
-//           //           handleRangeSliderChange(fn, [priceBreakpoints[minIdx], priceBreakpoints[maxIdx]]);
-//           //         }}
-//           //         pearling
-//           //         withTracks
-//           //         minDistance={1}
-//           //       />
-//           //     );
-//           //   }
-//           //   if (fn === 'Display Width') {
-//           //     const unit = unitSelections[fn] || 'in'
-//           //     const factor = unit === 'ft' ? 12 : 1
-            
-//           //     // compute UI range bounds
-//           //     const rawMin = globalMinWidth
-//           //     const rawMax = globalMaxWidth
-//           //     const uiMin = unit === 'ft' 
-//           //       ? 1 
-//           //       : rawMin
-//           //     const uiMax = unit === 'ft'
-//           //       ? Math.ceil(rawMax / 12)
-//           //       : rawMax
-            
-//           //     // convert the current inch thumbs → UI-units
-//           //     const toUi = (inch: number) => {
-//           //       if (unit === 'in') return inch
-//           //       const ft = inch / factor
-//           //       if (ft < 1) return 1
-//           //       return (ft % 1) >= 0.5 ? Math.ceil(ft) : Math.floor(ft)
-//           //     }
-//           //     const curMinUi = toUi(curMin)
-//           //     const curMaxUi = toUi(curMax)
-            
-//           //     // onChange we convert back to inches
-//           //     const fromUi = (ui: number) => ui * factor
-//           //     return (
-//           //       <>
-//           //         <div className={styles['unit-switcher']}>
-//           //           <button onClick={() => handleUnitSwitch(fn)}>
-//           //             Switch to {unitSelections[fn] === 'ft' ? 'inches' : 'feet'}
-//           //           </button>
-//           //         </div>
-//           //         <ReactSlider
-//           //           className={styles['range-slider']}
-//           //           thumbClassName={styles['range-slider-thumb']}
-//           //           trackClassName={styles['range-slider-track']}
-//           //           min={uiMin}
-//           //           max={uiMax}
-//           //           step={1}
-//           //           value={[curMinUi, curMaxUi]}
-//           //           onChange={(uiVals) => {
-//           //             if (!Array.isArray(uiVals)) return
-//           //             const [minUi, maxUi] = uiVals
-//           //             handleRangeSliderChange(fn, [
-//           //               fromUi(minUi),
-//           //               fromUi(maxUi)
-//           //             ])
-//           //           }}
-//           //           pearling
-//           //           withTracks
-//           //           minDistance={1}
-//           //         />
-//           //         <div key={ff.id} className={styles['filter-section']}>
-//           //           <div className={styles['range-slider-container']}>
-                      
-//           //             <div className={styles['range-values']}>
-//           //               <input
-//           //                   type="number"
-//           //                   value={unit === 'ft' ? curMinUi : curMin}
-//           //                   onChange={e => {
-//           //                     const v = parseFloat(e.target.value)
-//           //                     if (isNaN(v)) return
-//           //                     handleRangeSliderChange(fn, [
-//           //                       unit === 'ft' ? fromUi(v) : v,
-//           //                       curMax
-//           //                     ])
-//           //                   }}
-//           //                   style={{ width: 80, marginRight: 8 }}
-//           //                 />
-//           //                 <input
-//           //                   type="number"
-//           //                   value={unit === 'ft' ? curMaxUi : curMax}
-//           //                   onChange={e => {
-//           //                     const v = parseFloat(e.target.value)
-//           //                     if (isNaN(v)) return
-//           //                     handleRangeSliderChange(fn, [
-//           //                       curMin,
-//           //                       unit === 'ft' ? fromUi(v) : v
-//           //                     ])
-//           //                   }}
-//           //                   style={{ width: 80 }}
-//           //                 />
-//           //               </div>  
-//           //           </div>
-                    
-//           //         </div>
-//           //         {/* <ReactSlider
-//           //             className={styles['range-slider']}
-//           //             thumbClassName={styles['range-slider-thumb']}
-//           //             trackClassName={styles['range-slider-track']}
-//           //             min={globalMinWidth}
-//           //             max={globalMaxWidth}
-//           //             step={1}
-//           //             value={[curMin, curMax]}
-//           //             onChange={(v) => handleRangeSliderChange(fn, v)}
-//           //             pearling
-//           //             withTracks
-//           //             minDistance={1}
-//           //           /> */}
-//           //       </>
-                
-//           //     );
-//           //   }
-//           //   if (fn === 'Display Height') {
-//           //     const unit = unitSelections[fn] || 'in';
-//           //     const factor = unit === 'ft' ? 12 : 1;
-//           //     const minUi = globalMinHeight / factor;
-//           //     const maxUi = globalMaxHeight / factor;
-//           //     const curMinUi = curMin / factor;
-//           //     const curMaxUi = curMax / factor;
-//           //     return (
-//           //       <>
-//           //         <div className={styles['unit-switcher']}>
-//           //           <button onClick={() => handleUnitSwitch(fn)}>
-//           //             Switch to {unitSelections[fn] === 'ft' ? 'inches' : 'feet'}
-//           //           </button>
-//           //         </div>
-//           //         <ReactSlider
-//           //           className={styles['range-slider']}
-//           //           thumbClassName={styles['range-slider-thumb']}
-//           //           trackClassName={styles['range-slider-track']}
-//           //           min={minUi}
-//           //           max={maxUi}
-//           //           step={1}
-//           //           value={[curMinUi, curMaxUi]}
-//           //           onChange={(uiVals) => {
-//           //             if (!Array.isArray(uiVals)) return;
-//           //             const [uiMin, uiMax] = uiVals;
-//           //             handleRangeSliderChange(fn, [uiMin * factor, uiMax * factor]);
-//           //           }}
-//           //           pearling
-//           //           withTracks
-//           //           minDistance={1}
-//           //         />
-//           //         {/* <ReactSlider
-//           //           className={styles['range-slider']}
-//           //           thumbClassName={styles['range-slider-thumb']}
-//           //           trackClassName={styles['range-slider-track']}
-//           //           min={globalMinHeight}
-//           //           max={globalMaxHeight}
-//           //           step={1}
-//           //           value={[curMin, curMax]}
-//           //           onChange={(v) => handleRangeSliderChange(fn, v)}
-//           //           pearling
-//           //           withTracks
-//           //           minDistance={1}
-//           //         /> */}
-//           //       </>
-                
-//           //     );
-//           //   }
-//           //   // method for general range sliders
-//           //   // return (
-//           //   //   <ReactSlider
-//           //   //     className={styles['range-slider']}
-//           //   //     thumbClassName={styles['range-slider-thumb']}
-//           //   //     trackClassName={styles['range-slider-track']}
-//           //   //     min={minWidth}
-//           //   //     max={maxWidth}
-//           //   //     step={1}
-//           //   //     value={[curMin, curMax]}
-//           //   //     onChange={(v) => handleRangeSliderChange(fn, v)}
-//           //   //     pearling
-//           //   //     withTracks
-//           //   //     minDistance={1}
-//           //   //   />
-//           //   // );
-//           // };
-
-//           // return (
-//           //   <div key={ff.id} className={styles['filter-section']}>
-//           //     <h4>{fn}</h4>
-//           //     <div className={styles['range-slider-container']}>
-//           //       {renderSlider()}
-//           //       <div className={styles['range-values']}>
-//           //         <input
-//           //           type="number"
-//           //           value={curMin}
-//           //           onChange={(e) => {
-//           //             const v = parseFloat(e.target.value);
-//           //             if (!isNaN(v)) handleRangeSliderChange(fn, [v, curMax]);
-//           //           }}
-//           //           style={{ width: 80, marginRight: 8 }}
-//           //         />
-//           //         <input
-//           //           type="number"
-//           //           value={curMax}
-//           //           onChange={(e) => {
-//           //             const v = parseFloat(e.target.value);
-//           //             if (!isNaN(v)) handleRangeSliderChange(fn, [curMin, v]);
-//           //           }}
-//           //           style={{ width: 80 }}
-//           //         />
-//           //       </div>
-//           //     </div>
-//           //   </div>
-//           // );
-        
-         
-//           /////////////// *************************** \\\\\\\\\\\\\\\\\\\\\\\\\\\\
-//           const renderSlider = () => {
-//             switch (fn) {
-//               case 'Product Price': {
-//                 const lo = priceBreakpoints.findIndex(v => v >= curMin);
-//                 const hi = priceBreakpoints.findIndex(v => v >= curMax);
-//                 console.log(lo, hi, '<< priceBreakpoints in renderSlider *******************');
-//                 return (
-//                   <>
-//                     <ReactSlider
-//                       className={styles['range-slider']}
-//                       thumbClassName={styles['range-slider-thumb']}
-//                       trackClassName={styles['range-slider-track']}
-//                       min={0}
-//                       max={priceBreakpoints.length - 1}
-//                       step={1}
-//                       value={[lo, hi]}
-//                       onChange={indices => {
-//                         if (!Array.isArray(indices)) return;
-//                         const [minIdx, maxIdx] = indices;
-//                         handleRangeSliderChange(fn,[priceBreakpoints[minIdx], priceBreakpoints[maxIdx]]
-//                         );
-//                       }}
-//                       pearling
-//                       withTracks
-//                       minDistance={1}
-//                     />
-//                     <div className={styles['range-values']}>
-//                       <input
-//                         type="number"
-//                         value={curMin}
-//                         onChange={e => {
-//                           const v = parseFloat(e.target.value);
-//                           if (!isNaN(v)) handleRangeSliderChange(fn, [v, curMax]);
-//                         }}
-//                         style={{ width: 80, marginRight: 8 }}
-//                       />
-//                       <input
-//                         type="number"
-//                         value={curMax}
-//                         onChange={e => {
-//                           const v = parseFloat(e.target.value);
-//                           if (!isNaN(v)) handleRangeSliderChange(fn, [curMin, v]);
-//                         }}
-//                         style={{ width: 80 }}
-//                       />
-//                     </div>
-//                   </>
-//                 );
-//               }
-              
-              
-              
-//               case 'Display Width': {
-//                 const unit = unitSelections[fn] || 'in';
-//                 const factor = unit === 'ft' ? 12 : 1;
-//                 const uiMin = unit === 'ft' ? 1 : globalMinWidth;
-//                 const uiMax = unit === 'ft' ? Math.ceil(globalMaxWidth / factor) : globalMaxWidth;
-//                 const toUi = (inch: number) => {
-//                   if (unit === 'in') return inch;
-//                   const ft = inch / factor;
-//                   return ft < 1 ? 1 : (ft % 1) >= 0.5 ? Math.ceil(ft) : Math.floor(ft);
-//                 };
-//                 const fromUi = (ui: number) => ui * factor;
-//                 const lo = toUi(curMin);
-//                 const hi = toUi(curMax);
-          
-//                 return (
-//                   <>
-//                     <div className={styles['unit-switcher']}>
-//                       <button onClick={() => handleUnitSwitch(fn)}>
-//                         Switch to {unit === 'ft' ? 'inches' : 'feet'}
-//                       </button>
-//                     </div>
-//                     <ReactSlider
-//                       className={styles['range-slider']}
-//                       thumbClassName={styles['range-slider-thumb']}
-//                       trackClassName={styles['range-slider-track']}
-//                       min={uiMin}
-//                       max={uiMax}
-//                       step={1}
-//                       value={[lo, hi]}
-//                       onChange={vals => {
-//                         if (!Array.isArray(vals)) return;
-//                         const [minUi, maxUi] = vals;
-//                         handleRangeSliderChange(fn, [
-//                           fromUi(minUi),
-//                           fromUi(maxUi),
-//                         ]);
-//                       }}
-//                       pearling
-//                       withTracks
-//                       minDistance={1}
-//                     />
-//                     <div className={styles['range-values']}>
-//                       <input
-//                         type="number"
-//                         value={unit === 'ft' ? lo : curMin}
-//                         onChange={e => {
-//                           const v = parseFloat(e.target.value);
-//                           if (isNaN(v)) return;
-//                           handleRangeSliderChange(fn, [
-//                             unit === 'ft' ? fromUi(v) : v,
-//                             curMax,
-//                           ]);
-//                         }}
-//                         style={{ width: 80, marginRight: 8 }}
-//                       />
-//                       <input
-//                         type="number"
-//                         value={unit === 'ft' ? hi : curMax}
-//                         onChange={e => {
-//                           const v = parseFloat(e.target.value);
-//                           if (isNaN(v)) return;
-//                           handleRangeSliderChange(fn, [
-//                             curMin,
-//                             unit === 'ft' ? fromUi(v) : v,
-//                           ]);
-//                         }}
-//                         style={{ width: 80 }}
-//                       />
-//                     </div>
-//                   </>
-//                 );
-//               }
-          
-//               case 'Display Height': {
-//                 const unit = unitSelections[fn] || 'in';
-//                 const factor = unit === 'ft' ? 12 : 1;
-              
-//                 const toUi = (inch: number) => {
-//                   if (unit === 'in') return inch;
-//                   const ft = inch / factor;
-//                   if (ft < 1) return 1;
-//                   return (ft % 1) >= 0.5 ? Math.ceil(ft) : Math.floor(ft);
-//                 };
-//                 const fromUi = (ui: number) => ui * factor;
-              
-//                 // compute slider bounds in UI units
-//                 const minUi = unit === 'ft' ? 1 : globalMinHeight;
-//                 const maxUi = unit === 'ft' ? Math.ceil(globalMaxHeight / factor) : globalMaxHeight;
-              
-//                 // convert the current inches into rounded UI units
-//                 const lo = toUi(curMin);
-//                 const hi = toUi(curMax);
-          
-//                 return (
-//                   <>
-//                     <div className={styles['unit-switcher']}>
-//                       <button onClick={() => handleUnitSwitch(fn)}>
-//                         Switch to {unit === 'ft' ? 'inches' : 'feet'}
-//                       </button>
-//                     </div>
-//                     <ReactSlider
-//                       className={styles['range-slider']}
-//                       thumbClassName={styles['range-slider-thumb']}
-//                       trackClassName={styles['range-slider-track']}
-//                       min={minUi}
-//                       max={maxUi}
-//                       step={1}
-//                       value={[lo, hi]}
-//                       onChange={vals => {
-//                         if (!Array.isArray(vals)) return;
-//                         const [minUi, maxUi] = vals;
-//                         handleRangeSliderChange(fn, [
-//                           fromUi(minUi),
-//                           fromUi(maxUi),
-//                         ]);
-//                       }}
-//                       pearling
-//                       withTracks
-//                       minDistance={1}
-//                     />
-//                     <div className={styles['range-values']}>
-//                       <input
-//                         type="number"
-//                         value={unit === 'ft' ? lo : curMin}
-//                         onChange={e => {
-//                           const v = parseFloat(e.target.value);
-//                           if (isNaN(v)) return;
-//                           handleRangeSliderChange(fn, [
-//                             unit === 'ft' ? fromUi(v) : v,
-//                             curMax,
-//                           ]);
-//                         }}
-//                         style={{ width: 80, marginRight: 8 }}
-//                       />
-//                       <input
-//                         type="number"
-//                         value={unit === 'ft' ? hi : curMax}
-//                         onChange={e => {
-//                           const v = parseFloat(e.target.value);
-//                           if (isNaN(v)) return;
-//                           handleRangeSliderChange(fn, [
-//                             curMin,
-//                             unit === 'ft' ? fromUi(v) : v,
-//                           ]);
-//                         }}
-//                         style={{ width: 80 }}
-//                       />
-//                     </div>
-//                   </>
-//                 );
-//               }
-          
-//               default:
-//                 return null;
-//             }
-//           };
-
-        
-          
-          
-//           return (
-//             <div key={ff.id} className={styles['filter-section']}>
-//               <h4>{fn}</h4>
-//               <div className={styles['range-slider-container']}>
-//                 {renderSlider()}
-//               </div>
-//             </div>
-//           );
-          
-          
-//         }
-        
-//         return null;
-//       })}
-
-//     </div>
-//   );
-// };
-
-// export default FilterSidebar;
-
-
-
-
 import React, { useState, useEffect, useRef } from 'react';
 import ReactSlider from 'react-slider';
 import styles from './FilterSidebar.module.scss';
@@ -873,6 +61,12 @@ function parseRangeValue(
   return [0, 0];
 }
 
+// small helpers to prevent unnecessary setState churn
+const arraysEqual = (a: number[] = [], b: number[] = []) =>
+  a.length === b.length && a.every((v, i) => v === b[i]);
+
+const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(v, hi));
+
 const FilterSidebar: React.FC<FilterSidebarProps> = ({
   onFilterChange,
   selectedFilters
@@ -911,86 +105,35 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
     }
   }
 
+  // SAFE unit switch (notify parent first, then set our local state)
   function handleUnitSwitch(fieldName: string) {
-    setUnitSelections((prev) => {
-      const next = prev[fieldName] === 'ft' ? 'in' : 'ft';
-      const fd = filterFields.find((f) => f.field_name === fieldName);
-      if (fd && fd.allowed_values[next]) {
-        const { min, max } = fd.allowed_values[next];
-        onFilterChange({ field: fieldName, value: `${min},${max}` });
-      }
-      return { ...prev, [fieldName]: next };
-    });
+    const next = (unitSelections[fieldName] || 'in') === 'ft' ? 'in' : 'ft';
+    if (fieldName === 'Display Width') {
+      onFilterChange({ field: fieldName, value: `${widthMin || globalMinWidth},${widthMax || globalMaxWidth}` });
+    } else if (fieldName === 'Display Height') {
+      onFilterChange({ field: fieldName, value: `${heightMin || globalMinHeight},${heightMax || globalMaxHeight}` });
+    }
+    setUnitSelections((prev) => ({ ...prev, [fieldName]: next }));
   }
 
+  // ----- INITIAL GLOBAL DEFAULTS -----
   useEffect(() => {
-    const keys = Object.keys(selectedFilters);
-    const nonPrice = keys.filter((k) => k !== 'Product Price');
-    if (keys.length === 1 && keys[0] === 'Product Price') return;
-
-    window.clearTimeout(priceFetchTimeout.current);
-    priceFetchTimeout.current = window.setTimeout(() => {
-      if (keys.length === 0) {
-        fetchFilterSidebarData()
-          .then((r) => setFilterFields(r?.data ?? []))
-          .catch(() => console.warn('Static reload failed'));
-      } else if (nonPrice.length > 0) {
-        const params = Object.fromEntries(
-          nonPrice.map((k) => [k, selectedFilters[k].join(',')])
-        );
-
-        fetchDynamicFilters(params)
-          .then((r) => {
-            const d = r?.data;
-            if (Array.isArray(d)) {
-              setFilterFields(
-                d.map((f) => ({
-                  id: f.filter_field_id,
-                  field_name: f.field_name,
-                  field_type: f.field_type,
-                  allowed_values: f.values,
-                  sort_order: f.sort_order ?? 0
-                }))
-              );
-            }
-          })
-          .catch(() =>
-            fetchFilterSidebarData().then((r) => setFilterFields(r?.data ?? []))
-          );
-      }
-
-      const priceParams =
-        nonPrice.length > 0
-          ? Object.fromEntries(nonPrice.map((k) => [k, selectedFilters[k].join(',')]))
-          : undefined;
-
-      fetchPriceRange(priceParams)
-        .then((pr) => {
-          if (pr?.data) {
-            setPriceMin(pr.data.min);
-            setPriceMax(pr.data.max);
-            setPriceBreakpoints(pr.data.breakpoints || []);
-          }
-        })
-        .catch(() => console.warn('Filtered price fetch failed', priceParams));
-    }, 500);
-
-    return () => window.clearTimeout(priceFetchTimeout.current);
-  }, [selectedFilters]);
-
-  useEffect(() => {
-    const fetchGlobalDefaultRanges = async () => {
+    (async () => {
       const resGlobalWidth = await fetchWidthRange();
-      setGlobalMinWidth(resGlobalWidth?.data.globalMin || 0);
-      setGlobalMaxWidth(resGlobalWidth?.data.globalMax || 0);
+      const gwMin = resGlobalWidth?.data.globalMin || 0;
+      const gwMax = resGlobalWidth?.data.globalMax || 0;
+      setGlobalMinWidth(gwMin);
+      setGlobalMaxWidth(gwMax);
 
       const resGlobalHeight = await fetchHeightRange();
-      setGlobalMinHeight(resGlobalHeight?.data.globalMin || 0);
-      setGlobalMaxHeight(resGlobalHeight?.data.globalMax || 0);
-    };
-    fetchGlobalDefaultRanges();
+      const ghMin = resGlobalHeight?.data.globalMin || 0;
+      const ghMax = resGlobalHeight?.data.globalMax || 0;
+      setGlobalMinHeight(ghMin);
+      setGlobalMaxHeight(ghMax);
+    })();
   }, []);
 
+  // ----- LIVE FILTERED WIDTH RANGE -----
   useDebouncedEffect(
     () => {
       (async () => {
@@ -1001,10 +144,11 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
               (acc, k) => ((acc[k] = selectedFilters[k].join(',')), acc),
               {}
             );
-
           const res = await fetchWidthRange(otherFilters);
-          setWidthMin(res?.data.min ?? 0);
-          setWidthMax(res?.data.max ?? 0);
+          const mn = res?.data.min ?? 0;
+          const mx = res?.data.max ?? 0;
+          setWidthMin((prev) => (prev === mn ? prev : mn));
+          setWidthMax((prev) => (prev === mx ? prev : mx));
         } catch (err) {
           console.error('Error fetching width range:', err);
         }
@@ -1014,6 +158,7 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
     500
   );
 
+  // ----- LIVE FILTERED HEIGHT RANGE -----
   useDebouncedEffect(
     () => {
       (async () => {
@@ -1024,10 +169,11 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
               (acc, k) => ((acc[k] = selectedFilters[k].join(',')), acc),
               {}
             );
-
           const res = await fetchHeightRange(otherFilters);
-          setHeightMin(res?.data.min ?? 0);
-          setHeightMax(res?.data.max ?? 0);
+          const mn = res?.data.min ?? 0;
+          const mx = res?.data.max ?? 0;
+          setHeightMin((prev) => (prev === mn ? prev : mn));
+          setHeightMax((prev) => (prev === mx ? prev : mx));
         } catch (err) {
           console.error('Error fetching height range:', err);
         }
@@ -1036,6 +182,123 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
     [selectedFilters],
     300
   );
+
+  // ----- MAIN: NORMALIZE & FETCH FIELDS + PRICE -----
+  // IMPORTANT: this effect depends ONLY on selectedFilters to avoid loops.
+  useEffect(() => {
+    const parsePair = (s?: string) => {
+      if (!s) return [NaN, NaN] as const;
+      const [a, b] = s.split(',').map(Number);
+      return [a, b] as const;
+    };
+    const same = (x: number, y: number) => Math.abs(x - y) < 1e-6;
+
+    const noFiltersAtAll = Object.keys(selectedFilters).length === 0;
+
+    const bpLast = priceBreakpoints?.[priceBreakpoints.length - 1] ?? 0;
+    const priceRailMin = noFiltersAtAll ? 0 : priceMin;
+    const priceRailMax = noFiltersAtAll ? (priceMax > 0 ? priceMax : bpLast) : priceMax;
+
+    const widthRailMin  = widthMin  || globalMinWidth;
+    const widthRailMax  = widthMax  || globalMaxWidth;
+    const heightRailMin = heightMin || globalMinHeight;
+    const heightRailMax = heightMax || globalMaxHeight;
+
+    const normalized: Record<string, string[]> = {};
+    for (const [k, arr] of Object.entries(selectedFilters)) {
+      if (!Array.isArray(arr) || arr.length === 0) continue;
+
+      if (k === 'Product Price') {
+        const [mn, mx] = parsePair(arr[0]);
+        if (same(mn, priceRailMin) && same(mx, priceRailMax)) continue;
+      } else if (k === 'Display Width') {
+        const [mn, mx] = parsePair(arr[0]); // inches
+        if (same(mn, widthRailMin) && same(mx, widthRailMax)) continue;
+      } else if (k === 'Display Height') {
+        const [mn, mx] = parsePair(arr[0]); // inches
+        if (same(mn, heightRailMin) && same(mx, heightRailMax)) continue;
+      }
+      normalized[k] = arr;
+    }
+
+    const keys = Object.keys(normalized);
+    const nonPrice = keys.filter((k) => k !== 'Product Price');
+
+    window.clearTimeout(priceFetchTimeout.current);
+    priceFetchTimeout.current = window.setTimeout(() => {
+      // Filters sidebar (fields)
+      if (keys.length === 0) {
+        fetchFilterSidebarData()
+          .then((r) => {
+            const next = r?.data ?? [];
+            setFilterFields((prev) =>
+              prev.length === next.length &&
+              prev.every((p, i) =>
+                p.id === next[i].id &&
+                p.field_name === next[i].field_name &&
+                p.field_type === next[i].field_type
+              )
+                ? prev
+                : next
+            );
+          })
+          .catch(() => console.warn('Static reload failed'));
+      } else if (nonPrice.length > 0) {
+        const params = Object.fromEntries(
+          nonPrice.map((k) => [k, normalized[k].join(',')])
+        );
+
+        fetchDynamicFilters(params)
+          .then((r) => {
+            const d = r?.data;
+            if (Array.isArray(d)) {
+              const next: FilterField[] = d.map((f: any) => ({
+                id: f.filter_field_id,
+                field_name: f.field_name,
+                field_type: f.field_type,
+                allowed_values: f.values,
+                sort_order: f.sort_order ?? 0,
+              }));
+              setFilterFields((prev) =>
+                prev.length === next.length &&
+                prev.every((p, i) =>
+                  p.id === next[i].id &&
+                  p.field_name === next[i].field_name &&
+                  p.field_type === next[i].field_type
+                )
+                  ? prev
+                  : next
+              );
+            }
+          })
+          .catch(() =>
+            fetchFilterSidebarData().then((r) => setFilterFields(r?.data ?? []))
+          );
+      }
+
+      // Price range (depends on the non-price filters)
+      const priceParams =
+        nonPrice.length > 0
+          ? Object.fromEntries(nonPrice.map((k) => [k, normalized[k].join(',')]))
+          : undefined;
+
+      fetchPriceRange(priceParams)
+        .then((pr) => {
+          if (pr?.data) {
+            setPriceMin((prev) => (prev === pr.data.min ? prev : pr.data.min));
+            setPriceMax((prev) => (prev === pr.data.max ? prev : pr.data.max));
+            const nextBps: number[] = pr.data.breakpoints || [];
+            setPriceBreakpoints((prev) =>
+              arraysEqual(prev, nextBps) ? prev : nextBps
+            );
+          }
+        })
+        .catch(() => console.warn('Filtered price fetch failed', priceParams));
+    }, 500);
+
+    return () => window.clearTimeout(priceFetchTimeout.current);
+    // ⚠️ Only selectedFilters here to avoid fetch loops
+  }, [selectedFilters]);
 
   return (
     <div className={styles.sidebar} style={{ width: '250px' }}>
@@ -1078,9 +341,120 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
             }
           );
 
-          // ---------- Product Price (snap/clamp to breakpoints) ----------
+          // ---------- Product Price ----------
+          // if (fn === 'Product Price') {
+          //   if (!priceBreakpoints?.length) {
+          //     return (
+          //       <div key={ff.id} className={styles['filter-section']}>
+          //         <h4>{fn}</h4>
+          //       </div>
+          //     );
+          //   }
+
+          //   const bpLast = priceBreakpoints[priceBreakpoints.length - 1];
+          //   const noFiltersAtAll = Object.keys(selectedFilters).length === 0;
+
+          //   const railMinVal = noFiltersAtAll ? 0 : priceMin;
+          //   const railMaxVal = noFiltersAtAll
+          //     ? (priceMax > 0 ? priceMax : bpLast)
+          //     : priceMax;
+
+          //   let effMin = Number.isFinite(curMinRaw) ? curMinRaw : railMinVal;
+          //   let effMax = Number.isFinite(curMaxRaw) ? curMaxRaw : railMaxVal;
+
+          //   effMin = clamp(effMin, railMinVal, railMaxVal);
+          //   effMax = clamp(effMax, railMinVal, railMaxVal);
+          //   if (effMin > effMax) { effMin = railMinVal; effMax = railMaxVal; }
+
+          //   const firstIdxGE0 = priceBreakpoints.findIndex(v => v >= railMinVal);
+          //   const firstIdxGE  = firstIdxGE0 === -1 ? 0 : firstIdxGE0;
+          //   const lastIdxLE   = (() => {
+          //     let idx = priceBreakpoints.length - 1;
+          //     for (let i = priceBreakpoints.length - 1; i >= 0; i--) {
+          //       if (priceBreakpoints[i] <= railMaxVal) { idx = i; break; }
+          //     }
+          //     return idx;
+          //   })();
+
+          //   const idxFor = (v: number) => {
+          //     const ge = priceBreakpoints.findIndex(x => x >= v);
+          //     if (ge === -1) return priceBreakpoints.length - 1;
+          //     return priceBreakpoints[ge] === v ? ge : Math.max(0, ge - 1);
+          //   };
+
+          //   let loIdx = Math.max(firstIdxGE, idxFor(effMin));
+          //   let hiIdx = Math.min(lastIdxLE,  idxFor(effMax));
+          //   if (loIdx > hiIdx) { loIdx = firstIdxGE; hiIdx = lastIdxLE; }
+
+          //   return (
+          //     <div key={ff.id} className={styles['filter-section']}>
+          //       <h4>{fn}</h4>
+          //       <div className={styles['range-slider-container']}>
+          //         <ReactSlider
+          //           className={styles['range-slider']}
+          //           thumbClassName={styles['range-slider-thumb']}
+          //           trackClassName={styles['range-slider-track']}
+          //           min={firstIdxGE}
+          //           max={lastIdxLE}
+          //           step={1}
+          //           value={[loIdx, hiIdx]}
+          //           onChange={(indices) => {
+          //             if (!Array.isArray(indices)) return;
+          //             const a = clamp(indices[0], firstIdxGE, lastIdxLE);
+          //             const b = clamp(indices[1], firstIdxGE, lastIdxLE);
+          //             const [minIdx, maxIdx] = a <= b ? [a, b] : [firstIdxGE, lastIdxLE];
+          //             handleRangeSliderChange(fn, [
+          //               priceBreakpoints[minIdx],
+          //               priceBreakpoints[maxIdx],
+          //             ]);
+          //           }}
+          //           pearling
+          //           withTracks
+          //           minDistance={1}
+          //         />
+          //         <div className={styles['range-values']}>
+          //           <input
+          //             type="text"
+          //             min={railMinVal}
+          //             max={railMaxVal}
+          //             value={effMin}
+          //             onChange={(e) => {
+          //               const raw = Number(e.target.value);
+          //               if (Number.isNaN(raw)) return;
+          //               const v = clamp(raw, railMinVal, railMaxVal);
+          //               const ge = priceBreakpoints.findIndex(x => x >= v);
+          //               const idx = ge === -1 ? priceBreakpoints.length - 1 : (priceBreakpoints[ge] === v ? ge : Math.max(0, ge - 1));
+          //               handleRangeSliderChange(fn, [priceBreakpoints[idx], effMax]);
+          //             }}
+          //             style={{ width: 80, marginRight: 8 }}
+          //           />
+          //           <input
+          //             type="text"
+          //             min={railMinVal}
+          //             max={railMaxVal}
+          //             value={effMax}
+          //             onChange={(e) => {
+          //               const raw = Number(e.target.value);
+          //               if (Number.isNaN(raw)) return;
+          //               const v = clamp(raw, railMinVal, railMaxVal);
+          //               const ge = priceBreakpoints.findIndex(x => x >= v);
+          //               const idx = ge === -1 ? priceBreakpoints.length - 1 : (priceBreakpoints[ge] === v ? ge : Math.max(0, ge - 1));
+          //               handleRangeSliderChange(fn, [effMin, priceBreakpoints[idx]]);
+          //             }}
+          //             style={{ width: 80 }}
+          //           />
+          //         </div>
+          //       </div>
+          //     </div>
+          //   );
+          // }
+
+
+          // *************************
+          // ---------- Product Price (visible on first load; snaps to breakpoints) ----------
           if (fn === 'Product Price') {
-            if (!priceBreakpoints?.length) {
+            // need breakpoints to draw the slider at all
+            if (!priceBreakpoints || priceBreakpoints.length === 0) {
               return (
                 <div key={ff.id} className={styles['filter-section']}>
                   <h4>{fn}</h4>
@@ -1088,87 +462,92 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
               );
             }
 
-            const bpFirst = priceBreakpoints[0];
             const bpLast = priceBreakpoints[priceBreakpoints.length - 1];
 
-            // sanitize
-            let effMin = Number.isFinite(curMinRaw) ? curMinRaw : bpFirst;
-            let effMax = Number.isFinite(curMaxRaw) ? curMaxRaw : bpLast;
+            // If API hasn't returned real min/max yet (both 0), show a visible fallback rail 0..bpLast
+            const hasRealRange = priceMax > 0 && priceMax >= priceMin;
+            const railMin = hasRealRange ? priceMin : 0;
+            const railMax = hasRealRange ? priceMax : bpLast;
 
-            if (effMin < bpFirst) effMin = bpFirst;
-            if (effMax > bpLast)  effMax = bpLast;
-            if (effMin > effMax) { effMin = bpFirst; effMax = bpLast; }
+            // show current (selection or rail)
+            let effMin = Number.isFinite(curMinRaw) ? curMinRaw : railMin;
+            let effMax = Number.isFinite(curMaxRaw) ? curMaxRaw : railMax;
+            if (effMin > effMax) { effMin = railMin; effMax = railMax; }
 
-            // indices with guards
-            const loIdx = priceBreakpoints.findIndex(v => v >= effMin);
-            const hiIdxFirstGE = priceBreakpoints.findIndex(v => v >= effMax);
+            // Build the list of *allowed* steps inside the rail
+            const railBps = priceBreakpoints.filter(v => v >= railMin && v <= railMax);
+            // Safety: if rail clips between two breakpoints, still force at least the ends
+            const safeRailBps = railBps.length ? railBps : [railMin, railMax];
 
-            // use let because we may adjust them
-            let safeLo = loIdx === -1 ? 0 : loIdx;
-
-            // for hi we want the last <= effMax
-            let safeHi = priceBreakpoints.length - 1;
-            if (hiIdxFirstGE !== -1) {
-              if (priceBreakpoints[hiIdxFirstGE] === effMax) {
-                safeHi = hiIdxFirstGE;
-              } else {
-                safeHi = Math.max(0, hiIdxFirstGE - 1);
+            // helpers on rail breakpoints
+            const lastIdxLE = (v: number) => {
+              let idx = 0;
+              for (let i = 0; i < safeRailBps.length; i++) {
+                if (safeRailBps[i] <= v) idx = i; else break;
               }
-            }
+              return idx;
+            };
+            const clampIdx = (i: number) =>
+              Math.max(0, Math.min(i, safeRailBps.length - 1));
 
-            // ensure lo <= hi
-            if (safeLo > safeHi) {
-              safeLo = 0;
-              safeHi = priceBreakpoints.length - 1;
-            }
+            // slider thumbs are indices into safeRailBps
+            let loIdx = clampIdx(lastIdxLE(effMin));
+            let hiIdx = clampIdx(lastIdxLE(effMax));
+            if (loIdx > hiIdx) { loIdx = 0; hiIdx = safeRailBps.length - 1; }
 
             return (
               <div key={ff.id} className={styles['filter-section']}>
                 <h4>{fn}</h4>
+
                 <div className={styles['range-slider-container']}>
                   <ReactSlider
                     className={styles['range-slider']}
                     thumbClassName={styles['range-slider-thumb']}
                     trackClassName={styles['range-slider-track']}
                     min={0}
-                    max={priceBreakpoints.length - 1}
+                    max={safeRailBps.length - 1}
                     step={1}
-                    value={[safeLo, safeHi]}
+                    value={[loIdx, hiIdx]}
                     onChange={(indices) => {
                       if (!Array.isArray(indices)) return;
-                      const [minIdx, maxIdx] = indices;
-                      handleRangeSliderChange(fn, [
-                        priceBreakpoints[minIdx],
-                        priceBreakpoints[maxIdx],
-                      ]);
+                      const a = clampIdx(indices[0]);
+                      const b = clampIdx(indices[1]);
+                      const [minIdx, maxIdx] = a <= b ? [a, b] : [0, safeRailBps.length - 1];
+                      // send snapped breakpoint values
+                      handleRangeSliderChange(fn, [safeRailBps[minIdx], safeRailBps[maxIdx]]);
                     }}
                     pearling
                     withTracks
                     minDistance={1}
                   />
+
                   <div className={styles['range-values']}>
+                    {/* Inputs show real values; typing snaps to nearest allowed breakpoint within rails */}
                     <input
-                      type="number"
+                      type="text"
+                      min={railMin}
+                      max={railMax}
                       value={effMin}
                       onChange={(e) => {
-                        const v = Number(e.target.value);
-                        if (isNaN(v)) return;
-                        const idx = Math.max(0, priceBreakpoints.findIndex(x => x >= v));
-                        handleRangeSliderChange(fn, [priceBreakpoints[idx], effMax]);
+                        const raw = Number(e.target.value);
+                        if (Number.isNaN(raw)) return;
+                        const clamped = Math.max(railMin, Math.min(raw, railMax));
+                        const i = lastIdxLE(clamped);
+                        handleRangeSliderChange(fn, [safeRailBps[i], effMax]);
                       }}
                       style={{ width: 80, marginRight: 8 }}
                     />
                     <input
-                      type="number"
+                      type="text"
+                      min={railMin}
+                      max={railMax}
                       value={effMax}
                       onChange={(e) => {
-                        const v = Number(e.target.value);
-                        if (isNaN(v)) return;
-                        let idx = priceBreakpoints.length - 1;
-                        for (let i = priceBreakpoints.length - 1; i >= 0; i--) {
-                          if (priceBreakpoints[i] <= v) { idx = i; break; }
-                        }
-                        handleRangeSliderChange(fn, [effMin, priceBreakpoints[idx]]);
+                        const raw = Number(e.target.value);
+                        if (Number.isNaN(raw)) return;
+                        const clamped = Math.max(railMin, Math.min(raw, railMax));
+                        const i = lastIdxLE(clamped);
+                        handleRangeSliderChange(fn, [effMin, safeRailBps[i]]);
                       }}
                       style={{ width: 80 }}
                     />
@@ -1178,28 +557,36 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
             );
           }
 
+          // *************************
+
           // ---------- Display Width ----------
           if (fn === 'Display Width') {
             const unit = unitSelections[fn] || 'in';
             const factor = unit === 'ft' ? 12 : 1;
-            const uiMin = unit === 'ft' ? 1 : globalMinWidth;
-            const uiMax = unit === 'ft' ? Math.ceil(globalMaxWidth / factor) : globalMaxWidth;
 
-            const toUi = (inch: number) => {
-              if (unit === 'in') return inch;
-              const ft = inch / factor;
-              return ft < 1 ? 1 : (ft % 1) >= 0.5 ? Math.ceil(ft) : Math.floor(ft);
-            };
+            const toUi = (inch: number) =>
+              unit === 'in' ? inch : Math.max(1, Math.round(inch / factor));
             const fromUi = (ui: number) => ui * factor;
 
-            const lo = toUi(curMinRaw);
-            const hi = toUi(curMaxRaw);
+            const railMinIn = widthMin || globalMinWidth;
+            const railMaxIn = widthMax || globalMaxWidth;
+
+            const uiMin = toUi(railMinIn);
+            const uiMax = toUi(railMaxIn);
+
+            const isFrozen = uiMin >= uiMax;
+
+            const selMinIn = Number.isFinite(curMinRaw) ? curMinRaw : railMinIn;
+            const selMaxIn = Number.isFinite(curMaxRaw) ? curMaxRaw : railMaxIn;
+
+            const lo = clamp(toUi(selMinIn), uiMin, uiMax);
+            const hi = clamp(toUi(selMaxIn), uiMin, uiMax);
 
             return (
               <div key={ff.id} className={styles['filter-section']}>
                 <h4>{fn}</h4>
                 <div className={styles['unit-switcher']}>
-                  <button onClick={() => handleUnitSwitch(fn)}>
+                  <button type="button" onClick={() => handleUnitSwitch(fn)}>
                     Switch to {unit === 'ft' ? 'inches' : 'feet'}
                   </button>
                 </div>
@@ -1211,43 +598,61 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
                   max={uiMax}
                   step={1}
                   value={[lo, hi]}
-                  onChange={vals => {
-                    if (!Array.isArray(vals)) return;
-                    const [minUi, maxUi] = vals;
+                  disabled={isFrozen}
+                  pearling={!isFrozen}
+                  withTracks
+                  minDistance={isFrozen ? 0 : 1}
+                  onChange={(vals) => {
+                    if (isFrozen || !Array.isArray(vals)) return;
+                    const a = clamp(vals[0], uiMin, uiMax);
+                    const b = clamp(vals[1], uiMin, uiMax);
+                    const [minUi, maxUi] = a <= b ? [a, b] : [uiMin, uiMax];
                     handleRangeSliderChange(fn, [fromUi(minUi), fromUi(maxUi)]);
                   }}
-                  pearling
-                  withTracks
-                  minDistance={1}
                 />
                 <div className={styles['range-values']}>
                   <input
-                    type="number"
-                    value={unit === 'ft' ? lo : curMinRaw}
-                    onChange={e => {
-                      const v = parseFloat(e.target.value);
-                      if (isNaN(v)) return;
+                    type="text"
+                    min={uiMin}
+                    max={uiMax}
+                    value={unit === 'ft' ? lo : clamp(selMinIn, railMinIn, railMaxIn)}
+                    disabled={isFrozen}
+                    onChange={(e) => {
+                      if (isFrozen) return;
+                      const raw = Number(e.target.value);
+                      if (Number.isNaN(raw)) return;
+                      const v = clamp(raw, uiMin, uiMax);
                       handleRangeSliderChange(fn, [
                         unit === 'ft' ? fromUi(v) : v,
-                        curMaxRaw,
+                        unit === 'ft' ? fromUi(hi) : clamp(selMaxIn, railMinIn, railMaxIn),
                       ]);
                     }}
                     style={{ width: 80, marginRight: 8 }}
                   />
                   <input
-                    type="number"
-                    value={unit === 'ft' ? hi : curMaxRaw}
-                    onChange={e => {
-                      const v = parseFloat(e.target.value);
-                      if (isNaN(v)) return;
+                    type="text"
+                    min={uiMin}
+                    max={uiMax}
+                    value={unit === 'ft' ? hi : clamp(selMaxIn, railMinIn, railMaxIn)}
+                    disabled={isFrozen}
+                    onChange={(e) => {
+                      if (isFrozen) return;
+                      const raw = Number(e.target.value);
+                      if (Number.isNaN(raw)) return;
+                      const v = clamp(raw, uiMin, uiMax);
                       handleRangeSliderChange(fn, [
-                        curMinRaw,
+                        unit === 'ft' ? fromUi(lo) : clamp(selMinIn, railMinIn, railMaxIn),
                         unit === 'ft' ? fromUi(v) : v,
                       ]);
                     }}
                     style={{ width: 80 }}
                   />
                 </div>
+                {isFrozen && (
+                  <div className={styles['frozenHint']}>
+                    Only products at width {unit === 'ft' ? `${uiMin} ft` : `${railMinIn} in`} match other filters.
+                  </div>
+                )}
               </div>
             );
           }
@@ -1257,25 +662,29 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
             const unit = unitSelections[fn] || 'in';
             const factor = unit === 'ft' ? 12 : 1;
 
-            const toUi = (inch: number) => {
-              if (unit === 'in') return inch;
-              const ft = inch / factor;
-              if (ft < 1) return 1;
-              return (ft % 1) >= 0.5 ? Math.ceil(ft) : Math.floor(ft);
-            };
+            const toUi = (inch: number) =>
+              unit === 'in' ? inch : Math.max(1, Math.round(inch / factor));
             const fromUi = (ui: number) => ui * factor;
 
-            const minUi = unit === 'ft' ? 1 : globalMinHeight;
-            const maxUi = unit === 'ft' ? Math.ceil(globalMaxHeight / factor) : globalMaxHeight;
+            const railMinIn = heightMin || globalMinHeight;
+            const railMaxIn = heightMax || globalMaxHeight;
 
-            const lo = toUi(curMinRaw);
-            const hi = toUi(curMaxRaw);
+            const minUi = toUi(railMinIn);
+            const maxUi = toUi(railMaxIn);
+
+            const isFrozen = minUi >= maxUi;
+
+            const selMinIn = Number.isFinite(curMinRaw) ? curMinRaw : railMinIn;
+            const selMaxIn = Number.isFinite(curMaxRaw) ? curMaxRaw : railMaxIn;
+
+            const lo = clamp(toUi(selMinIn), minUi, maxUi);
+            const hi = clamp(toUi(selMaxIn), minUi, maxUi);
 
             return (
               <div key={ff.id} className={styles['filter-section']}>
                 <h4>{fn}</h4>
                 <div className={styles['unit-switcher']}>
-                  <button onClick={() => handleUnitSwitch(fn)}>
+                  <button type="button" onClick={() => handleUnitSwitch(fn)}>
                     Switch to {unit === 'ft' ? 'inches' : 'feet'}
                   </button>
                 </div>
@@ -1287,43 +696,61 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
                   max={maxUi}
                   step={1}
                   value={[lo, hi]}
+                  disabled={isFrozen}
+                  pearling={!isFrozen}
+                  withTracks
+                  minDistance={isFrozen ? 0 : 1}
                   onChange={vals => {
-                    if (!Array.isArray(vals)) return;
-                    const [minUiVal, maxUiVal] = vals;
+                    if (isFrozen || !Array.isArray(vals)) return;
+                    const a = clamp(vals[0], minUi, maxUi);
+                    const b = clamp(vals[1], minUi, maxUi);
+                    const [minUiVal, maxUiVal] = a <= b ? [a, b] : [minUi, maxUi];
                     handleRangeSliderChange(fn, [fromUi(minUiVal), fromUi(maxUiVal)]);
                   }}
-                  pearling
-                  withTracks
-                  minDistance={1}
                 />
                 <div className={styles['range-values']}>
                   <input
-                    type="number"
-                    value={unit === 'ft' ? lo : curMinRaw}
+                    type="text"
+                    min={minUi}
+                    max={maxUi}
+                    value={unit === 'ft' ? lo : clamp(selMinIn, railMinIn, railMaxIn)}
+                    disabled={isFrozen}
                     onChange={e => {
-                      const v = parseFloat(e.target.value);
-                      if (isNaN(v)) return;
+                      if (isFrozen) return;
+                      const raw = Number(e.target.value);
+                      if (Number.isNaN(raw)) return;
+                      const v = clamp(raw, minUi, maxUi);
                       handleRangeSliderChange(fn, [
                         unit === 'ft' ? fromUi(v) : v,
-                        curMaxRaw,
+                        unit === 'ft' ? fromUi(hi) : clamp(selMaxIn, railMinIn, railMaxIn),
                       ]);
                     }}
                     style={{ width: 80, marginRight: 8 }}
                   />
                   <input
-                    type="number"
-                    value={unit === 'ft' ? hi : curMaxRaw}
+                    type="text"
+                    min={minUi}
+                    max={maxUi}
+                    value={unit === 'ft' ? hi : clamp(selMaxIn, railMinIn, railMaxIn)}
+                    disabled={isFrozen}
                     onChange={e => {
-                      const v = parseFloat(e.target.value);
-                      if (isNaN(v)) return;
+                      if (isFrozen) return;
+                      const raw = Number(e.target.value);
+                      if (Number.isNaN(raw)) return;
+                      const v = clamp(raw, minUi, maxUi);
                       handleRangeSliderChange(fn, [
-                        curMinRaw,
+                        unit === 'ft' ? fromUi(lo) : clamp(selMinIn, railMinIn, railMaxIn),
                         unit === 'ft' ? fromUi(v) : v,
                       ]);
                     }}
                     style={{ width: 80 }}
                   />
                 </div>
+                {isFrozen && (
+                  <div className={styles['frozenHint']}>
+                    Only products at height {unit === 'ft' ? `${minUi} ft` : `${railMinIn} in`} match other filters.
+                  </div>
+                )}
               </div>
             );
           }
@@ -1338,17 +765,3 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
 };
 
 export default FilterSidebar;
-
-
-
-
-
-
-
-
-
-
-
-
-
-
