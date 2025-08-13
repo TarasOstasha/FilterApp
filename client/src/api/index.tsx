@@ -1,6 +1,14 @@
 import axios, { AxiosResponse, AxiosError } from 'axios';
 import { toast } from 'react-toastify';
 
+  // width range
+interface WidthRangeResponse {
+    min: number;
+    max: number;
+    globalMin: number;
+    globalMax: number;
+}
+
 const axiosInstance = axios.create({
     baseURL: 'http://localhost:5000/api',
     // headers: {
@@ -34,13 +42,7 @@ export const fetchPriceRange = async (params?: Record<string,string>) => {
     }
   };
 
-  // width range
-  interface WidthRangeResponse {
-    min: number;
-    max: number;
-    globalMin: number;
-    globalMax: number;
-  }
+
 export const fetchWidthRange = async (params?: Record<string, string>) => {
     try {
       //console.log(params ? Object.values(params) : [], '<< params in fetchWidthRange');
@@ -60,11 +62,8 @@ export const fetchHeightRange = async (params?: Record<string, string>) => {
       console.error(err);
       return undefined;
     }
-  };
+};
   
-  
-  
-
 // fetch megafiltered products
 // export const fetchMegaFilteredProductsFromAPI = async (searchTerm: string): Promise<AxiosResponse<any> | undefined> => {
 //     const queryParams = new URLSearchParams();

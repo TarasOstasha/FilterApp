@@ -25,6 +25,7 @@ const CsvImportExport: React.FC = () => {
         const cleanFileName = fileName.split('.')[0];
     
         if (cleanFileName === 'products') return 'product';
+        if (cleanFileName === 'products-remove') return 'product-remove';
         if (cleanFileName === 'categories') return 'category';
         if (cleanFileName === 'product_categories') return 'product-category';
         if (cleanFileName === 'product_filters') return 'product-filter';
@@ -54,6 +55,7 @@ const CsvImportExport: React.FC = () => {
                         <li><strong>"product_filters.csv"</strong> for uploading product filters</li>
                         <li><strong>"filter_fields.csv"</strong> for uploading filter fields</li>
                         <li><strong>"products.csv"</strong> for uploading products</li>
+                        <li><strong>"products-remove.csv"</strong> for uploading products</li>
                     </ul>
                 </div>,
                 {

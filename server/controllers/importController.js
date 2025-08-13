@@ -36,6 +36,18 @@ module.exports.importProducts = async (req, res, next) => {
     }
 }
 
+module.exports.importRemoveProducts = async (req, res, next) => {
+    if (!req.file) {
+        return next(createHttpError(400, 'No file uploaded or invalid file format (only .csv allowed)'));
+    }
+    try {
+        await processRemoveProductsCsvFile(req.file.path);
+        res.status(200).json({ message: 'File processed successfully' });
+    } catch (err) {
+        next(createHttpError(500, 'Error processing file'));
+    }
+}
+
 module.exports.importProductCategories = async (req, res, next) => {
     if (!req.file) {
         return next(createHttpError(400, 'No file uploaded or invalid file format (only .csv allowed)'));
@@ -116,14 +128,3 @@ module.exports.importFilterFields = async (req, res, next) => {
     }
 };
 
-module.exports.importRemoveProducts = async (req, res, next) => {
-    if (!req.file) {
-        return next(createHttpError(400, 'No file uploaded or invalid file format (only .csv allowed)'));
-    }
-    try {
-        await processRemoveProductsCsvFile(req.file.path);
-        res.status(200).json({ message: 'File processed successfully' });
-    } catch (err) {
-        next(createHttpError(500, 'Error processing file'));
-    }
-}
