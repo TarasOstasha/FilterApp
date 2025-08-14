@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import FilterSidebar from '../../components/FilterSidebar/FilterSidebar';
 import ProductList from '../../components/ProductList/ProductList';
 import SortDropdown from '../../components/SortDropdown/SortDropdown';
@@ -19,6 +19,7 @@ interface Product {
 }
 
 const Home: React.FC = () => {
+  const firstRender = useRef(true);
   const [selectedFilters, setSelectedFilters] = useState<{ [key: string]: string[] }>({});
   const [products, setProducts] = useState<Product[]>([]);
   const [itemsPerPage, setItemsPerPage] = useState(27); // Set default items per page
@@ -218,7 +219,14 @@ const Home: React.FC = () => {
 
   }, []);
   
+  useEffect(() => {
+    if (firstRender.current) { firstRender.current = false; return; }
+    // jump or smooth — your choice
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [currentPage]);
 
+
+  
   const totalPages = Math.ceil(totalProducts / itemsPerPage);
 
 
