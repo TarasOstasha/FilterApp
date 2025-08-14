@@ -452,8 +452,113 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
 
           // *************************
           // ---------- Product Price (visible on first load; snaps to breakpoints) ----------
+          // if (fn === 'Product Price') {
+          //   // need breakpoints to draw the slider at all
+          //   if (!priceBreakpoints || priceBreakpoints.length === 0) {
+          //     return (
+          //       <div key={ff.id} className={styles['filter-section']}>
+          //         <h4>{fn}</h4>
+          //       </div>
+          //     );
+          //   }
+
+          //   const bpLast = priceBreakpoints[priceBreakpoints.length - 1];
+
+          //   // If API hasn't returned real min/max yet (both 0), show a visible fallback rail 0..bpLast
+          //   const hasRealRange = priceMax > 0 && priceMax >= priceMin;
+          //   const railMin = hasRealRange ? priceMin : 0;
+          //   const railMax = hasRealRange ? priceMax : bpLast;
+
+          //   // show current (selection or rail)
+          //   let effMin = Number.isFinite(curMinRaw) ? curMinRaw : railMin;
+          //   let effMax = Number.isFinite(curMaxRaw) ? curMaxRaw : railMax;
+          //   if (effMin > effMax) { effMin = railMin; effMax = railMax; }
+
+          //   // Build the list of *allowed* steps inside the rail
+          //   const railBps = priceBreakpoints.filter(v => v >= railMin && v <= railMax);
+          //   // Safety: if rail clips between two breakpoints, still force at least the ends
+          //   const safeRailBps = railBps.length ? railBps : [railMin, railMax];
+
+          //   // helpers on rail breakpoints
+          //   const lastIdxLE = (v: number) => {
+          //     let idx = 0;
+          //     for (let i = 0; i < safeRailBps.length; i++) {
+          //       if (safeRailBps[i] <= v) idx = i; else break;
+          //     }
+          //     return idx;
+          //   };
+          //   const clampIdx = (i: number) =>
+          //     Math.max(0, Math.min(i, safeRailBps.length - 1));
+
+          //   // slider thumbs are indices into safeRailBps
+          //   let loIdx = clampIdx(lastIdxLE(effMin));
+          //   let hiIdx = clampIdx(lastIdxLE(effMax));
+          //   if (loIdx > hiIdx) { loIdx = 0; hiIdx = safeRailBps.length - 1; }
+
+          //   return (
+          //     <div key={ff.id} className={styles['filter-section']}>
+          //       <h4>{fn}</h4>
+
+          //       <div className={styles['range-slider-container']}>
+          //         <ReactSlider
+          //           className={styles['range-slider']}
+          //           thumbClassName={styles['range-slider-thumb']}
+          //           trackClassName={styles['range-slider-track']}
+          //           min={0}
+          //           max={safeRailBps.length - 1}
+          //           step={1}
+          //           value={[loIdx, hiIdx]}
+          //           onChange={(indices) => {
+          //             if (!Array.isArray(indices)) return;
+          //             const a = clampIdx(indices[0]);
+          //             const b = clampIdx(indices[1]);
+          //             const [minIdx, maxIdx] = a <= b ? [a, b] : [0, safeRailBps.length - 1];
+          //             // send snapped breakpoint values
+          //             handleRangeSliderChange(fn, [safeRailBps[minIdx], safeRailBps[maxIdx]]);
+          //           }}
+          //           pearling
+          //           withTracks
+          //           minDistance={1}
+          //         />
+
+          //         <div className={styles['range-values']}>
+          //           {/* Inputs show real values; typing snaps to nearest allowed breakpoint within rails */}
+          //           <input
+          //             type="text"
+          //             min={railMin}
+          //             max={railMax}
+          //             value={effMin}
+          //             onChange={(e) => {
+          //               const raw = Number(e.target.value);
+          //               if (Number.isNaN(raw)) return;
+          //               const clamped = Math.max(railMin, Math.min(raw, railMax));
+          //               const i = lastIdxLE(clamped);
+          //               handleRangeSliderChange(fn, [safeRailBps[i], effMax]);
+          //             }}
+          //             style={{ width: 80, marginRight: 8 }}
+          //           />
+          //           <input
+          //             type="text"
+          //             min={railMin}
+          //             max={railMax}
+          //             value={effMax}
+          //             onChange={(e) => {
+          //               const raw = Number(e.target.value);
+          //               if (Number.isNaN(raw)) return;
+          //               const clamped = Math.max(railMin, Math.min(raw, railMax));
+          //               const i = lastIdxLE(clamped);
+          //               handleRangeSliderChange(fn, [effMin, safeRailBps[i]]);
+          //             }}
+          //             style={{ width: 80 }}
+          //           />
+          //         </div>
+          //       </div>
+          //     </div>
+          //   );
+          // }
+         
+          // ---------- Product Price (snap to breakpoints; freeze when rail collapses) ----------
           if (fn === 'Product Price') {
-            // need breakpoints to draw the slider at all
             if (!priceBreakpoints || priceBreakpoints.length === 0) {
               return (
                 <div key={ff.id} className={styles['filter-section']}>
@@ -464,22 +569,25 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
 
             const bpLast = priceBreakpoints[priceBreakpoints.length - 1];
 
-            // If API hasn't returned real min/max yet (both 0), show a visible fallback rail 0..bpLast
+            // If API hasn't returned real min/max yet, show fallback rail 0..bpLast
             const hasRealRange = priceMax > 0 && priceMax >= priceMin;
             const railMin = hasRealRange ? priceMin : 0;
             const railMax = hasRealRange ? priceMax : bpLast;
 
-            // show current (selection or rail)
+            // Current values (from selection or rails)
             let effMin = Number.isFinite(curMinRaw) ? curMinRaw : railMin;
             let effMax = Number.isFinite(curMaxRaw) ? curMaxRaw : railMax;
             if (effMin > effMax) { effMin = railMin; effMax = railMax; }
 
-            // Build the list of *allowed* steps inside the rail
+            // Breakpoints inside the current rail
             const railBps = priceBreakpoints.filter(v => v >= railMin && v <= railMax);
-            // Safety: if rail clips between two breakpoints, still force at least the ends
             const safeRailBps = railBps.length ? railBps : [railMin, railMax];
 
+            // 🔒 Freeze when there is no usable span (only one step or exact single price)
+            const isFrozen = railMin === railMax || safeRailBps.length <= 1;
+
             // helpers on rail breakpoints
+            const clampIdx = (i: number) => Math.max(0, Math.min(i, safeRailBps.length - 1));
             const lastIdxLE = (v: number) => {
               let idx = 0;
               for (let i = 0; i < safeRailBps.length; i++) {
@@ -487,8 +595,6 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
               }
               return idx;
             };
-            const clampIdx = (i: number) =>
-              Math.max(0, Math.min(i, safeRailBps.length - 1));
 
             // slider thumbs are indices into safeRailBps
             let loIdx = clampIdx(lastIdxLE(effMin));
@@ -508,27 +614,28 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
                     max={safeRailBps.length - 1}
                     step={1}
                     value={[loIdx, hiIdx]}
+                    disabled={isFrozen}
+                    pearling={!isFrozen}
+                    withTracks
+                    minDistance={isFrozen ? 0 : 1}
                     onChange={(indices) => {
-                      if (!Array.isArray(indices)) return;
+                      if (isFrozen || !Array.isArray(indices)) return;
                       const a = clampIdx(indices[0]);
                       const b = clampIdx(indices[1]);
                       const [minIdx, maxIdx] = a <= b ? [a, b] : [0, safeRailBps.length - 1];
-                      // send snapped breakpoint values
                       handleRangeSliderChange(fn, [safeRailBps[minIdx], safeRailBps[maxIdx]]);
                     }}
-                    pearling
-                    withTracks
-                    minDistance={1}
                   />
 
                   <div className={styles['range-values']}>
-                    {/* Inputs show real values; typing snaps to nearest allowed breakpoint within rails */}
                     <input
-                      type="text"
+                      type="number"
                       min={railMin}
                       max={railMax}
                       value={effMin}
+                      disabled={isFrozen}
                       onChange={(e) => {
+                        if (isFrozen) return;
                         const raw = Number(e.target.value);
                         if (Number.isNaN(raw)) return;
                         const clamped = Math.max(railMin, Math.min(raw, railMax));
@@ -538,11 +645,13 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
                       style={{ width: 80, marginRight: 8 }}
                     />
                     <input
-                      type="text"
+                      type="number"
                       min={railMin}
                       max={railMax}
                       value={effMax}
+                      disabled={isFrozen}
                       onChange={(e) => {
+                        if (isFrozen) return;
                         const raw = Number(e.target.value);
                         if (Number.isNaN(raw)) return;
                         const clamped = Math.max(railMin, Math.min(raw, railMax));
@@ -552,6 +661,12 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
                       style={{ width: 80 }}
                     />
                   </div>
+
+                  {isFrozen && (
+                    <div className={styles['frozenHint']}>
+                      Only products priced at {railMin === railMax ? `$${railMin}` : `$${safeRailBps[0]}`} match other filters.
+                    </div>
+                  )}
                 </div>
               </div>
             );
