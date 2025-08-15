@@ -47,7 +47,7 @@ interface PaginationControlsProps {
 //   );
 // };
 
-const PaginationControls: React.FC<PaginationControlsProps> = ({ 
+const PaginationControls: React.FC<PaginationControlsProps> = ({
   visibleProducts,
   totalProducts,
   onLoadMore,
@@ -62,7 +62,13 @@ const PaginationControls: React.FC<PaginationControlsProps> = ({
       </div> */}
       {visibleProducts < totalProducts && (
         <div className={styles['pagination-button']}>
-          <button onClick={onLoadMore}>View More Products</button>
+          {/* <button onClick={onLoadMore}>View More Products</button> */}
+          {currentPage !== totalPages && (
+            <button onClick={() => onPageChange(currentPage + 1)}>
+              View More Products
+            </button>
+          )}
+          <>{console.log(currentPage, totalPages)}</>
         </div>
       )}
       {/* <div>

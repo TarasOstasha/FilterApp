@@ -79,4 +79,24 @@
   border: 1px solid #ccc;
 }
 
+.productImage {
+  //width: 100%;
+  //aspect-ratio: 4 / 3;     
+  //object-fit: contain;
 
+}
+
+@keyframes shimmer {
+  0% { background-position: 100% 0; }
+  100% { background-position: 0 0; }
+}
+
+/* Fade-in */
+.imgLoading {
+  opacity: 0;
+  transition: opacity .22s ease-in;
+}
+.imgLoaded {
+  opacity: 1;
+  transition: opacity .22s ease-in;
+}
