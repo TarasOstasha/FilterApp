@@ -30,6 +30,8 @@ app.use(
 // app.get('/products', paginate.paginateProducts, productController.getAllProducts);
 
 
+app.get('/api/health', (_req, res) => res.sendStatus(200));
+
 app.use('/api', router);
 
 app.use(errorHandlers.errorHandler);

@@ -9,12 +9,13 @@ interface WidthRangeResponse {
     globalMax: number;
 }
 
+const API_BASE = process.env.REACT_APP_API_URL || `${window.location.origin}/api`;
+
 const axiosInstance = axios.create({
-    baseURL: 'http://localhost:5000/api',
-    // headers: {
-    //     'Content-Type': 'multipart/form-data', 
-    // },
+    baseURL: API_BASE //'http://localhost:5000/api',
 });
+
+//console.log('API_BASE:', process.env.REACT_APP_API_URL);
 
 // fetch regular products
 export const fetchProductsFromAPI = async (

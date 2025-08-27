@@ -1,0 +1,35 @@
+services:
+  - type: web
+    name: filter-backend
+    env: node
+    plan: starter
+    region: oregon
+    rootDir: server
+    buildCommand: |
+      npm ci
+    startCommand: node index.js
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: filter-postgres
+          property: connectionString
+      - key: CORS_ORIGIN
+        value: https://filter-frontend.onrender.com
+
+  - type: web
+    name: filter-frontend
+    env: static
+    rootDir: client
+    buildCommand: npm ci && npm run build
+    staticPublishPath: build
+    envVars:
+      - key: REACT_APP_API_URL
+        value: https://filter-backend.onrender.com
+
+databases:
+  - name: filter-postgres
+    databaseName: filter
+    plan: starter

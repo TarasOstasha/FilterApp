@@ -17,10 +17,13 @@ module.exports = {
     dialect: 'postgres',
   },
   production: {
-    username: 'root',
-    password: null,
-    database: 'database_production',
-    host: '127.0.0.1',
+    use_env_variable: 'DATABASE_URL',
     dialect: 'postgres',
-  },
+    protocol: 'postgres',
+    dialectOptions: {
+      ssl: { require: true, rejectUnauthorized: false }
+    },
+    pool: { max: 10, min: 0, idle: 10000, acquire: 60000 },
+    logging: false
+  }
 }
