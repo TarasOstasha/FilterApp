@@ -1,19 +1,9 @@
 
 const chalk = require('chalk');
-const { Pool } = require('pg');
 const fs = require('fs');
 const { Parser } = require('json2csv');
 const pool = require('../../config/dbConfig');
 const manageExportedFiles = require('./manageExportedFiles');
-// require('dotenv').config(); 
-
-// const pool = new Pool({
-//   user: process.env.DB_USER,
-//   host: process.env.DB_HOST,
-//   database: process.env.DB_NAME,
-//   password: process.env.DB_PASSWORD,
-//   port: process.env.DB_PORT,
-// });
 
 // Export function for categories
 const exportCategoryDataToCSV = async () => {
