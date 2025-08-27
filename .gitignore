@@ -31,3 +31,8 @@ yarn-error.log*
 .vscode/
 .idea/
 .DS_Store
+
+# skip some files
+client/src/components/FilterSidebar/FilterSidebar-old-old.tsx
+client/src/components/FilterSidebar/FilterSidebar-old.tsx
+client/src/components/ProductList/product-list-old.txt

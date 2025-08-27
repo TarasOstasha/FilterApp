@@ -5,4 +5,28 @@
   .productList {
     flex-grow: 1;
   }
+  .clearFiltersButton {
+    margin-top: 1rem;
+    width: 100%;
+    padding: 10px;
+    background-color: #eee;
+    border: 1px solid #ccc;
+    cursor: pointer;
+    font-weight: bold;
   
+    &:hover {
+      background-color: #ddd;
+    }
+  }
+  .pageTransition {
+    opacity: 0;
+    transform: translateY(8px);
+    transition: opacity .18s ease, transform .18s ease;
+    will-change: opacity, transform;
+  }
+  
+  /* when data is ready */
+  .show {
+    opacity: 1;
+    transform: none;
+  }

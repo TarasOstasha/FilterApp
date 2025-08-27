@@ -1,0 +1,2 @@
+### 200
+GET http://localhost:5000/api//products/price-range?Product+Type=Arch&Print+Type=Double-Sided

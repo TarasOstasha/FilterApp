@@ -1,5 +1,5 @@
 ### 200 []
-GET http://localhost:5000/filterField
+GET http://localhost:5000/api/filterField
 
 ### 200 []
 GET http://localhost:5000/filterField?page=50&results=-50

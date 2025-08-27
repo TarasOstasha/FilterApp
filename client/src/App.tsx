@@ -1,4 +1,4 @@
-import React from 'react';
+import React, {useEffect } from 'react';
 import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
 import Home from './pages/Home/Home';
 import './styles/App.scss';
@@ -8,6 +8,7 @@ import ProtectedRoute from './components/ProtectedRoute/ProtectedRoute';
 
 
 const App: React.FC = () => {
+
   return (
     <div className="App">
       <Router>

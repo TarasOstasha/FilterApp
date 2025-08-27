@@ -4,7 +4,7 @@ const { Pool } = require('pg');
 const fs = require('fs');
 const { Parser } = require('json2csv');
 const pool = require('../../config/dbConfig');
-const manageExportedFiles = require('./manageExportedFiles ');
+const manageExportedFiles = require('./manageExportedFiles');
 // require('dotenv').config(); 
 
 // const pool = new Pool({
@@ -23,7 +23,7 @@ const exportCategoryDataToCSV = async () => {
     const data = result.rows;
 
     // Convert the data to CSV format using json2csv
-    const fields = ['id', 'category_id', 'category_name']; 
+    const fields = ['category_id', 'category_name']; 
     const json2csvParser = new Parser({ fields });
     const csv = json2csvParser.parse(data);
 

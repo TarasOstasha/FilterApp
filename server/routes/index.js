@@ -8,6 +8,7 @@ const productRouter = require('./productRouter');
 const importRouter = require('./importRouter');
 const exportRouter = require('./exportRouter');
 const authRouter = require('./authRouter');
+const dynamicFilterRouter = require('./dynamicFilterRouter');
 
 
 
@@ -23,6 +24,7 @@ router.use('/products', productRouter);
 router.use('/upload-csv', importRouter);
 router.use('/export', exportRouter);
 router.use('/admin', authRouter);
+router.use('/dynamic-filters', dynamicFilterRouter);
 
 
 

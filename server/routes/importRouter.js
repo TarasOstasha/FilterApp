@@ -39,6 +39,7 @@ importRouter
     // .post('/filter-field', upload.single('file'), importController.importFilterFields);
     .post('/category', upload.uploadCsvData, importController.importCategories)
     .post('/product', upload.uploadCsvData, importController.importProducts)
+    .post('/product-remove', upload.uploadCsvData, importController.importRemoveProducts)
     .post('/product-category', upload.uploadCsvData, importController.importProductCategories)
     .post('/product-filter', upload.uploadCsvData, importController.importProductFilters)
     .post('/filter-field', upload.uploadCsvData, importController.importFilterFields);

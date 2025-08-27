@@ -1,10 +1,8 @@
 category_id,category_name
-46051,
-46057,
 34,Featured Products
 46,Exhibits & Displays
 51,Banner Stands
-60,Tabletop Displays
+60,Tablecloths & Tabletops
 61,Sign Holders & Displays
 63,Accessories
 69,10x10 Trade Show Displays
@@ -64,6 +62,7 @@ category_id,category_name
 46082,Timberline Exhibits
 46183,Sego8 Displays
 46186,Client Exhibits On Display
+46234,Flooring by xyzDisplays
 141,Truss Trade Show Exhibits
 149,Formulate Tension Fabric Displays
 171,Slim Tension Fabric Displays
@@ -87,7 +86,7 @@ category_id,category_name
 125,Telescopic Banner Stand Displays
 183,Outdoor Banner Stands
 268,Accessories
-743,Boulevard Banners Brackets
+743,Boulevard Street Pole Banners
 1327,Tension Fabric Banner Stands
 8079,Banner Stand - Replacement Graphics
 8080,Banner Stand - Hardware Only
@@ -95,6 +94,8 @@ category_id,category_name
 30217,TableTop Banner Stand Displays
 30233,Crowd Control Barriers
 46099,FrameWorx Banner Stands
+46195,SEG Banner Stands
+46225,10ft Tall Banner Stands
 1315,Circle Hanging Banner Displays (Replacement Graphics)
 1328,Circle Hanging Banner Displays (Hardware Only)
 1683,05ft Diameter Circle Hanging Banner Displays
@@ -145,6 +146,7 @@ category_id,category_name
 893,14ft x 7ft Rectangle Hanging Banner Displays
 1667,Rectangle Hanging Banner Hardware
 1668,Rectangle Hanging Sign Replacement Fabric
+46233,Extra-Large Rectangle Hanging Banner Displays
 151,Custom Table Throws & Runners
 1458,Over The Top Tabletop Displays
 1713,Folding Panel Tabletop Displays
@@ -154,6 +156,8 @@ category_id,category_name
 30016,Slim Tabletop Displays
 30018,Retractable Banner Stands
 46190,Tabletop Signs
+46220,6ft Custom Table Throws
+46221,8ft Custom Table Throws
 66,Sign and Graphic Floor Stands
 180,Sign and Poster Frames
 181,Display Easels
@@ -190,6 +194,8 @@ category_id,category_name
 11753,Backwall Banner Stands
 21949,SEG Tension Fabric Displays
 28905,Custom Truss & Modular Exhibits
+46224,10ft Tall Displays for 10ft Spaces
+46232,Avalon Booth Kits 10x10
 10710,Pop-Up Backwall Displays
 10831,4-Sided Displays
 14475,Slim Tension Fabric Displays
@@ -198,6 +204,7 @@ category_id,category_name
 14478,Structured Modular Exhibits
 21950,SEG Tension Fabric Displays
 28969,Custom Truss & Modular Exhibits
+46222,10ft Tall Displays for 20ft Spaces
 509,Formulate Fusion Exhibits
 510,Waveline Exhibits
 28970,Custom Truss Exhibits
@@ -205,6 +212,7 @@ category_id,category_name
 32304,Custom Modular Exhibits
 32368,Standard Truss Exhibits
 46106,Modular Exhibits
+46211,Backlit Modular Exhibits
 134,Coyote Full Fabric Popup Displays
 273,Coyote Full Mural Graphics Popup Displays
 276,Pop UP Displays - Coyote Accessory
@@ -241,6 +249,7 @@ category_id,category_name
 1696,Hexagon Shaped Overhead Hanging Signs
 1701,Square (Rounded) Overhead Hanging Signs
 22018,VAIL SEG Frame Hanging Displays
+46200,Panel (L-Shaped) Overhead Hanging Signs
 123,Tabletop Retractable Banner Stands
 129,15-24in Retractable Banner Stands
 154,30-39in Retractable Banner Stands
@@ -251,6 +260,7 @@ category_id,category_name
 7684,Silverstep Retractable Banner Stands
 9858,Illuminated Retractable Banners
 30019,Double-Sided Retractable Banner Stands
+46231,BannerBug Retractable Banner Stands
 12003,Telescopic Retail banner Stand Displays - Graphic Only
 12065,Telescopic Retail Banner Stand Displays - Hardware Only
 12127,hold
@@ -342,7 +352,8 @@ category_id,category_name
 507,Waveline Makitso Displays
 508,Wave Tube Tension Fabric Displays
 46052,Tension Fabric Banner Stands
-46149,Trade Show Booth Kits
+46149,Avalon Tension Fabric Trade Show Booth Kits
+46218,Waveline BrandStand Tension Fabric Displays
 1663,Graphic Only
 1664,Hardware Only
 30232,Outdoor Flags & Tents
@@ -352,6 +363,7 @@ category_id,category_name
 18777,Rectangle Flags
 18778,Razor & Falcon Flags
 46141,Flagpole  Flags
+46219,Boulevard Street Pole Banners
 185,Outdoor Promotional Flags & Stands
 1459,Over The Top Tabletop Displays
 15463,"5ft, 6ft & 8ft Custom Tents"
@@ -390,6 +402,7 @@ category_id,category_name
 10709,Arches & Conference Walls
 46063,Stackable 3D Shapes
 46140,MODify Retail Displays
+46226,10ft Tall Tower Displays
 1631,Formulate Table Top Displays Hardware Only
 1632,Formulate Table Top Displays Replacement Graphic
 282,3' (1x3) Xpressions Snap Fabric Pop Up Displays
@@ -412,7 +425,7 @@ category_id,category_name
 13908,Backlit Overhead Hanging Banners & Signs
 13909,Backlit Trade Show Towers
 13910,Backlit Trade Show Counters
-22964,Backlit Display Walls & Backdrops
+22964,Backlit Booths & Exhibits
 23532,Backlit Wall Mounted Displays
 30307,Backlit Tabletop Displays
 1651,Disc Hanging Banner Displays Frame Only
@@ -500,7 +513,7 @@ category_id,category_name
 1609,Accessories
 31136,Tablet / IPad Holders and Kiosks
 31137,TV Monitor Stands & Kiosks
-1305,8ft  Wave Tube Tension Fabric Displays
+1305,5ft to 8ft  Wave Tube Tension Fabric Displays
 1306,10ft Wave Tube Tension Fabric Displays
 1307,20ft Wave Tube Tension Fabric Displays
 33336,Wave Tube Tabletop Displays
@@ -539,6 +552,9 @@ category_id,category_name
 33012,EuroFit Tension Fabric Banners
 33342,Wave Tube Tension Banner Stand
 34082,EZ Extend Circle Displays
+46212,Waveline Original Banner Stands
+46216,Backlit Tension Fabric Banner Stands
+46217,Crowd Control Barriers
 1331,Splash Fabric Displays Replacement Graphic
 1332,Splash Fabric Displays Hardware
 1334,Splash Fabric Tabletop Replacement Graphic
@@ -590,7 +606,7 @@ category_id,category_name
 1657,ASPEN Fabric Displays
 6956,Lumiere Light Wall SEG Pop-Up Displays
 7694,VAIL Fabric Frames
-7938,Embrace SEG Tension Fabric Displays
+7938,Embrace SEG Displays
 29295,Creative SEG Displays
 30308,Verge SEG Displays
 33010,SEGO Modular Lightbox Display
@@ -605,6 +621,9 @@ category_id,category_name
 46169,BrightLine & StraightLine Displays
 46171,Sego8 Modular Lightbox Display
 46178,Origami Truss
+46194,Flow Motion Dynamic Displays
+46206,Journey SEG Displays
+46209,Astra SEG Backlit Displays
 1654,Fabric Frame Accessories
 1655,ASPEN Fabric Frames Replacement Fabric Only
 1656,ASPEN Fabric Frames Hardware Only
@@ -704,7 +723,7 @@ category_id,category_name
 6519,Replacement Graphic for Monolith Tension Fabric Displays
 6584,Waveline Merchandisers - Hardware
 6585,Waveline Merchandisers - Replacement Graphic
-6882,Waveline Merchandisers by Makitso - Accessories
+6882,Waveline Merchandisers Accessories
 6521,Waveline Backdrops & Panels
 6888,Waveline Tension Fabric Displays by Makitso - Packages
 6891,20ft Waveline Media Displays Kits
@@ -726,6 +745,7 @@ category_id,category_name
 14482,Backlit Illuminated Displays
 14483,Custom Truss & Modular Exhibits
 21951,SEG Tension Fabric Displays
+46223,10ft Tall Displays for 30ft Spaces
 7685,24in Silverstep Banner Stands
 7686,24in Tabletop Silverstep Banner Stands
 7687,36in Silverstep Banner Stands
@@ -812,7 +832,7 @@ category_id,category_name
 22151,Backlit Wall Mounted Profiles (80S)
 22019,Ultra-Thin Hanging Profiles (40D)
 22020,Thin Hanging Profiles (60D)
-27319,Air Bench Accessories
+27319,Waveline Air Bench Accessories
 22815,Hanging SnapFrames Displays
 22816,Floor Standing SnapFrame Displays
 22818,Tabletop Counter Drop In Sign Holders
@@ -827,7 +847,6 @@ category_id,category_name
 22833,Poster SignHolders
 22834,Visual Merchandising Clamps
 67,EZ Tube Connect Backlit Displays
-73,Vector Frame Essential Light Boxes
 13229,Vector Frame Backlit Displays
 13352,WaveLight Backlit Displays
 13659,Lumiere Backlit Displays
@@ -841,7 +860,7 @@ category_id,category_name
 34078,Infinity DNA Pro Backlit Displays
 34576,WaveLight Casonara SEG Backlit Displays
 46061,Dazzle Backlit LED Displays
-46092,Wave Tube Dynamic Display
+46092,Wave Tube & Flow Motion Dynamic Displays
 46108,LUCID Modular Lightbox Displays
 46109,SEGO Modular Lightbox Display
 46110,Pozelite Backlit Light Boxes
@@ -850,6 +869,12 @@ category_id,category_name
 46168,Blaze Light Box Displays
 46173,BrightLine Backlit Displays
 46182,RPL Backlit Displays
+46192,Vector Frame Essential Light Boxes
+46203,Astra Backlit Displays
+46227,Backlit Wall Mounted Profiles (80S)
+46228,Blaze Wall Mounted Light Boxes
+46229,Igniter Backlit Wall Mounted Displays
+46230,Ultra Thin Wall Mounted Lightboxes
 83,Magnetic Panel Pop-Up Displays
 84,OneFabric Eco-Friendly Pop-Up Displays
 135,Lighting for Pop-Up Displays
@@ -878,6 +903,7 @@ category_id,category_name
 28079,10 x 20 Hybrid Pro Modular Displays
 28080,20 x 20 Hybrid Pro Modular Displays
 29883,Hybrid Pro Modular Counters
+46197,Hybrid Pro Modular Closet
 29223,10 x 10 Hybrid Pro Kit Modular Displays
 29224,10 x 10 Hybrid Pro Modular Displays Graphic Only
 29225,10 x 10 Hybrid Pro Modular Displays Hardware Only
@@ -895,6 +921,8 @@ category_id,category_name
 29427,Blimp Tower (Hardware Only)
 29948,Hybrid Pro Modular Counters (Graphic Only)
 29949,Hybrid Pro Modular Counters (Hardware Only)
+46199,Hybrid Pro Modular Closet Hardware Only
+46198,Hybrid Pro Modular Closet Graphic Only
 292,Xpressions SNAP Tension Fabric Tabletop Displays
 901,Xclaim Fabric Popup Table Top Displays
 1289,Micro GeoMetrix Pop-Up Fabric Displays
@@ -928,6 +956,7 @@ category_id,category_name
 33009,Aspen Onyx Tension Fabric Banner Stand
 33011,SEGO Modular Lightbox Display
 46162,SEGO Modular Lightbox Display Hardware
+46210,SEGO Modular Lightbox Display (Hardware Only)
 33014,Inflatable Trade Show Furniture
 33015,Inflatable Trade Show Furniture
 33537,Star Fabric Popup Displays (Hardware Only)
@@ -976,14 +1005,14 @@ category_id,category_name
 46054,Carpet
 46055,Vinyl and Hardwood
 46062,Flooring Accessories
-46097,Printed Floor Mats
-46115,20x20 Carpet
-46116,10x10 Carpet
-46117,10x20 Carpet
+46097,Custom Printed Floor Mats
+46115,20x20 Carpet Flooring
+46116,10x10 Carpet Flooring
+46117,10x20 Carpet Flooring
 46118,Custom Printed Mats and Carpets
-46111,10x10 Floors
-46112,10x20 Floors
-46113,20x20 Floors
+46111,10x10 Vinyl & Hardwood Floors
+46112,10x20 Vinyl & Hardwood Floors
+46113,20x20 Vinyl & Hardwood Floors
 46065,Dazzle Backlit LED Displays - Replacement Graphics
 46068,Cabo Trade Show Booths Replacement Graphic
 46069,Cabo Trade Show Booths Replacement Hardware
@@ -1008,7 +1037,7 @@ category_id,category_name
 46096,Timberline Monitor Displays
 46094,Scrolling LED Signs
 46095,Full Color LED Signs 16mm
-46123,LUCID Modular Lightbox Connectors
+46123,LUCID Modular Lightbox Accessories
 46122,LUCID Modular Lightbox Display Replacement Graphic
 46158,LUCID Modular Lightbox Display Replacement Hardware
 46119,Pozelite Backlit Light Boxes (Hardware Only)
@@ -1030,9 +1059,9 @@ category_id,category_name
 46143,Outdoor Fabric Flags Hardware Only
 46147,VAIL Free Standing SEG Displays (180mm Profile) - Graphic Only
 46148,VAIL Free Standing SEG Displays (180mm Profile) - Hardware Only
-46150,10ft x 10ft Trade Show Booth Kits
-46151,10ft x 20ft Trade Show Booth Kits
-46152,20ft x 20ft Trade Show Booth Kits
+46150,10ft x 10ft Avalon Trade Show Booth Kits
+46151,10ft x 20ft Avalon Trade Show Booth Kits
+46152,20ft x 20ft Avalon Trade Show Booth Kits
 46153,10ft x 10ft Trade Show Booth (Graphic Only)
 46154,10ft x 20ft Trade Show Booth (Graphic Only)
 46155,20ft x 20ft Trade Show Booth (Graphic Only)
@@ -1040,12 +1069,16 @@ category_id,category_name
 46161,Salto Fabric Displays Replacement Hardware
 46165,Pascale Displays Replacement Graphic
 46166,Pascale Displays Replacement Hardware
+46213,Exhibitline & Xvline Displays
+46214,Exhibitline & Xvline Counters
+46215,Exhibitline Kiosks
 88,Backlit BrightLine Kits
 89,StraightLine Kits
 90,BrightLine Backlit Panels
 91,StraightLine Panels
 92,BrightLine & StraightLine (Graphic Only)
 744,BrightLine & StraightLine (Hardware Only)
+46196,20ft x 20ft BrightLine Backlit Trade Show Island Booths
 46174,Sego8 Modular Lightbox Display (Graphic Only)
 46175,Sego8 Modular Lightbox Display (Accessories)
 46189,Sego8 Modular Lightbox Display (Hardware Only)
@@ -1053,3 +1086,9 @@ category_id,category_name
 46188,Backlit BrightLine Kits
 46180,Origami Truss (Graphic Only)
 46181,Origami Truss (Hardware Only)
+46201,Replacement Fabric for L-Shaped Panel Hanging Sign
+46202,L-Shaped Panel Hanging Sign Hardware
+46204,Astra Backlit Displays (Graphic Only)
+46205,Astra Backlit Displays (Hardware Only)
+46207,Journey SEG Displays (Graphic Only)
+46208,Journey SEG Displays (Hardware Only)

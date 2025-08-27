@@ -1,13 +1,15 @@
 // src/pages/Login/Login.tsx
 import { Formik, Form, Field, ErrorMessage } from 'formik';
-import React from 'react';
-import axios from 'axios';
+import React, {useEffect} from 'react';
+import axios, { AxiosError } from 'axios';
 import { useNavigate } from 'react-router-dom';
+import { ToastContainer } from 'react-toastify';
 import { toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import styles from './Login.module.scss';
 import { LOGIN_USER_VALIDATION_SCHEMA } from '../../utils/validatedSchemas';
 import { loginUser } from '../../api';
+
 
 
 const Login: React.FC = () => {
@@ -31,6 +33,7 @@ const Login: React.FC = () => {
             }
 
         } catch (error) {
+            console.log(error);
             toast.error('Invalid credentials');
         }
     };
@@ -57,6 +60,7 @@ const Login: React.FC = () => {
                     <button type="submit">Login</button>
                 </Form>
             </Formik>
+            <ToastContainer />
         </div>
     );
 };
