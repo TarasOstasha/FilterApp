@@ -306,24 +306,25 @@ const Home: React.FC = () => {
   const writeUrl = (next: {
     limit?: number; offset?: number; sortBy?: string; filters?: { [k: string]: string[] };
   }) => {
-    const sp = new URLSearchParams(window.location.search);
+    const sp = new URLSearchParams();
 
+    // Always set current values first
     if (typeof next.limit === 'number') sp.set('limit', String(next.limit));
     if (typeof next.offset === 'number') sp.set('offset', String(next.offset));
     if (typeof next.sortBy === 'string') sp.set('sortBy', next.sortBy);
 
-    if (next.filters) {
-      // remove all existing filter keys first (except meta keys)
-      const meta = new Set(['limit', 'offset', 'sortBy']);
-      Array.from(sp.keys()).forEach(k => { if (!meta.has(k)) sp.delete(k); });
+    // Add filters - ensure we don't lose any existing filters unless explicitly overridden
+    const currentFilters = next.filters || selectedFilters;
+    Object.entries(currentFilters).forEach(([k, arr]) => {
+      if (Array.isArray(arr) && arr.length > 0) {
+        // Properly encode filter names with spaces
+        const encodedKey = encodeURIComponent(k);
+        sp.set(encodedKey, arr.join(','));
+      }
+    });
 
-      // then write current filters
-      Object.entries(next.filters).forEach(([k, arr]) => {
-        if (arr?.length) sp.set(k, arr.join(','));
-      });
-    }
-
-    window.history.replaceState({}, '', `${window.location.pathname}?${sp.toString()}`);
+    const newUrl = `${window.location.pathname}?${sp.toString()}`;
+    window.history.replaceState({}, '', newUrl);
   };
 
   // —— hydrate state from URL on first mount ——
@@ -351,7 +352,8 @@ const Home: React.FC = () => {
 
     sp.forEach((val, rawKey) => {
       if (meta.has(rawKey)) return;
-      const decodedKey = rawKey.replace(/\+/g, ' ');
+      // Properly decode URL-encoded filter names
+      const decodedKey = decodeURIComponent(rawKey).replace(/\+/g, ' ');
       if (valrangeDigits.includes(decodedKey)) {
         restored[decodedKey] = [val];     // range fields stored as single "min,max"
       } else {
@@ -379,6 +381,7 @@ const Home: React.FC = () => {
 
       const response = await fetchProductsFromAPI(qp);
       if (response?.data) {
+        console.log(response?.data, 'response products HOME page')
         setProducts(response.data.products);
         setTotalProducts(response.data.totalProducts);
       } else {
@@ -546,6 +549,3 @@ const Home: React.FC = () => {
 };
 
 export default Home;
-
-
-

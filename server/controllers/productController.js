@@ -12,7 +12,7 @@ module.exports.getAllProducts = async (req, res, next) => {
       offset,
       order: [['product_price', 'ASC']], // or your preferred default sort
     });
-    console.log(foundProducts, 'foundProducts');
+    console.log(chalk.yellow(foundProducts, 'foundProducts'));
     res.status(200).send(foundProducts)
   } catch (err) {
     next(err)

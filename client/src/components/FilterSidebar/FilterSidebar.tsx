@@ -1102,15 +1102,18 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
     for (const [k, arr] of Object.entries(safeFilters)) {
       if (!Array.isArray(arr) || arr.length === 0) continue;
 
+      // Only normalize range filters if they exactly match the rails
+      // This prevents accidentally removing user-selected ranges
       if (k === 'Product Price') {
         const [mn, mx] = parsePair(arr[0]);
-        if (same(mn, priceRailMin) && same(mx, priceRailMax)) continue;
+        // Only skip if both values are exactly equal to rails AND we have valid rails
+        if (priceRailMin !== priceRailMax && same(mn, priceRailMin) && same(mx, priceRailMax)) continue;
       } else if (k === 'Display Width') {
         const [mn, mx] = parsePair(arr[0]);
-        if (same(mn, widthRailMin) && same(mx, widthRailMax)) continue;
+        if (widthRailMin !== widthRailMax && same(mn, widthRailMin) && same(mx, widthRailMax)) continue;
       } else if (k === 'Display Height') {
         const [mn, mx] = parsePair(arr[0]);
-        if (same(mn, heightRailMin) && same(mx, heightRailMax)) continue;
+        if (heightRailMin !== heightRailMax && same(mn, heightRailMin) && same(mx, heightRailMax)) continue;
       }
       normalized[k] = arr;
     }
@@ -1125,16 +1128,15 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
         fetchFilterSidebarData()
           .then((r) => {
             const next = r?.data ?? [];
-            setFilterFields((prev) =>
-              prev.length === next.length &&
-              prev.every((p, i) =>
-                p.id === next[i].id &&
-                p.field_name === next[i].field_name &&
-                p.field_type === next[i].field_type
-              )
-                ? prev
-                : next
-            );
+            setFilterFields((prev) => {
+              // More robust comparison to prevent unnecessary updates
+              if (prev.length !== next.length) return next;
+              const hasChanges = prev.some((p, i) => {
+                const n = next[i];
+                return !n || p.id !== n.id || p.field_name !== n.field_name || p.field_type !== n.field_type;
+              });
+              return hasChanges ? next : prev;
+            });
           })
           .catch(() => console.warn('Static reload failed'));
       } else if (nonPrice.length > 0) {
@@ -1150,16 +1152,15 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
                 allowed_values: f.values,
                 sort_order: f.sort_order ?? 0,
               }));
-              setFilterFields((prev) =>
-                prev.length === next.length &&
-                prev.every((p, i) =>
-                  p.id === next[i].id &&
-                  p.field_name === next[i].field_name &&
-                  p.field_type === next[i].field_type
-                )
-                  ? prev
-                  : next
-              );
+              setFilterFields((prev) => {
+                // More robust comparison to prevent unnecessary updates
+                if (prev.length !== next.length) return next;
+                const hasChanges = prev.some((p, i) => {
+                  const n = next[i];
+                  return !n || p.id !== n.id || p.field_name !== n.field_name || p.field_type !== n.field_type;
+                });
+                return hasChanges ? next : prev;
+              });
             }
           })
           .catch(() =>
@@ -1185,7 +1186,7 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
     }, 500);
 
     return () => window.clearTimeout(priceFetchTimeout.current);
-  }, [selectedFilters, priceBreakpoints, priceMin, priceMax, widthMin, widthMax, heightMin, heightMax, globalMinWidth, globalMaxWidth, globalMinHeight, globalMaxHeight]);
+  }, [selectedFilters]); // Simplified dependencies to prevent infinite loops
 
   return (
     <div className={styles.sidebar} style={{ width: '250px' }}>
