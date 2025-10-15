@@ -1,5 +1,6 @@
 const createHttpError = require('http-errors')
-const { ProductFilter } = require('../models')
+const { ProductFilter } = require('../models');
+const chalk = require('chalk');
 
 module.exports.getAllProductFilters = async (req, res, next) => {
   //const { limit, offset } = req.pagination

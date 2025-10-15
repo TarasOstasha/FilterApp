@@ -209,7 +209,7 @@ module.exports.getPriceRange = async (req, res, next) => {
 module.exports.getProducts = async (req, res, next) => {
   try {
     const filters = req.query;
-    console.log(chalk.blue('getProducts called with filters:'), filters);
+    console.log(chalk.blue('getProducts called with filters:'), req.query);
     const limit = parseInt(req.query.limit, 10) || 27;
     const offset = parseInt(req.query.offset, 10) || 0;
     const catId = req.query.catId || null;

@@ -40,10 +40,10 @@ const SortDropdown: React.FC<SortDropdownProps> = ({ handleSortChange, currentSo
         <option value="price_asc">Price: Low to High</option>
         <option value="price_desc">Price: High to Low</option>
         <option value="most_popular">Most Popular</option>
-        <option value="title">Title</option>
+        {/* <option value="title">Title</option>
         <option value="manufacturer">Manufacturer</option>
         <option value="newest">Newest</option>
-        <option value="oldest">Oldest</option>
+        <option value="oldest">Oldest</option> */}
       </select>
     </div>
 
