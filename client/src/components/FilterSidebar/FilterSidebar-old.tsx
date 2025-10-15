@@ -94,7 +94,16 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
   const [widthMax, setWidthMax] = useState(0);
   const [heightMin, setHeightMin] = useState(0);
   const [heightMax, setHeightMax] = useState(0);
-
+// Helper: extract the digits right before ".htm" at the end of the path
+const getCategoryIdFromPath = (): string => {
+  try {
+    const path = window.location.pathname; 
+    const m = path.match(/\/(\d+)\.htm(?:$|\?)/i);
+    return m ? m[1] : '51'; 
+  } catch {
+    return '1692'; 
+  }
+};
 
   function handleCheckboxChange(field: string, value: string) {
     onFilterChange({ field, value });
@@ -171,8 +180,8 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
           .catch(() => console.warn('Static reload failed'));
       } else if (nonPrice.length > 0) {
         const params = Object.fromEntries(nonPrice.map((k) => [k, selectedFilters[k].join(',')]));
-
-        fetchDynamicFilters(params)
+        const catId = getCategoryIdFromPath();
+        fetchDynamicFilters(params, catId)
           .then((r) => {
             const d = r?.data;
             if (Array.isArray(d)) {

@@ -109,10 +109,11 @@ export const fetchFilterSidebarData = async (): Promise<AxiosResponse<any> | und
 
 // fetch dynamic filters
 export const fetchDynamicFilters = async (
-    params: Record<string, string>
+    params: Record<string, string>,
+    catId: string
 ) => {
     try {
-        return await axiosInstance.get('/dynamic-filters', { params });
+        return await axiosInstance.get('/dynamic-filters', { params: { ...params, catId } });
     } catch (err) {
         console.error('error fetching dynamic filters', err);
         return undefined;

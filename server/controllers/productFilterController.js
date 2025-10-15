@@ -7,7 +7,6 @@ module.exports.getAllProductFilters = async (req, res, next) => {
   try {
     //const foundUsers = await User.getAll(limit, offset)
     const foundProductFilters = await ProductFilter.getAll();
-
     res.status(200).send(foundProductFilters);
   } catch (err) {
     next(err)

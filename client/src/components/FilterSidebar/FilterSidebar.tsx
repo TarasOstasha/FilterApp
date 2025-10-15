@@ -92,7 +92,16 @@ function buildParams(
   );
 }
 // --------------------------------
-
+// Helper: extract the digits right before ".htm" at the end of the path
+const getCategoryIdFromPath = (): string => {
+  try {
+    const path = window.location.pathname; 
+    const m = path.match(/\/(\d+)\.htm(?:$|\?)/i);
+    return m ? m[1] : '51'; 
+  } catch {
+    return '1692'; 
+  }
+};
 const FilterSidebar: React.FC<FilterSidebarProps> = ({
   onFilterChange,
   selectedFilters
@@ -263,7 +272,9 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
           });
       } else if (nonPrice.length > 0) {
         const params = Object.fromEntries(nonPrice.map((k) => [k, normalized[k].join(',')]));
-        fetchDynamicFilters(params)
+        const catId = getCategoryIdFromPath();
+        console.log(catId ,'catId');
+        fetchDynamicFilters(params, catId)
           .then((r) => {
             const d = r?.data;
             if (Array.isArray(d) && d.length > 0) { // Only update if we got valid data
