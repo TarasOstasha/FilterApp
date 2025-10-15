@@ -8,7 +8,7 @@ const router = require('./routes');
 const app = express();
 
 const corsOptions = {
-  origin: '*',
+  origin: '*', // on the production, replace with 'https://www.xyzdisplays.com'
 };
 
 app.use(express.json());
@@ -35,5 +35,12 @@ app.get('/api/health', (_req, res) => res.sendStatus(200));
 app.use('/api', router);
 
 app.use(errorHandlers.errorHandler);
+
+// 👇 serve the built client
+const clientBuildPath = path.join(__dirname, '../client/build');
+app.use(express.static(clientBuildPath));
+app.get('*', (req, res) => {
+  res.sendFile(path.join(clientBuildPath, 'index.html'));
+});
 
 module.exports = app;

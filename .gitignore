@@ -11,6 +11,7 @@ server/dist/
 server/services/import/data/
 server/services/export/data/
 server/notes.txt
+server/env-production.txt
 
 # Ignore logs
 *.log
