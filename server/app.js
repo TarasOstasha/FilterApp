@@ -1,6 +1,7 @@
 const express = require('express');
 const queryParser = require('query-parser-express');
 const cors = require('cors');
+const path = require('path');
 const { errorHandlers, paginate } = require('./middleware');
 const { categoryController, filterFieldController, productCategoryController, productFilterController, productController } = require('./controllers');
 const router = require('./routes');
