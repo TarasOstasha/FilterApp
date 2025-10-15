@@ -212,6 +212,7 @@ module.exports.getProducts = async (req, res, next) => {
     console.log(chalk.blue('getProducts called with filters:'), filters);
     const limit = parseInt(req.query.limit, 10) || 27;
     const offset = parseInt(req.query.offset, 10) || 0;
+    const catId = req.query.catId || null;
     let sortDir = 'ASC';
     if (req.query.sortBy === 'price_desc') {
       sortDir = 'DESC';
@@ -228,6 +229,16 @@ module.exports.getProducts = async (req, res, next) => {
     let whereClauses = '';
     const replacements = {};
     let joinIndex = 0;
+
+    // add category filter only if catId exists
+    if (catId) {
+      joinClauses += `
+        JOIN product_categories pc
+          ON pc.product_id = p.id
+         AND pc.category_id = :catId
+      `;
+      replacements.catId = catId;
+    }
 
     for (const [fieldName, rawValue] of Object.entries(filters)) {
       if (fieldName === 'Product Price') {

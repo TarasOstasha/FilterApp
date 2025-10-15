@@ -99,7 +99,7 @@ const Home: React.FC = () => {
     try {
       const path = window.location.pathname; 
       const m = path.match(/\/(\d+)\.htm(?:$|\?)/i);
-      return m ? m[1] : '1692'; 
+      return m ? m[1] : '51'; 
     } catch {
       return '1692'; 
     }
