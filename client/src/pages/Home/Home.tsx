@@ -94,6 +94,17 @@ const Home: React.FC = () => {
     setSelectedFilters(restored);
   }, []);
 
+  // Helper: extract the digits right before ".htm" at the end of the path
+  const getCategoryIdFromPath = (): string => {
+    try {
+      const path = window.location.pathname; 
+      const m = path.match(/\/(\d+)\.htm(?:$|\?)/i);
+      return m ? m[1] : '1692'; 
+    } catch {
+      return '1692'; 
+    }
+  };
+
   // —— FETCH PRODUCTS ——
   const fetchProducts = async () => {
     setLoading(true);
@@ -104,12 +115,14 @@ const Home: React.FC = () => {
       qp.set('offset', String(offsetFrom(currentPage, itemsPerPage)));
       qp.set('sortBy', String(sortBy));
 
+      const catId = getCategoryIdFromPath();
+
       Object.keys(selectedFilters).forEach((key) => {
         if (key === 'sortBy') return;
         qp.append(key, selectedFilters[key].join(','));
       });
 
-      const response = await fetchProductsFromAPI(qp);
+      const response = await fetchProductsFromAPI(qp, catId);
       if (response?.data) {
         console.log(response?.data, 'response products HOME page')
         setProducts(response.data.products);

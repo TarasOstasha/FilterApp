@@ -19,11 +19,12 @@ const axiosInstance = axios.create({
 
 // fetch regular products
 export const fetchProductsFromAPI = async (
-    queryParams: URLSearchParams
+    queryParams: URLSearchParams,
+    catId: string
 ): Promise<AxiosResponse<any> | undefined> => {
     try {
         const rawString = queryParams.toString().replace(/\+/g, '%20');
-        return await axiosInstance.get(`/products?${rawString}`);
+        return await axiosInstance.get(`/products?${rawString}`, { params: { catId } });
     } catch (error) {
         console.error('Error fetching products:', error);
         return undefined;
