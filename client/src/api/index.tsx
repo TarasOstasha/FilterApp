@@ -32,12 +32,13 @@ export const fetchProductsFromAPI = async (
 };
 
 // price range
-export const fetchPriceRange = async (params?: Record<string,string>) => {
+export const fetchPriceRange = async (params?: Record<string,string>, catId?: string) => {
     try {
         //console.log(params ? Object.values(params) : [], '<< params in fetchPriceRange');
+      const allParams = catId ? { ...params, catId } : params;
       return await axiosInstance.get<{
         breakpoints: never[];min:number;max:number
-}>('/products/price-range',{ params });
+}>('/products/price-range',{ params: allParams });
     } catch (err) {
       console.error(err);
       return undefined;
@@ -45,10 +46,11 @@ export const fetchPriceRange = async (params?: Record<string,string>) => {
   };
 
 
-export const fetchWidthRange = async (params?: Record<string, string>) => {
+export const fetchWidthRange = async (params?: Record<string, string>, catId?: string) => {
     try {
       //console.log(params ? Object.values(params) : [], '<< params in fetchWidthRange');
-      return await axiosInstance.get<WidthRangeResponse>('/products/width-range', { params });
+      const allParams = catId ? { ...params, catId } : params;
+      return await axiosInstance.get<WidthRangeResponse>('/products/width-range', { params: allParams });
     } catch (err) {
       console.error(err);
       return undefined;
@@ -56,10 +58,11 @@ export const fetchWidthRange = async (params?: Record<string, string>) => {
   };
 
   // height range
-export const fetchHeightRange = async (params?: Record<string, string>) => {
+export const fetchHeightRange = async (params?: Record<string, string>, catId?: string) => {
     try {
       //console.log(params ? Object.values(params) : [], '<< params in fetchHeightRange');
-      return await axiosInstance.get<WidthRangeResponse>('/products/height-range', { params });
+      const allParams = catId ? { ...params, catId } : params;
+      return await axiosInstance.get<WidthRangeResponse>('/products/height-range', { params: allParams });
     } catch (err) {
       console.error(err);
       return undefined;
@@ -158,4 +161,3 @@ export const loginUser = async (values: { username: string; password: string }):
         return undefined;
     }
 };
-

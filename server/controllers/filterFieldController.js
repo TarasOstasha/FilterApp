@@ -101,6 +101,7 @@ module.exports.getAllFilterFields = async (req, res, next) => {
       }))
       .filter(f => f.allowed_values.length > 0)
       .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
+    console.log(chalk.green('getAllFilterFields result:'), result);
 
     return res.status(200).send(result);
   } catch (err) {

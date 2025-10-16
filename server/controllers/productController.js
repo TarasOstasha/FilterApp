@@ -75,6 +75,8 @@ module.exports.getPriceRange = async (req, res, next) => {
   // console.log(chalk.blue('getPriceRange called with query params:'), req.query);
   // console.log(chalk.blue('Request query:', JSON.stringify(req.query, null, 2)));
   try {
+    const catId = req.query.catId || null;
+    
     const priceField = await FilterField.findOne({
       where: { field_name: 'Product Price' },
       attributes: ['allowed_values'],
@@ -105,6 +107,16 @@ module.exports.getPriceRange = async (req, res, next) => {
     const replacements = {};
     let checkIdx = 0;
     let rangeIdx = 0;
+    
+    // Add category filter if catId exists
+    if (catId) {
+      joins += `
+        JOIN product_categories pc
+          ON pc.product_id = p.id
+         AND pc.category_id = :catId
+      `;
+      replacements.catId = catId;
+    }
     //console.log(chalk.blue('Request query:', JSON.stringify(req.query, null, 2)));
     // Handle Price (range slider) → forced to use known breakpoints
     if (req.query['Product Price']) {
@@ -467,6 +479,8 @@ module.exports.getProducts = async (req, res, next) => {
 
 module.exports.getWidthRange = async (req, res, next) => {
   try {
+    const catId = req.query.catId || null;
+    
     const allFilterFields = await FilterField.findAll({
       attributes: ['id', 'field_name', 'field_type'],
       raw: true,
@@ -484,6 +498,16 @@ module.exports.getWidthRange = async (req, res, next) => {
     const replacements = {};
     let rangeIdx = 0;
     let checkIdx = 0;
+    
+    // Add category filter if catId exists
+    if (catId) {
+      joins += `
+        JOIN product_categories pc
+          ON pc.product_id = p.id
+         AND pc.category_id = :catId
+      `;
+      replacements.catId = catId;
+    }
 
     for (const fieldName of Object.keys(req.query)) {
       const rawVal = req.query[fieldName];
@@ -570,6 +594,8 @@ module.exports.getWidthRange = async (req, res, next) => {
 
 module.exports.getHeightRange = async (req, res, next) => {
   try {
+    const catId = req.query.catId || null;
+    
     const allFilterFields = await FilterField.findAll({
       attributes: ['id', 'field_name', 'field_type'],
       raw: true,
@@ -587,6 +613,16 @@ module.exports.getHeightRange = async (req, res, next) => {
     const replacements = {};
     let rangeIdx = 0;
     let checkIdx = 0;
+    
+    // Add category filter if catId exists
+    if (catId) {
+      joins += `
+        JOIN product_categories pc
+          ON pc.product_id = p.id
+         AND pc.category_id = :catId
+      `;
+      replacements.catId = catId;
+    }
 
     for (const fieldName of Object.keys(req.query)) {
       const rawVal = req.query[fieldName];

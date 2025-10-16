@@ -126,6 +126,9 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
   const [widthMax, setWidthMax] = useState(0);
   const [heightMin, setHeightMin] = useState(0);
   const [heightMax, setHeightMax] = useState(0);
+  
+  // Track if we've initialized from filterFields to prevent overwrites
+  const initializedFromFilterFields = useRef(false);
 
   function handleCheckboxChange(field: string, value: string) {
     onFilterChange({ field, value });
@@ -163,13 +166,55 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
     })();
   }, []);
 
+  // ----- INITIALIZE RANGES FROM FILTER FIELDS ON FIRST LOAD -----
+  useEffect(() => {
+    // Only initialize once when filter fields first load
+    if (filterFields.length === 0 || initializedFromFilterFields.current) return;
+
+    const priceField = filterFields.find(f => f.field_name === 'Product Price');
+    if (priceField && Array.isArray(priceField.allowed_values) && priceField.allowed_values.length > 0) {
+      const values = priceField.allowed_values.map((x: any) => parseFloat(x) || 0);
+      setPriceMin(values[0]);
+      setPriceMax(values[values.length - 1]);
+      setPriceBreakpoints(values);
+      console.log('Initialized price from filterFields:', values[0], '-', values[values.length - 1]);
+    }
+
+    const widthField = filterFields.find(f => f.field_name === 'Display Width');
+    if (widthField && Array.isArray(widthField.allowed_values) && widthField.allowed_values.length > 0) {
+      const values = widthField.allowed_values.map((x: any) => parseFloat(x) || 0);
+      setWidthMin(values[0]);
+      setWidthMax(values[values.length - 1]);
+      console.log('Initialized width from filterFields:', values[0], '-', values[values.length - 1]);
+    }
+
+    const heightField = filterFields.find(f => f.field_name === 'Display Height');
+    if (heightField && Array.isArray(heightField.allowed_values) && heightField.allowed_values.length > 0) {
+      const values = heightField.allowed_values.map((x: any) => parseFloat(x) || 0);
+      setHeightMin(values[0]);
+      setHeightMax(values[values.length - 1]);
+      console.log('Initialized height from filterFields:', values[0], '-', values[values.length - 1]);
+    }
+
+    // Mark as initialized to prevent future overwrites
+    initializedFromFilterFields.current = true;
+  }, [filterFields]);
+
   // ----- LIVE FILTERED WIDTH RANGE -----
   useDebouncedEffect(
     () => {
+      // Don't fetch if we haven't initialized, OR if there are no filters applied
+      if (!initializedFromFilterFields.current) return;
+      
+      const safeFilters = sanitizeFilters(selectedFilters);
+      const hasFilters = Object.keys(safeFilters).length > 0;
+      if (!hasFilters) return; // Don't fetch on initial load
+      
       (async () => {
         try {
           const params = buildParams(selectedFilters, 'Display Width');
-          const res = await fetchWidthRange(params);
+          const catId = getCategoryIdFromPath();
+          const res = await fetchWidthRange(params, catId);
           const mn = res?.data?.min ?? 0;
           const mx = res?.data?.max ?? 0;
           setWidthMin((prev) => (prev === mn ? prev : mn));
@@ -186,10 +231,18 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
   // ----- LIVE FILTERED HEIGHT RANGE -----
   useDebouncedEffect(
     () => {
+      // Don't fetch if we haven't initialized, OR if there are no filters applied
+      if (!initializedFromFilterFields.current) return;
+      
+      const safeFilters = sanitizeFilters(selectedFilters);
+      const hasFilters = Object.keys(safeFilters).length > 0;
+      if (!hasFilters) return; // Don't fetch on initial load
+      
       (async () => {
         try {
           const params = buildParams(selectedFilters, 'Display Height');
-          const res = await fetchHeightRange(params);
+          const catId = getCategoryIdFromPath();
+          const res = await fetchHeightRange(params, catId);
           const mn = res?.data?.min ?? 0;
           const mx = res?.data?.max ?? 0;
           setHeightMin((prev) => (prev === mn ? prev : mn));
@@ -316,23 +369,27 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
       }
 
       // Price range (driven by non-price filters)
-      const priceParams = nonPrice.length > 0
-        ? Object.fromEntries(nonPrice.map((k) => [k, normalized[k].join(',')]))
-        : undefined;
+      // Only fetch if we've initialized OR if there are actual filters applied
+      if (initializedFromFilterFields.current || nonPrice.length > 0) {
+        const priceParams = nonPrice.length > 0
+          ? Object.fromEntries(nonPrice.map((k) => [k, normalized[k].join(',')]))
+          : undefined;
 
-      fetchPriceRange(priceParams)
-        .then((pr) => {
-          if (pr?.data) {
-            setPriceMin((prev) => (prev === pr.data.min ? prev : pr.data.min));
-            setPriceMax((prev) => (prev === pr.data.max ? prev : pr.data.max));
-            const nextBps: number[] = pr.data.breakpoints || [];
-            setPriceBreakpoints((prev) => (arraysEqual(prev, nextBps) ? prev : nextBps));
-          }
-        })
-        .catch((err) => {
-          console.warn('Filtered price fetch failed:', err, priceParams);
-          // Don't clear price data on error - keep existing state
-        });
+        const catId = getCategoryIdFromPath();
+        fetchPriceRange(priceParams, catId)
+          .then((pr) => {
+            if (pr?.data) {
+              setPriceMin((prev) => (prev === pr.data.min ? prev : pr.data.min));
+              setPriceMax((prev) => (prev === pr.data.max ? prev : pr.data.max));
+              const nextBps: number[] = pr.data.breakpoints || [];
+              setPriceBreakpoints((prev) => (arraysEqual(prev, nextBps) ? prev : nextBps));
+            }
+          })
+          .catch((err) => {
+            console.warn('Filtered price fetch failed:', err, priceParams);
+            // Don't clear price data on error - keep existing state
+          });
+      }
     }, 300); // Reduced timeout for faster response
 
     return () => window.clearTimeout(priceFetchTimeout.current);
