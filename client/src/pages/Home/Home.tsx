@@ -7,6 +7,7 @@ import PaginationControls from '../../components/PaginationControls/PaginationCo
 import { fetchProductsFromAPI } from '../../api';
 import MegaFilter from '../../components/MegaFilter/MegaFilter';
 import styles from './Home.module.scss';
+import { getCategoryIdFromPath } from '../../utils/helpers';
 
 interface Product {
   id: number;
@@ -95,15 +96,15 @@ const Home: React.FC = () => {
   }, []);
 
   // Helper: extract the digits right before ".htm" at the end of the path
-  const getCategoryIdFromPath = (): string => {
-    try {
-      const path = window.location.pathname; 
-      const m = path.match(/\/(\d+)\.htm(?:$|\?)/i);
-      return m ? m[1] : '51'; 
-    } catch {
-      return '1692'; 
-    }
-  };
+  // const getCategoryIdFromPath = (): string => {
+  //   try {
+  //     const path = window.location.pathname; 
+  //     const m = path.match(/\/(\d+)\.htm(?:$|\?)/i);
+  //     return m ? m[1] : '51'; // for testing purposes, default to ''
+  //   } catch {
+  //     return ''; 
+  //   }
+  // };
 
   // —— FETCH PRODUCTS ——
   const fetchProducts = async () => {
@@ -115,8 +116,7 @@ const Home: React.FC = () => {
       qp.set('offset', String(offsetFrom(currentPage, itemsPerPage)));
       qp.set('sortBy', String(sortBy));
 
-      const catId = getCategoryIdFromPath();
-
+      const catId = getCategoryIdFromPath() 
       Object.keys(selectedFilters).forEach((key) => {
         if (key === 'sortBy') return;
         qp.append(key, selectedFilters[key].join(','));

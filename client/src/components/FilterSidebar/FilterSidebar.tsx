@@ -9,6 +9,7 @@ import {
   fetchHeightRange
 } from '../../api';
 import { useDebouncedEffect } from '../../utils/useDebouncedEffect';
+import { getCategoryIdFromPath } from '../../utils/helpers';
 
 interface FilterField {
   id: number;
@@ -93,15 +94,15 @@ function buildParams(
 }
 // --------------------------------
 // Helper: extract the digits right before ".htm" at the end of the path
-const getCategoryIdFromPath = (): string => {
-  try {
-    const path = window.location.pathname; 
-    const m = path.match(/\/(\d+)\.htm(?:$|\?)/i);
-    return m ? m[1] : '51'; 
-  } catch {
-    return '1692'; 
-  }
-};
+// const getCategoryIdFromPath = (): string => {
+//   try {
+//     const path = window.location.pathname; 
+//     const m = path.match(/\/(\d+)\.htm(?:$|\?)/i);
+//     return m ? m[1] : '51'; 
+//   } catch {
+//     return '1692'; 
+//   }
+// };
 const FilterSidebar: React.FC<FilterSidebarProps> = ({
   onFilterChange,
   selectedFilters
