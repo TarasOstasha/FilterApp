@@ -94,7 +94,8 @@ const exportProductDataToCSV = async () => {
         product_name, 
         product_link, 
         product_img_link, 
-        product_price
+        product_price,
+        most_popular
       FROM products
       ORDER BY product_code, id;
     `);
@@ -108,7 +109,8 @@ const exportProductDataToCSV = async () => {
       'product_name', 
       'product_link', 
       'product_img_link', 
-      'product_price'
+      'product_price',
+      'most_popular'
     ];
 
     const json2csvParser = new Parser({ fields });

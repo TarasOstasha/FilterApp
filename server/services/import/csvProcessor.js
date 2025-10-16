@@ -94,18 +94,20 @@ const processProductCsvFile = (csvFilePath) => {
               product_link,
               product_img_link,
               product_price,
+              most_popular
             } = rows[0]; // take first for product insert
             //console.log(chalk.red('Processing product product_img_link:', Object.values(rows[0])));
             const productResult = await pool.query(
-              `INSERT INTO products (product_code, product_name, product_link, product_img_link, product_price)
-               VALUES ($1, $2, $3, $4, $5)
+              `INSERT INTO products (product_code, product_name, product_link, product_img_link, product_price, most_popular)
+               VALUES ($1, $2, $3, $4, $5, $6)
                ON CONFLICT (product_code) DO UPDATE 
                SET product_name = COALESCE(EXCLUDED.product_name, products.product_name), 
                    product_link = COALESCE(EXCLUDED.product_link, products.product_link), 
                    product_img_link = COALESCE(EXCLUDED.product_img_link, products.product_img_link), 
-                   product_price = COALESCE(EXCLUDED.product_price, products.product_price)
+                   product_price = COALESCE(EXCLUDED.product_price, products.product_price),
+                   most_popular = COALESCE(EXCLUDED.most_popular, products.most_popular)
                RETURNING id;`,
-              [product_code, product_name, product_link, product_img_link, parseFloat(product_price)]
+              [product_code, product_name, product_link, product_img_link, parseFloat(product_price), most_popular ? parseFloat(most_popular) : null]
             );
 
             const productId = productResult.rows[0].id;

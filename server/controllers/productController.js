@@ -30,6 +30,9 @@ module.exports.getMegaFilteredProductItems = async (req, res, next) => {
       case 'price_desc':
         order = [['product_price', 'DESC']];
         break;
+      case 'most_popular':
+        order = [['most_popular', 'DESC']];
+        break;
       case 'price_asc':
       default:
         order = [['product_price', 'ASC']];
@@ -213,8 +216,16 @@ module.exports.getProducts = async (req, res, next) => {
     const limit = parseInt(req.query.limit, 10) || 27;
     const offset = parseInt(req.query.offset, 10) || 0;
     const catId = req.query.catId || null;
+    
+    // Determine sort field and direction
+    let sortField = 'product_price';
     let sortDir = 'ASC';
+    
     if (req.query.sortBy === 'price_desc') {
+      sortField = 'product_price';
+      sortDir = 'DESC';
+    } else if (req.query.sortBy === 'most_popular') {
+      sortField = 'most_popular';
       sortDir = 'DESC';
     }
 
@@ -300,7 +311,7 @@ module.exports.getProducts = async (req, res, next) => {
       ${joinClauses}
       WHERE 1=1
       ${whereClauses}
-      ORDER BY product_price ${sortDir}
+      ORDER BY ${sortField} ${sortDir}
       LIMIT :limit OFFSET :offset
     `;
 

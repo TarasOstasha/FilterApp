@@ -52,6 +52,11 @@ module.exports = (sequelize) => {
         type: DataTypes.DECIMAL,
         allowNull: false,
       },
+      most_popular: {
+        type: DataTypes.INTEGER,
+        allowNull: true,
+        defaultValue: null,
+      },
     },
     {
       sequelize,
