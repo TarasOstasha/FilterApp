@@ -6,20 +6,14 @@ module.exports = (sequelize) => {
     static associate(models) {
       // product_filters belongs to Product
       ProductFilter.belongsTo(models.Product, {
-        foreignKey: {
-          name: 'product_id',
-          allowNull: false,
-        },
+        foreignKey: 'product_id',
         onUpdate: 'CASCADE',
         onDelete: 'CASCADE',
       });
 
       // product_filters belongs to FilterField
       ProductFilter.belongsTo(models.FilterField, {
-        foreignKey: {
-          name: 'filter_field_id',
-          allowNull: false,
-        },
+        foreignKey: 'filter_field_id',
         onUpdate: 'CASCADE',
         onDelete: 'CASCADE',
       });

@@ -99,9 +99,9 @@ export const fetchMegaFilteredProductsFromAPI = async (searchTerm: string, sortB
 };
 
 // fetch filter fields
-export const fetchFilterSidebarData = async (): Promise<AxiosResponse<any> | undefined> => {
+export const fetchFilterSidebarData = async (catId: string): Promise<AxiosResponse<any> | undefined> => {
     try {
-        return await axiosInstance.get('/filterField');
+        return await axiosInstance.get('/filterField', { params: { catId } });
     } catch (error) {
         console.log(error, 'error fetching filter data');
     }

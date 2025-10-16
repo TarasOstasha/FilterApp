@@ -7,13 +7,12 @@ module.exports = (sequelize) => {
     static associate(models) {
       FilterField.belongsToMany(models.Product, {
         through: 'product_filters',
-        foreignKey: {
-          name: 'filter_field_id',
-          allowNull: false,
-        },
+        foreignKey: 'filter_field_id',
+        otherKey: 'product_id',
         onUpdate: 'CASCADE',
         onDelete: 'CASCADE',
       });
+      FilterField.hasMany(models.ProductFilter, { foreignKey: 'filter_field_id' });
     }
   }
 

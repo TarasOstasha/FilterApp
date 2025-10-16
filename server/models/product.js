@@ -7,33 +7,22 @@ module.exports = (sequelize) => {
       // Many-to-many with Category
       Product.belongsToMany(models.Category, {
         through: 'product_categories',
-        foreignKey: {
-          name: 'product_id',
-          allowNull: false,
-        },
+        foreignKey: 'product_id',
+        otherKey: 'category_id',
         onUpdate: 'CASCADE',
         onDelete: 'CASCADE'
       });
 
       // Many-to-many with FilterField
-      // Product.belongsToMany(models.ProductFilter, {
-      //   foreignKey: {
-      //     name: 'product_id',
-      //     allowNull: false,
-      //   },
-      //   onUpdate: 'CASCADE',
-      //   onDelete: 'CASCADE'
-      // });
-
       Product.belongsToMany(models.FilterField, {
-        through: 'product_filters',           
-        foreignKey: {
-          name: 'product_id',
-          allowNull: false,
-        },
+        through: 'product_filters',
+        foreignKey: 'product_id',
+        otherKey: 'filter_field_id',
         onUpdate: 'CASCADE',
         onDelete: 'CASCADE',
       });
+      
+      Product.hasMany(models.ProductFilter, { foreignKey: 'product_id' });
     }
   }
 

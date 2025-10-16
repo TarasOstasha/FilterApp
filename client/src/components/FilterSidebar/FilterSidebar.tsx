@@ -252,7 +252,8 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
     priceFetchTimeout.current = window.setTimeout(() => {
       // Sidebar fields - always fetch, but preserve existing state on failure
       if (keys.length === 0) {
-        fetchFilterSidebarData()
+        const catId = getCategoryIdFromPath();
+        fetchFilterSidebarData(catId)
           .then((r) => {
             const next = r?.data ?? [];
             if (next.length > 0) { // Only update if we got valid data
@@ -274,7 +275,6 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
       } else if (nonPrice.length > 0) {
         const params = Object.fromEntries(nonPrice.map((k) => [k, normalized[k].join(',')]));
         const catId = getCategoryIdFromPath();
-        console.log(catId ,'catId');
         fetchDynamicFilters(params, catId)
           .then((r) => {
             const d = r?.data;
@@ -300,7 +300,8 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
           .catch((err) => {
             console.warn('Dynamic filters fetch failed:', err);
             // Fallback to static data, but don't clear existing state if that fails too
-            fetchFilterSidebarData()
+            const catId = getCategoryIdFromPath();
+            fetchFilterSidebarData(catId)
               .then((r) => {
                 const fallbackData = r?.data ?? [];
                 if (fallbackData.length > 0) {

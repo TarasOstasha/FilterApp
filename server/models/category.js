@@ -14,6 +14,8 @@ module.exports = (sequelize) => {
         onUpdate: 'CASCADE',
         onDelete: 'CASCADE',
       });
+      // new
+      Category.belongsToMany(models.Product, { through: 'product_categories', foreignKey: 'category_id', otherKey: 'product_id' });
     }
   }
 
