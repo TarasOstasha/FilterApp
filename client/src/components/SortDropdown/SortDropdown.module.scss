@@ -1,8 +1,10 @@
-@import '../../styles/variables.scss';
+//@import '../../styles/variables.scss';
+@use '../../styles/variables' as *;
+
 
 
 .sortBy {
-    font-family: $arial-font;
+    //font-family: $arial-font;
     font-weight: bold;
     font-size: 14px;
     line-height: 20px;
@@ -26,7 +28,7 @@
     -webkit-appearance: none;
     -moz-appearance: none;
     appearance: none;
-    font-family: $arial-font!important;
+    //font-family: $arial-font!important;
     color: rgb(124, 137, 154);
   }
   

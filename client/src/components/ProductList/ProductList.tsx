@@ -370,7 +370,7 @@ const ProductList: React.FC<ProductListProps> = ({ products = [], filters, loadi
               maxRetries={3}
             />
             <h3 className={styles.xyzPname}>{product.product_name}</h3>
-            <p className={styles.xyzPprice}>Our Price: ${formatPrice(product.product_price)}</p>
+            <p className={styles.xyzPprice}><span>Our Price:</span> ${formatPrice(product.product_price)}</p>
           </a>
         ))
       )}

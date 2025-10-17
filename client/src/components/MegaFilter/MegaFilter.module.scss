@@ -1,4 +1,6 @@
-@import '../../styles/variables.scss';
+//@import '../../styles/variables.scss';
+@use '../../styles/variables' as *;
+
 
 
 .xyzProductList {
@@ -12,10 +14,10 @@
     max-width: calc(33.33% - 30px);
     box-sizing: border-box;
     padding: 15px;
-    color: $main-color;
+    //color: $main-color;
     text-decoration: none;
     &:hover {
-      color: $second-color;//$main-color;
+      //color: $second-color;//$main-color;
       // Apply the hover to all child elements except .xyzPprice
       // .xyzProductDetail *:not(.xyzPprice) {
       //   color: $main-color;//$second-color;
@@ -23,15 +25,15 @@
     }
   }
   .xyzPname {
-    font-family: $open-sans-condensed;
+    //font-family: $open-sans-condensed;
     font-weight: 700;
     font-size: 16px;
     line-height: 23px;
   
   }
   .xyzPprice {
-    font-family: $arial-font;
-    color: $main-color;
+    //font-family: $arial-font;
+    //color: $main-color;
   }
   /* For tablet-sized screens (768px - 1024px) */
 @media (max-width: 1024px) {
