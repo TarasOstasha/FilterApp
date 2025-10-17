@@ -9,7 +9,12 @@ const router = require('./routes');
 const app = express();
 
 const corsOptions = {
-  origin: '*', // on the production, replace with 'https://www.xyzdisplays.com'
+  //origin: '*', // on the production, replace with 'https://www.xyzdisplays.com'
+  origin: [
+    'https://hxyrr-gdtbo.volusion.store', // sandbox
+    'https://www.xyzdisplays.com',        // prod
+    'https://filter.xyzdisplays.com'      // your subdomain
+  ],
 };
 
 app.use(express.json());
