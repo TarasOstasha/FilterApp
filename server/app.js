@@ -41,6 +41,12 @@ app.get('/api/health', (_req, res) => res.sendStatus(200));
 app.use('/api', router);
 
 app.use(errorHandlers.errorHandler);
+// hide from google
+app.get('/robots.txt', (_req, res) => {
+  res.type('text/plain');
+  res.send('User-agent: *\nDisallow: /');
+});
+
 
 // 👇 serve the built client
 const clientBuildPath = path.join(__dirname, '../client/build');

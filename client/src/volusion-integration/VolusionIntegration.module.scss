@@ -1,0 +1,56 @@
+.volusionIntegration {
+  display: flex;
+  gap: 20px;
+  width: 100%;
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 20px;
+
+  .sidebar {
+    flex: 0 0 250px;
+    min-width: 250px;
+  }
+
+  .productArea {
+    flex: 1;
+    min-width: 0;
+
+    .controls {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+      gap: 10px;
+
+      .resultCount {
+        font-size: 14px;
+        color: #666;
+      }
+    }
+  }
+}
+
+@media (max-width: 768px) {
+  .volusionIntegration {
+    flex-direction: column;
+    padding: 10px;
+
+    .sidebar {
+      flex: 0 0 auto;
+      width: 100%;
+      min-width: auto;
+    }
+
+    .productArea {
+      .controls {
+        flex-direction: column;
+        align-items: stretch;
+
+        .resultCount {
+          text-align: center;
+        }
+      }
+    }
+  }
+}
