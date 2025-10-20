@@ -100,7 +100,7 @@ const MegaFilter: React.FC<ProductListProps> = ({ sortBy, filters, loading }) =>
                             <img src={product.product_img_link} alt={product.product_name} />
                             <h3 className={styles.xyzPname}>{product.product_name}</h3>
                             <p className={styles.xyzPprice}>
-                                Our Price: {`$${product.product_price.toFixed(2).toLocaleString()}`}
+                                <span>Our Price: </span>{`$${product.product_price.toFixed(2).toLocaleString()}`}
                             </p>
                         </a>
                     ))
