@@ -149,7 +149,7 @@ module.exports.getDynamicFilters = async (req, res, next) => {
          AND pf${idx}.filter_field_id = (
                SELECT id FROM filter_fields WHERE field_name = :fieldName${idx}
              )
-         AND pf${idx}.filter_value = ANY(string_to_array(:csv${idx}, ','))
+         AND string_to_array(pf${idx}.filter_value, ',') && string_to_array(:csv${idx}, ',')
       `;
 
       replacements[`fieldName${idx}`] = filterFieldName;
@@ -165,34 +165,33 @@ module.exports.getDynamicFilters = async (req, res, next) => {
       `
       : '';
 
+    // Count how many filters we're checking
+    const filterCount = keys.length;
+
     const sql = `
-      WITH matched AS (
-        SELECT base.product_id
+      WITH base_products AS (
+        SELECT DISTINCT base.product_id
         FROM product_filters base
         ${categoryJoin}
         ${joins}
-        GROUP BY base.product_id
       )
       SELECT
         ff.id AS filter_field_id,
         ff.field_name,
         ff.field_type,
+        ff.sort_order,
         JSON_AGG(DISTINCT cleaned.val ORDER BY cleaned.val) AS values
       FROM product_filters pf
-      JOIN matched m
-        ON pf.product_id = m.product_id
-      CROSS JOIN LATERAL
-        unnest(string_to_array(pf.filter_value, ',')) AS raw_val(val)
-      CROSS JOIN LATERAL
-        (SELECT trim(raw_val.val) AS val) AS cleaned
-      JOIN filter_fields ff
-        ON ff.id = pf.filter_field_id
+      JOIN base_products bp ON pf.product_id = bp.product_id
+      JOIN filter_fields ff ON ff.id = pf.filter_field_id
+      CROSS JOIN LATERAL unnest(string_to_array(pf.filter_value, ',')) AS raw_val(val)
+      CROSS JOIN LATERAL (SELECT trim(raw_val.val) AS val) AS cleaned
       WHERE cleaned.val <> ''
         AND (
           ff.field_type = 'range'
           OR (ff.field_type = 'checkbox' AND cleaned.val = ANY(string_to_array(ff.allowed_values, ',')))
         )
-      GROUP BY ff.id, ff.field_name, ff.field_type
+      GROUP BY ff.id, ff.field_name, ff.field_type, ff.sort_order
       ORDER BY ff.sort_order;
     `;
 
@@ -202,6 +201,15 @@ module.exports.getDynamicFilters = async (req, res, next) => {
     });
 
     console.log(chalk.green(`Dynamic filters found: ${results.length}`));
+    
+    // Debug logging
+    console.log(chalk.cyan('=== DYNAMIC FILTER RESPONSE ==='));
+    console.log(chalk.yellow('Query params:'), JSON.stringify(criteria, null, 2));
+    results.forEach(r => {
+      console.log(chalk.magenta(`${r.field_name}:`), r.values);
+    });
+    console.log(chalk.cyan('=============================='));
+    
     res.json(results);
   } catch (err) {
     next(err);

@@ -165,7 +165,7 @@ module.exports.getPriceRange = async (req, res, next) => {
           JOIN product_filters pf_check${checkIdx}
             ON pf_check${checkIdx}.product_id = p.id
            AND pf_check${checkIdx}.filter_field_id = ${field.id}
-           AND pf_check${checkIdx}.filter_value = ANY(ARRAY[:vals${checkIdx}]::text[])
+           AND string_to_array(pf_check${checkIdx}.filter_value, ',') && ARRAY[:vals${checkIdx}]::text[]
         `;
         checkIdx++;
       }
@@ -289,7 +289,7 @@ module.exports.getProducts = async (req, res, next) => {
           JOIN product_filters ${alias}
             ON ${alias}.product_id = p.id
            AND ${alias}.filter_field_id = ${fieldId}
-           AND ${alias}.filter_value IN (:checkVals${joinIndex})
+           AND string_to_array(${alias}.filter_value, ',') && ARRAY[:checkVals${joinIndex}]::text[]
         `;
 
         replacements[`checkVals${joinIndex}`] = values;
@@ -539,7 +539,7 @@ module.exports.getWidthRange = async (req, res, next) => {
           JOIN product_filters pf_check${checkIdx}
             ON pf_check${checkIdx}.product_id = p.id
            AND pf_check${checkIdx}.filter_field_id = ${field.id}
-           AND pf_check${checkIdx}.filter_value = ANY(ARRAY[:vals${checkIdx}]::text[])
+           AND string_to_array(pf_check${checkIdx}.filter_value, ',') && ARRAY[:vals${checkIdx}]::text[]
         `;
         checkIdx++;
       }
@@ -654,7 +654,7 @@ module.exports.getHeightRange = async (req, res, next) => {
           JOIN product_filters pf_check${checkIdx}
             ON pf_check${checkIdx}.product_id = p.id
            AND pf_check${checkIdx}.filter_field_id = ${field.id}
-           AND pf_check${checkIdx}.filter_value = ANY(ARRAY[:vals${checkIdx}]::text[])
+           AND string_to_array(pf_check${checkIdx}.filter_value, ',') && ARRAY[:vals${checkIdx}]::text[]
         `;
         checkIdx++;
       }

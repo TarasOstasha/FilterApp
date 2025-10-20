@@ -315,7 +315,15 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
                 if (prev.length !== next.length) return next;
                 const hasChanges = prev.some((p, i) => {
                   const n = next[i];
-                  return !n || p.id !== n.id || p.field_name !== n.field_name || p.field_type !== n.field_type;
+                  if (!n || p.id !== n.id || p.field_name !== n.field_name || p.field_type !== n.field_type) return true;
+                  // Check if allowed_values have changed
+                  if (p.field_type === 'checkbox') {
+                    const prevVals = Array.isArray(p.allowed_values) ? p.allowed_values : [];
+                    const nextVals = Array.isArray(n.allowed_values) ? n.allowed_values : [];
+                    if (prevVals.length !== nextVals.length) return true;
+                    return prevVals.some((v, idx) => v !== nextVals[idx]);
+                  }
+                  return false;
                 });
                 return hasChanges ? next : prev;
               });
@@ -344,7 +352,15 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
                 if (prev.length !== next.length) return next;
                 const hasChanges = prev.some((p, i) => {
                   const n = next[i];
-                  return !n || p.id !== n.id || p.field_name !== n.field_name || p.field_type !== n.field_type;
+                  if (!n || p.id !== n.id || p.field_name !== n.field_name || p.field_type !== n.field_type) return true;
+                  // Check if allowed_values have changed
+                  if (p.field_type === 'checkbox') {
+                    const prevVals = Array.isArray(p.allowed_values) ? p.allowed_values : [];
+                    const nextVals = Array.isArray(n.allowed_values) ? n.allowed_values : [];
+                    if (prevVals.length !== nextVals.length) return true;
+                    return prevVals.some((v, idx) => v !== nextVals[idx]);
+                  }
+                  return false;
                 });
                 return hasChanges ? next : prev;
               });
