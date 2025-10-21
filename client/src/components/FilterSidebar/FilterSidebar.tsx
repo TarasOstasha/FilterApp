@@ -130,21 +130,44 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
   // Track if we've initialized from filterFields to prevent overwrites
   const initializedFromFilterFields = useRef(false);
 
-  // Reset width/height to global values when all filters are cleared
+  // Reset width/height to category-specific values when all filters are cleared
   useEffect(() => {
     const safeFilters = sanitizeFilters(selectedFilters);
     const hasFilters = Object.keys(safeFilters).length > 0;
     
-    // Only reset if we've initialized AND there are no filters AND we have global values
+    // Only reset if we've initialized AND there are no filters
     if (!hasFilters && initializedFromFilterFields.current) {
-      if (globalMinWidth > 0 || globalMaxWidth > 0) {
-        setWidthMin(globalMinWidth);
-        setWidthMax(globalMaxWidth);
-      }
-      if (globalMinHeight > 0 || globalMaxHeight > 0) {
-        setHeightMin(globalMinHeight);
-        setHeightMax(globalMaxHeight);
-      }
+      // Fetch category-specific ranges when filters are cleared
+      (async () => {
+        try {
+          const catId = getCategoryIdFromPath();
+          
+          // Fetch category-specific width range
+          const resWidth = await fetchWidthRange({}, catId);
+          if (resWidth?.data) {
+            setWidthMin(resWidth.data.min || resWidth.data.globalMin || globalMinWidth);
+            setWidthMax(resWidth.data.max || resWidth.data.globalMax || globalMaxWidth);
+          }
+          
+          // Fetch category-specific height range
+          const resHeight = await fetchHeightRange({}, catId);
+          if (resHeight?.data) {
+            setHeightMin(resHeight.data.min || resHeight.data.globalMin || globalMinHeight);
+            setHeightMax(resHeight.data.max || resHeight.data.globalMax || globalMaxHeight);
+          }
+        } catch (err) {
+          console.error('Error resetting width/height ranges:', err);
+          // Fallback to global values on error
+          if (globalMinWidth > 0 || globalMaxWidth > 0) {
+            setWidthMin(globalMinWidth);
+            setWidthMax(globalMaxWidth);
+          }
+          if (globalMinHeight > 0 || globalMaxHeight > 0) {
+            setHeightMin(globalMinHeight);
+            setHeightMax(globalMaxHeight);
+          }
+        }
+      })();
     }
   }, [selectedFilters, globalMinWidth, globalMaxWidth, globalMinHeight, globalMaxHeight]);
 
