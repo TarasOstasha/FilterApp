@@ -130,6 +130,24 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
   // Track if we've initialized from filterFields to prevent overwrites
   const initializedFromFilterFields = useRef(false);
 
+  // Reset width/height to global values when all filters are cleared
+  useEffect(() => {
+    const safeFilters = sanitizeFilters(selectedFilters);
+    const hasFilters = Object.keys(safeFilters).length > 0;
+    
+    // Only reset if we've initialized AND there are no filters AND we have global values
+    if (!hasFilters && initializedFromFilterFields.current) {
+      if (globalMinWidth > 0 || globalMaxWidth > 0) {
+        setWidthMin(globalMinWidth);
+        setWidthMax(globalMaxWidth);
+      }
+      if (globalMinHeight > 0 || globalMaxHeight > 0) {
+        setHeightMin(globalMinHeight);
+        setHeightMax(globalMaxHeight);
+      }
+    }
+  }, [selectedFilters, globalMinWidth, globalMaxWidth, globalMinHeight, globalMaxHeight]);
+
   function handleCheckboxChange(field: string, value: string) {
     onFilterChange({ field, value });
   }
@@ -225,7 +243,7 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
       })();
     },
     [selectedFilters],
-    500
+    800
   );
 
   // ----- LIVE FILTERED HEIGHT RANGE -----
@@ -253,7 +271,7 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
       })();
     },
     [selectedFilters],
-    300
+    800
   );
 
   // ----- MAIN: FETCH FIELDS + PRICE (safe) -----

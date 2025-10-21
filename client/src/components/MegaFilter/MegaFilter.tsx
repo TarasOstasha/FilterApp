@@ -76,8 +76,10 @@ const MegaFilter: React.FC<ProductListProps> = ({ sortBy, filters, loading }) =>
         }
     }, [sortBy]); // Effect runs when sortBy changes
 
-    if (loading || isLoading) {
-        return <p>Loading products...</p>;
+    // Only show loading state for MegaFilter's own loading, not parent's loading
+    // to avoid duplicate "Loading products..." messages
+    if (isLoading) {
+        return <p>Searching...</p>;
     }
 
     return (

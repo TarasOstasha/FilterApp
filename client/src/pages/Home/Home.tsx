@@ -141,7 +141,7 @@ const Home: React.FC = () => {
 
   // debounce fetch on key deps
   useEffect(() => {
-    const t = setTimeout(fetchProducts, 300);
+    const t = setTimeout(fetchProducts, 600);
     return () => clearTimeout(t);
   }, [selectedFilters, currentPage, itemsPerPage, sortBy]);
 
