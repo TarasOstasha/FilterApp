@@ -129,6 +129,29 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
   
   // Track if we've initialized from filterFields to prevent overwrites
   const initializedFromFilterFields = useRef(false);
+  
+  // Track which filter sections are collapsed (default all to collapsed)
+  const [collapsedSections, setCollapsedSections] = useState<{ [key: string]: boolean }>({});
+  
+  // Initialize all sections as collapsed when filterFields load
+  useEffect(() => {
+    if (filterFields.length > 0 && Object.keys(collapsedSections).length === 0) {
+      const initialCollapsed: { [key: string]: boolean } = {};
+      filterFields.forEach(field => {
+        if (field.field_type === 'checkbox') {
+          initialCollapsed[field.field_name] = true; // true = collapsed
+        }
+      });
+      setCollapsedSections(initialCollapsed);
+    }
+  }, [filterFields]);
+  
+  const toggleSection = (sectionName: string) => {
+    setCollapsedSections(prev => ({
+      ...prev,
+      [sectionName]: !prev[sectionName]
+    }));
+  };
 
   // Reset width/height to category-specific values when all filters are cleared
   useEffect(() => {
@@ -458,25 +481,34 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
         const { field_name: fn, field_type: ft } = ff;
 
         if (ft === 'checkbox') {
+          const isCollapsed = collapsedSections[fn];
           return (
             <div key={ff.id} className={styles['filter-section']}>
-              <h4>{fn}</h4>
-              <ul className={styles['filter-list']}>
-                {(ff.allowed_values as string[]).map((val, i) => (
-                  <li key={i} className={styles['filter-item']}>
-                    <label>
-                      <input
-                        type="checkbox"
-                        value={val}
-                        checked={!!sanitizeFilters(selectedFilters)[fn]?.includes(val)}
-                        onChange={() => handleCheckboxChange(fn, val)}
-                        className={styles['sidebar-checkbox-input']}
-                      />
-                      {val}
-                    </label>
-                  </li>
-                ))}
-              </ul>
+              <h4 
+                onClick={() => toggleSection(fn)} 
+                className={styles['filter-header']}
+                style={{ cursor: 'pointer', userSelect: 'none' }}
+              >
+                <span className={styles['toggle-icon']}>{isCollapsed ? '▶' : '▼'}</span> {fn}
+              </h4>
+              {!isCollapsed && (
+                <ul className={styles['filter-list']}>
+                  {(ff.allowed_values as string[]).map((val, i) => (
+                    <li key={i} className={styles['filter-item']}>
+                      <label>
+                        <input
+                          type="checkbox"
+                          value={val}
+                          checked={!!sanitizeFilters(selectedFilters)[fn]?.includes(val)}
+                          onChange={() => handleCheckboxChange(fn, val)}
+                          className={styles['sidebar-checkbox-input']}
+                        />
+                        {val}
+                      </label>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
           );
         }
