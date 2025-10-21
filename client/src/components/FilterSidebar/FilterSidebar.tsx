@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import ReactSlider from 'react-slider';
+import { ClipLoader } from 'react-spinners';
 import styles from './FilterSidebar.module.scss';
 import {
   fetchFilterSidebarData,
@@ -108,6 +109,7 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
   selectedFilters
 }) => {
   const [filterFields, setFilterFields] = useState<FilterField[]>([]);
+  const [isLoadingFilters, setIsLoadingFilters] = useState(false);
   const [unitSelections, setUnitSelections] = useState<{ [k: string]: 'ft' | 'in' }>(
     { 'Display Width': 'in', 'Display Height': 'in' }
   );
@@ -375,10 +377,12 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
             // Don't clear filterFields on error - keep existing state
           });
       } else if (nonPrice.length > 0) {
+        setIsLoadingFilters(true);
         const params = Object.fromEntries(nonPrice.map((k) => [k, normalized[k].join(',')]));
         const catId = getCategoryIdFromPath();
         fetchDynamicFilters(params, catId)
           .then((r) => {
+            setIsLoadingFilters(false);
             const d = r?.data;
             if (Array.isArray(d) && d.length > 0) { // Only update if we got valid data
               const next: FilterField[] = d.map((f: any) => ({
@@ -408,6 +412,7 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
             }
           })
           .catch((err) => {
+            setIsLoadingFilters(false);
             console.warn('Dynamic filters fetch failed:', err);
             // Fallback to static data, but don't clear existing state if that fails too
             const catId = getCategoryIdFromPath();
@@ -454,6 +459,21 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
 
   return (
     <div className={styles.sidebar} style={{ width: '250px' }}>
+      {isLoadingFilters && (
+        <div style={{ 
+          padding: '20px', 
+          textAlign: 'center', 
+          background: '#f8f9fa', 
+          borderRadius: '8px',
+          marginBottom: '15px',
+          boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+        }}>
+          <ClipLoader color="#007bff" size={30} />
+          <div style={{ marginTop: '10px', color: '#666', fontSize: '14px' }}>
+            Updating filters...
+          </div>
+        </div>
+      )}
       {filterFields.map((ff) => {
         const { field_name: fn, field_type: ft } = ff;
 
