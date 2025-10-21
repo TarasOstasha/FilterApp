@@ -349,13 +349,31 @@ const ProductList: React.FC<ProductListProps> = ({ products = [], filters, loadi
   if (loading) return <p>Loading products...</p>;
 
   const list = Array.isArray(products) ? products : [];
+  
+  // Filter out products with invalid or missing data
+  const validProducts = list.filter((product) => {
+    // Check if price is valid (not null, not undefined, and is a finite number)
+    const priceValue = typeof product.product_price === 'number' 
+      ? product.product_price 
+      : typeof product.product_price === 'string' 
+      ? Number(product.product_price) 
+      : NaN;
+    
+    const hasValidPrice = Number.isFinite(priceValue) && priceValue > 0;
+    
+    // Optional: Also check for valid product name and link
+    const hasValidName = product.product_name && product.product_name.trim() !== '';
+    const hasValidLink = product.product_link && product.product_link.trim() !== '';
+    
+    return hasValidPrice && hasValidName && hasValidLink;
+  });
 
   return (
     <div className={styles.xyzProductList} role="list">
-      {list.length === 0 ? (
+      {validProducts.length === 0 ? (
         <p>No products match the selected filters.</p>
       ) : (
-        list.map((product) => (
+        validProducts.map((product) => (
           <a
             href={product.product_link}
             key={product.id}
