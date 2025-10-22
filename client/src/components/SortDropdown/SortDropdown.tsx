@@ -37,9 +37,9 @@ const SortDropdown: React.FC<SortDropdownProps> = ({ handleSortChange, currentSo
     <div className={styles['sort-dropdown']}>
       <label className={styles.sortBy}>Sort By:</label>
       <select value={currentSort} onChange={(e) => handleSortChange(e.target.value)} className={`${styles['xyz-form-select'] || ''} form-select`} >
+        <option value="most_popular">Most Popular</option>
         <option value="price_asc">Price: Low to High</option>
         <option value="price_desc">Price: High to Low</option>
-        <option value="most_popular">Most Popular</option>
         {/* <option value="title">Title</option>
         <option value="manufacturer">Manufacturer</option>
         <option value="newest">Newest</option>

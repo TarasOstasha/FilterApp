@@ -230,14 +230,27 @@ module.exports.getProducts = async (req, res, next) => {
     const catId = req.query.catId || null;
     
     // Determine sort field and direction
-    let sortField = 'product_price';
-    let sortDir = 'ASC';
+    // let sortField = 'product_price';
+    // let sortDir = 'ASC';
     
-    if (req.query.sortBy === 'price_desc') {
+    // if (req.query.sortBy === 'price_desc') {
+    //   sortField = 'product_price';
+    //   sortDir = 'DESC';
+    // } else if (req.query.sortBy === 'most_popular') {
+    //   sortField = 'most_popular';
+    //   sortDir = 'DESC';
+    // }
+
+    // Default sort: most_popular DESC
+    let sortField = 'most_popular';
+    let sortDir = 'DESC';
+    
+    // Override if user selected a sort
+    if (req.query.sortBy === 'price_asc') {
       sortField = 'product_price';
-      sortDir = 'DESC';
-    } else if (req.query.sortBy === 'most_popular') {
-      sortField = 'most_popular';
+      sortDir = 'ASC';
+    } else if (req.query.sortBy === 'price_desc') {
+      sortField = 'product_price';
       sortDir = 'DESC';
     }
 

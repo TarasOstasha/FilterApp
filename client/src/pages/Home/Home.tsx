@@ -18,6 +18,10 @@ interface Product {
   product_price: number;
 }
 
+export const allowedSorts = ['most_popular', 'price_asc', 'price_desc'] as const;
+export type SortBy = typeof allowedSorts[number];
+export const isSortBy = (v: unknown): v is SortBy => typeof v === 'string' && (allowedSorts as readonly string[]).includes(v);
+
 const Home: React.FC = () => {
   const [isTransitioning, setIsTransitioning] = useState(false);
 
@@ -29,7 +33,9 @@ const Home: React.FC = () => {
   const [visibleProducts, setVisibleProducts] = useState(27);
   const [totalProducts, setTotalProducts] = useState(0);
   const [loading, setLoading] = useState(false);
-  const [sortBy, setSortBy] = useState<'price_asc' | 'price_desc' | string>('price_asc');
+  //const [sortBy, setSortBy] = useState<'price_asc' | 'price_desc' | string>('price_asc');
+  const [sortBy, setSortBy] = useState<SortBy>('most_popular');
+
 
   // —— helpers ——
   const offsetFrom = (page: number, limit: number) => Math.max(0, (page - 1) * limit);
@@ -63,9 +69,9 @@ const Home: React.FC = () => {
     const sp = new URLSearchParams(window.location.search);
 
     // pagination
-    const urlLimit  = Number(sp.get('limit'));
+    const urlLimit = Number(sp.get('limit'));
     const urlOffset = Number(sp.get('offset'));
-    const limit  = Number.isFinite(urlLimit)  && urlLimit  > 0 ? urlLimit  : 27;
+    const limit = Number.isFinite(urlLimit) && urlLimit > 0 ? urlLimit : 27;
     const offset = Number.isFinite(urlOffset) && urlOffset >= 0 ? urlOffset : 0;
 
     setItemsPerPage(limit);
@@ -73,7 +79,11 @@ const Home: React.FC = () => {
     setVisibleProducts(limit);
 
     // sort
-    const urlSort = sp.get('sortBy') || 'price_asc';
+    // const urlSort = sp.get('sortBy') || 'price_asc';
+    // setSortBy(urlSort);
+
+    const q = sp.get('sortBy'); // string | null
+    const urlSort: SortBy = isSortBy(q) ? q : 'most_popular';
     setSortBy(urlSort);
 
     // filters (skip meta keys)
@@ -95,16 +105,6 @@ const Home: React.FC = () => {
     setSelectedFilters(restored);
   }, []);
 
-  // Helper: extract the digits right before ".htm" at the end of the path
-  // const getCategoryIdFromPath = (): string => {
-  //   try {
-  //     const path = window.location.pathname; 
-  //     const m = path.match(/\/(\d+)\.htm(?:$|\?)/i);
-  //     return m ? m[1] : '51'; // for testing purposes, default to ''
-  //   } catch {
-  //     return ''; 
-  //   }
-  // };
 
   // —— FETCH PRODUCTS ——
   const fetchProducts = async () => {
@@ -116,7 +116,7 @@ const Home: React.FC = () => {
       qp.set('offset', String(offsetFrom(currentPage, itemsPerPage)));
       qp.set('sortBy', String(sortBy));
 
-      const catId = getCategoryIdFromPath() 
+      const catId = getCategoryIdFromPath()
       Object.keys(selectedFilters).forEach((key) => {
         if (key === 'sortBy') return;
         qp.append(key, selectedFilters[key].join(','));
@@ -141,7 +141,7 @@ const Home: React.FC = () => {
 
   // debounce fetch on key deps
   useEffect(() => {
-    const t = setTimeout(fetchProducts, 600);
+    const t = setTimeout(fetchProducts, 300);
     return () => clearTimeout(t);
   }, [selectedFilters, currentPage, itemsPerPage, sortBy]);
 
@@ -179,15 +179,15 @@ const Home: React.FC = () => {
     // optional: instant scroll-to-top on filter change
     window.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior });
   };
-
   const handleSortChange = (sortMethod: string) => {
+    const validSort: SortBy = isSortBy(sortMethod) ? sortMethod : 'most_popular';
     setIsTransitioning(true);
-    setSortBy(sortMethod);
+    setSortBy(validSort);
     setCurrentPage(1);
     writeUrl({
       limit: itemsPerPage,
       offset: 0,
-      sortBy: sortMethod,
+      sortBy: validSort,
       filters: selectedFilters,
     });
     window.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior });
