@@ -649,6 +649,7 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
               <div key={ff.id} className={styles['filter-section']}>
                 <h4>{fn}</h4>
                 <div className={styles['unit-switcher']}>
+                  <span>Now showing {unit === 'ft' ? 'feet' : 'inches'}</span>&nbsp;
                   <button type="button" onClick={() => handleUnitSwitch(fn)}>
                     Switch to {unit === 'ft' ? 'inches' : 'feet'}
                   </button>
@@ -747,6 +748,7 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
               <div key={ff.id} className={styles['filter-section']}>
                 <h4>{fn}</h4>
                 <div className={styles['unit-switcher']}>
+                  <span>Now showing</span> {unit === 'ft' ? 'feet' : 'inches'}&nbsp; 
                   <button type="button" onClick={() => handleUnitSwitch(fn)}>
                     Switch to {unit === 'ft' ? 'inches' : 'feet'}
                   </button>
