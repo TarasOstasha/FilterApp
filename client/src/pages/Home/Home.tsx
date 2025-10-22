@@ -35,6 +35,8 @@ const Home: React.FC = () => {
   const [loading, setLoading] = useState(false);
   //const [sortBy, setSortBy] = useState<'price_asc' | 'price_desc' | string>('price_asc');
   const [sortBy, setSortBy] = useState<SortBy>('most_popular');
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const savedScrollRef = useRef<number | null>(null);
 
 
   // —— helpers ——
@@ -109,6 +111,7 @@ const Home: React.FC = () => {
   // —— FETCH PRODUCTS ——
   const fetchProducts = async () => {
     setLoading(true);
+    
     try {
       const qp = new URLSearchParams();
 
@@ -125,7 +128,13 @@ const Home: React.FC = () => {
       const response = await fetchProductsFromAPI(qp, catId);
       if (response?.data) {
         console.log(response?.data, 'response products HOME page')
-        setProducts(response.data.products);
+        // If loading more, append products. Otherwise, replace them
+        if (isLoadingMore) {
+          setProducts(prev => [...prev, ...response.data.products]);
+          setIsLoadingMore(false);
+        } else {
+          setProducts(response.data.products);
+        }
         setTotalProducts(response.data.totalProducts);
       } else {
         console.error('No data received');
@@ -136,6 +145,14 @@ const Home: React.FC = () => {
       setLoading(false);
       // let images start loading, then fade in
       setTimeout(() => setIsTransitioning(false), 120);
+      
+      // Restore scroll position after products have been rendered
+      if (savedScrollRef.current !== null) {
+        setTimeout(() => {
+          window.scrollTo({ top: savedScrollRef.current!, behavior: 'instant' as ScrollBehavior });
+          savedScrollRef.current = null; // Clear after restoring
+        }, 100);
+      }
     }
   };
 
@@ -148,6 +165,7 @@ const Home: React.FC = () => {
   // —— handlers ——
   const handleFilterChange = (filter: { field: string; value: string }) => {
     setIsTransitioning(true);
+    setIsLoadingMore(false);
     const { field, value } = filter;
     setSelectedFilters(prev => {
       const current = prev[field] || [];
@@ -165,6 +183,7 @@ const Home: React.FC = () => {
 
       // reset to page 1 whenever filters change
       setCurrentPage(1);
+      setVisibleProducts(itemsPerPage);
 
       // sync URL
       writeUrl({
@@ -182,8 +201,10 @@ const Home: React.FC = () => {
   const handleSortChange = (sortMethod: string) => {
     const validSort: SortBy = isSortBy(sortMethod) ? sortMethod : 'most_popular';
     setIsTransitioning(true);
+    setIsLoadingMore(false);
     setSortBy(validSort);
     setCurrentPage(1);
+    setVisibleProducts(itemsPerPage);
     writeUrl({
       limit: itemsPerPage,
       offset: 0,
@@ -195,6 +216,7 @@ const Home: React.FC = () => {
 
   const handleItemsPerPageChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     setIsTransitioning(true);
+    setIsLoadingMore(false);
     const next = Number(e.target.value);
     setItemsPerPage(next);
     setCurrentPage(1);
@@ -222,17 +244,33 @@ const Home: React.FC = () => {
   };
 
   const handleLoadMore = () => {
-    setCurrentPage(prev => prev + 1);
+    // Save scroll position immediately before any state changes
+    savedScrollRef.current = window.scrollY;
+    
+    setIsLoadingMore(true);
+    
+    const nextPage = currentPage + 1;
+    setCurrentPage(nextPage);
     setVisibleProducts(prev => {
       const nextVisible = prev + itemsPerPage;
       return nextVisible > totalProducts ? totalProducts : nextVisible;
+    });
+    
+    // Update URL with new offset
+    writeUrl({
+      limit: itemsPerPage,
+      offset: offsetFrom(nextPage, itemsPerPage),
+      sortBy,
+      filters: selectedFilters,
     });
   };
 
   const handleClearFilters = () => {
     setIsTransitioning(true);
+    setIsLoadingMore(false);
     setSelectedFilters({});
     setCurrentPage(1);
+    setVisibleProducts(itemsPerPage);
     writeUrl({
       limit: itemsPerPage,
       offset: 0,
@@ -283,6 +321,7 @@ const Home: React.FC = () => {
               visibleProducts={visibleProducts}
               totalProducts={totalProducts}
               onLoadMore={handleLoadMore}
+              isLoadingMore={isLoadingMore}
             />
           </div>
         </div>

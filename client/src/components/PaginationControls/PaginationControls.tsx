@@ -9,6 +9,7 @@ interface PaginationControlsProps {
   currentPage: number;
   totalPages: number;
   onPageChange: (page: number) => void;
+  isLoadingMore?: boolean;
 }
 
 
@@ -54,6 +55,7 @@ const PaginationControls: React.FC<PaginationControlsProps> = ({
   currentPage,
   totalPages,
   onPageChange,
+  isLoadingMore = false,
 }) => {
   return (
     <div className="pagination-controls">
@@ -62,13 +64,9 @@ const PaginationControls: React.FC<PaginationControlsProps> = ({
       </div> */}
       {visibleProducts < totalProducts && (
         <div className={styles['pagination-button']}>
-          {/* <button onClick={onLoadMore}>View More Products</button> */}
-          {currentPage !== totalPages && (
-            <button onClick={() => onPageChange(currentPage + 1)}>
-              View More Products
-            </button>
-          )}
-          <>{console.log(currentPage, totalPages)}</>
+          <button onClick={onLoadMore} disabled={isLoadingMore}>
+            {isLoadingMore ? 'Loading...' : 'View More Products'}
+          </button>
         </div>
       )}
       {/* <div>
