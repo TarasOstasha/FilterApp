@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { ClipLoader } from 'react-spinners';
 import FilterSidebar from '../../components/FilterSidebar/FilterSidebar';
 import ProductList from '../../components/ProductList/ProductList';
 import SortDropdown from '../../components/SortDropdown/SortDropdown';
@@ -36,6 +37,7 @@ const Home: React.FC = () => {
   //const [sortBy, setSortBy] = useState<'price_asc' | 'price_desc' | string>('price_asc');
   const [sortBy, setSortBy] = useState<SortBy>('most_popular');
   const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [isClearingFilters, setIsClearingFilters] = useState(false);
   const savedScrollRef = useRef<number | null>(null);
 
 
@@ -143,6 +145,7 @@ const Home: React.FC = () => {
       console.error('Error fetching products:', err);
     } finally {
       setLoading(false);
+      setIsClearingFilters(false);
       // let images start loading, then fade in
       setTimeout(() => setIsTransitioning(false), 120);
       
@@ -266,6 +269,7 @@ const Home: React.FC = () => {
   };
 
   const handleClearFilters = () => {
+    setIsClearingFilters(true);
     setIsTransitioning(true);
     setIsLoadingMore(false);
     setSelectedFilters({});
@@ -289,9 +293,21 @@ const Home: React.FC = () => {
           <FilterSidebar
             onFilterChange={handleFilterChange}
             selectedFilters={selectedFilters}
+            isClearingFilters={isClearingFilters}
           />
-          <button className={styles.clearFiltersButton} onClick={handleClearFilters}>
-            Clear Filters
+          <button 
+            className={styles.clearFiltersButton} 
+            onClick={handleClearFilters}
+            disabled={isClearingFilters}
+            style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'center',
+              gap: '8px'
+            }}
+          >
+            {isClearingFilters && <ClipLoader color="#fff" size={16} />}
+            {isClearingFilters ? 'Clearing...' : 'Clear Filters'}
           </button>
         </div>
         <div className="col-md-9">

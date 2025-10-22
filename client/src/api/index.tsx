@@ -123,17 +123,12 @@ export const fetchDynamicFilters = async (
     }
 };
 
-export const uploadCSV = async (uploadType: string, formData: FormData): Promise<AxiosResponse<any> | undefined> => {
-    try {
-        return await axiosInstance.post(`/upload-csv/${uploadType}`, formData, {
-            headers: {
-                'Content-Type': 'multipart/form-data',
-            },
-        });
-    } catch (error) {
-        console.error('Error uploading CSV:', error);
-        return undefined;
-    }
+export const uploadCSV = async (uploadType: string, formData: FormData): Promise<AxiosResponse<any>> => {
+    return await axiosInstance.post(`/upload-csv/${uploadType}`, formData, {
+        headers: {
+            'Content-Type': 'multipart/form-data',
+        },
+    });
 };
 
 export const exportData = async (type: string): Promise<AxiosResponse<Blob> | undefined> => {

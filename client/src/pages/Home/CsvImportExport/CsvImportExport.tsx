@@ -85,15 +85,18 @@ const CsvImportExport: React.FC = () => {
         try {
             const response = await uploadCSV(uploadType, formData);
             const uploadTime = new Date().toLocaleString();
-            // toast.success(`File uploaded successfully at ${uploadTime}`);
-            if (response?.data.errorRows && response.data.errorRows.length > 0) {
-                toast.warn(`File uploaded with errors. ${response.data.errorRows.length} rows had issues.`);
-            } else {
-                toast.success(`File uploaded successfully at ${uploadTime}`);
-            }
+            toast.success(`File uploaded successfully at ${uploadTime}`);
         } catch (error) {
-            if (axios.isAxiosError(error) && error.response?.data?.message) {
-                toast.error(error.response.data.message);
+            if (axios.isAxiosError(error) && error.response?.data) {
+                const errorData = error.response.data;
+                // Check if there are specific error rows (400 status with errorRows)
+                if (errorData.errorRows && errorData.errorRows.length > 0) {
+                    toast.error(`${errorData.message || 'File processed with errors'} ${errorData.errorRows.length} rows had issues.`);
+                } else if (errorData.message) {
+                    toast.error(errorData.message);
+                } else {
+                    toast.error('Error uploading file');
+                }
             } else if (error instanceof Error) {
                 toast.error(error.message);
             } else {
