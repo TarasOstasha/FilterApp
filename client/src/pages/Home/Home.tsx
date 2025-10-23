@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import FilterSidebar from '../../components/FilterSidebar/FilterSidebar';
 import ProductList from '../../components/ProductList/ProductList';
 import SortDropdown from '../../components/SortDropdown/SortDropdown';
@@ -36,9 +36,8 @@ const Home: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [sortBy, setSortBy] = useState<SortBy>('most_popular');
 
-  // load-more + scroll-restore
+  // load-more
   const [isLoadingMore, setIsLoadingMore] = useState(false);
-  const savedScrollRef = useRef<number | null>(null);
 
   // —— helpers ——
   const offsetFrom = (page: number, limit: number) => Math.max(0, (page - 1) * limit);
@@ -117,7 +116,6 @@ const Home: React.FC = () => {
       const response = await fetchProductsFromAPI(qp, catId);
       if (response?.data) {
         const newProducts: Product[] = response.data.products || [];
-        console.log(newProducts, response.data.totalProducts);
         if (isLoadingMore) {
           // Filter out duplicates based on product ID before appending
           setProducts((prev) => {
@@ -136,21 +134,9 @@ const Home: React.FC = () => {
       console.error('Error fetching products:', err);
     } finally {
       setLoading(false);
+      setIsLoadingMore(false);
       // let images start loading, then fade in
       setTimeout(() => setIsTransitioning(false), 120);
-
-      // Restore scroll position after render (double rAF beats setTimeout)
-      if (savedScrollRef.current !== null) {
-        requestAnimationFrame(() => {
-          requestAnimationFrame(() => {
-            window.scrollTo({ top: savedScrollRef.current!, behavior: 'instant' as ScrollBehavior });
-            savedScrollRef.current = null;
-            setIsLoadingMore(false);
-          });
-        });
-      } else {
-        setIsLoadingMore(false);
-      }
     }
   };
 
@@ -241,8 +227,6 @@ const Home: React.FC = () => {
   };
 
   const handleLoadMore = () => {
-    // Save scroll position right before state changes
-    savedScrollRef.current = window.scrollY;
     setIsLoadingMore(true);
 
     const nextPage = currentPage + 1;

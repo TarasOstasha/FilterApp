@@ -18,7 +18,9 @@
     cursor: pointer;
     padding: 10px 0;
     list-style: none;
-    
+    label {
+      cursor: pointer;
+    }
     &:hover {
       color: #fff;
     }
@@ -49,6 +51,7 @@
 
 .sidebar-checkbox-input {
   margin-right: 8px; /* Space between checkbox and label */
+  cursor: pointer;
 }
 
 .range-slider {
