@@ -59,32 +59,34 @@ const PaginationControls: React.FC<PaginationControlsProps> = ({
 }) => {
   return (
     <div className="pagination-controls">
-      {/* <div className={styles['pagination-button']}>
-        <button>Viev More Products</button>
-      </div> */}
+      {/* View More button */}
       {visibleProducts < totalProducts && (
         <div className={styles['pagination-button']}>
-          <button onClick={onLoadMore} disabled={isLoadingMore}>
+          <button
+            type="button"
+            onClick={onLoadMore}
+            disabled={isLoadingMore}
+          >
             {isLoadingMore ? 'Loading...' : 'View More Products'}
           </button>
         </div>
       )}
-      {/* <div>
-        <span>visibleProducts {visibleProducts} and totalProducts {totalProducts}</span>
-      </div> */}
-      {/* <div className="pagination-info">
-        <span>Page {currentPage} of {totalPages}</span>
-      </div> */}
+
+      {/* Page navigation */}
       <div className={styles['xyz-pagination-nav']}>
         <button
+          type="button"
           onClick={() => onPageChange(currentPage - 1)}
           disabled={currentPage === 1}
           className="btn"
         >
-          Previous
+          Back
         </button>
+
         <span>{`Page ${currentPage} of ${totalPages}`}</span>
+
         <button
+          type="button"
           onClick={() => onPageChange(currentPage + 1)}
           disabled={currentPage === totalPages || visibleProducts >= totalProducts}
           className="btn btn-default btn-xs btn_prevpage"

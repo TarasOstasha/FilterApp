@@ -238,6 +238,9 @@ import React, { useEffect, useRef, useState } from 'react';
 import styles from './ProductList.module.scss';
 import noPhoto from './nophoto.gif';
 
+// In-memory cache for successfully loaded images
+const imageCache = new Map<string, boolean>();
+
 interface Product {
   id: number;
   product_name: string;
@@ -276,6 +279,13 @@ const ImageWithRetry: React.FC<{
   const [loaded, setLoaded] = useState(false);
   const [attempt, setAttempt] = useState(0);
 
+  // Reset when src changes (prevents old image flashing)
+  useEffect(() => {
+    setDisplaySrc(undefined);
+    setLoaded(false);
+    setAttempt(0);
+  }, [src]);
+
   useEffect(() => {
     const el = hostRef.current;
     if (!el) return;
@@ -292,13 +302,34 @@ const ImageWithRetry: React.FC<{
 
   useEffect(() => {
     if (!inView) return;
+
+    // If no src provided, go straight to fallback
+    if (!src || src.trim() === '') {
+      setDisplaySrc(fallbackSrc);
+      setLoaded(true);
+      return;
+    }
+
+    // Check cache first - if already successfully loaded, use immediately
+    if (imageCache.has(src)) {
+      setDisplaySrc(src);
+      setLoaded(true);
+      return;
+    }
+
     let cancelled = false;
 
     const tryLoad = (n: number) => {
       const img = new Image();
       img.decoding = 'async';
       img.loading = 'eager';
-      img.onload = () => { if (!cancelled) { setDisplaySrc(src); setLoaded(true); } };
+      img.onload = () => {
+        if (!cancelled) {
+          imageCache.set(src, true); // Cache successful load
+          setDisplaySrc(src);
+          setLoaded(true);
+        }
+      };
       img.onerror = () => {
         if (cancelled) return;
         if (n < maxRetries) {
@@ -309,13 +340,21 @@ const ImageWithRetry: React.FC<{
           setLoaded(true);
         }
       };
-      img.src = n === 0 ? src : `${src}${src.includes('?') ? '&' : '?'}r=${n}`;
+      img.src = src; // keep browser caching
     };
 
     tryLoad(attempt);
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [inView, maxRetries, fallbackSrc]);
+  }, [inView, maxRetries, fallbackSrc, src]);
+
+  // Runtime safety-net: if <img> still errors, swap to fallback
+  const handleRuntimeError = () => {
+    if (displaySrc !== fallbackSrc) {
+      setDisplaySrc(fallbackSrc);
+      setLoaded(true);
+    }
+  };
 
   return (
     <div ref={hostRef} className={styles.imageHost}>
@@ -327,7 +366,9 @@ const ImageWithRetry: React.FC<{
           className={`${className ?? ''} ${loaded ? styles.imgLoaded : styles.imgLoading}`}
           loading="lazy"
           decoding="async"
+          referrerPolicy="no-referrer"
           onLoad={() => setLoaded(true)}
+          onError={handleRuntimeError}
         />
       )}
     </div>
@@ -349,22 +390,22 @@ const ProductList: React.FC<ProductListProps> = ({ products = [], filters, loadi
   if (loading) return <p>Loading products...</p>;
 
   const list = Array.isArray(products) ? products : [];
-  
+
   // Filter out products with invalid or missing data
   const validProducts = list.filter((product) => {
     // Check if price is valid (not null, not undefined, and is a finite number)
-    const priceValue = typeof product.product_price === 'number' 
-      ? product.product_price 
-      : typeof product.product_price === 'string' 
-      ? Number(product.product_price) 
+    const priceValue = typeof product.product_price === 'number'
+      ? product.product_price
+      : typeof product.product_price === 'string'
+      ? Number(product.product_price)
       : NaN;
-    
-    const hasValidPrice = Number.isFinite(priceValue) && priceValue > 0;
-    
+
+    const hasValidPrice = Number.isFinite(priceValue) && priceValue > 0; // change to >= 0 to allow $0
+
     // Optional: Also check for valid product name and link
     const hasValidName = product.product_name && product.product_name.trim() !== '';
     const hasValidLink = product.product_link && product.product_link.trim() !== '';
-    
+
     return hasValidPrice && hasValidName && hasValidLink;
   });
 
@@ -386,9 +427,12 @@ const ProductList: React.FC<ProductListProps> = ({ products = [], filters, loadi
               className={styles.productImage}
               fallbackSrc={noPhoto}
               maxRetries={3}
+              rootMargin="50px"
             />
             <h3 className={styles.xyzPname}>{product.product_name}</h3>
-            <p className={styles.xyzPprice}><span>Our Price:</span> ${formatPrice(product.product_price)}</p>
+            <p className={styles.xyzPprice}>
+              <span>Our Price:</span> ${formatPrice(product.product_price)}
+            </p>
           </a>
         ))
       )}

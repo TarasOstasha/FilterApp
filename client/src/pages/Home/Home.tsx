@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { ClipLoader } from 'react-spinners';
 import FilterSidebar from '../../components/FilterSidebar/FilterSidebar';
 import ProductList from '../../components/ProductList/ProductList';
 import SortDropdown from '../../components/SortDropdown/SortDropdown';
@@ -21,7 +20,8 @@ interface Product {
 
 export const allowedSorts = ['most_popular', 'price_asc', 'price_desc'] as const;
 export type SortBy = typeof allowedSorts[number];
-export const isSortBy = (v: unknown): v is SortBy => typeof v === 'string' && (allowedSorts as readonly string[]).includes(v);
+export const isSortBy = (v: unknown): v is SortBy =>
+  typeof v === 'string' && (allowedSorts as readonly string[]).includes(v);
 
 const Home: React.FC = () => {
   const [isTransitioning, setIsTransitioning] = useState(false);
@@ -34,12 +34,11 @@ const Home: React.FC = () => {
   const [visibleProducts, setVisibleProducts] = useState(27);
   const [totalProducts, setTotalProducts] = useState(0);
   const [loading, setLoading] = useState(false);
-  //const [sortBy, setSortBy] = useState<'price_asc' | 'price_desc' | string>('price_asc');
   const [sortBy, setSortBy] = useState<SortBy>('most_popular');
-  const [isLoadingMore, setIsLoadingMore] = useState(false);
-  const [isClearingFilters, setIsClearingFilters] = useState(false);
-  const savedScrollRef = useRef<number | null>(null);
 
+  // load-more + scroll-restore
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const savedScrollRef = useRef<number | null>(null);
 
   // —— helpers ——
   const offsetFrom = (page: number, limit: number) => Math.max(0, (page - 1) * limit);
@@ -49,16 +48,13 @@ const Home: React.FC = () => {
   }) => {
     const sp = new URLSearchParams();
 
-    // Always set current values first
     if (typeof next.limit === 'number') sp.set('limit', String(next.limit));
     if (typeof next.offset === 'number') sp.set('offset', String(next.offset));
     if (typeof next.sortBy === 'string') sp.set('sortBy', next.sortBy);
 
-    // Add filters - ensure we don't lose any existing filters unless explicitly overridden
     const currentFilters = next.filters || selectedFilters;
     Object.entries(currentFilters).forEach(([k, arr]) => {
       if (Array.isArray(arr) && arr.length > 0) {
-        // Properly encode filter names with spaces
         const encodedKey = encodeURIComponent(k);
         sp.set(encodedKey, arr.join(','));
       }
@@ -72,7 +68,6 @@ const Home: React.FC = () => {
   useEffect(() => {
     const sp = new URLSearchParams(window.location.search);
 
-    // pagination
     const urlLimit = Number(sp.get('limit'));
     const urlOffset = Number(sp.get('offset'));
     const limit = Number.isFinite(urlLimit) && urlLimit > 0 ? urlLimit : 27;
@@ -82,46 +77,38 @@ const Home: React.FC = () => {
     setCurrentPage(Math.floor(offset / limit) + 1);
     setVisibleProducts(limit);
 
-    // sort
-    // const urlSort = sp.get('sortBy') || 'price_asc';
-    // setSortBy(urlSort);
-
-    const q = sp.get('sortBy'); // string | null
+    const q = sp.get('sortBy');
     const urlSort: SortBy = isSortBy(q) ? q : 'most_popular';
     setSortBy(urlSort);
 
-    // filters (skip meta keys)
     const meta = new Set(['limit', 'offset', 'sortBy']);
     const valrangeDigits = ['Product Price', 'Display Width', 'Display Height'];
     const restored: { [k: string]: string[] } = {};
 
     sp.forEach((val, rawKey) => {
       if (meta.has(rawKey)) return;
-      // Properly decode URL-encoded filter names
       const decodedKey = decodeURIComponent(rawKey).replace(/\+/g, ' ');
       if (valrangeDigits.includes(decodedKey)) {
-        restored[decodedKey] = [val];     // range fields stored as single "min,max"
+        restored[decodedKey] = [val];     // "min,max"
       } else {
-        restored[decodedKey] = val.split(','); // checkbox fields split
+        restored[decodedKey] = val.split(',');
       }
     });
 
     setSelectedFilters(restored);
   }, []);
 
-
   // —— FETCH PRODUCTS ——
   const fetchProducts = async () => {
     setLoading(true);
-    
+
     try {
       const qp = new URLSearchParams();
-
       qp.set('limit', String(itemsPerPage));
       qp.set('offset', String(offsetFrom(currentPage, itemsPerPage)));
       qp.set('sortBy', String(sortBy));
 
-      const catId = getCategoryIdFromPath()
+      const catId = getCategoryIdFromPath();
       Object.keys(selectedFilters).forEach((key) => {
         if (key === 'sortBy') return;
         qp.append(key, selectedFilters[key].join(','));
@@ -129,15 +116,19 @@ const Home: React.FC = () => {
 
       const response = await fetchProductsFromAPI(qp, catId);
       if (response?.data) {
-        console.log(response?.data, 'response products HOME page')
-        // If loading more, append products. Otherwise, replace them
+        const newProducts: Product[] = response.data.products || [];
+        console.log(newProducts, response.data.totalProducts);
         if (isLoadingMore) {
-          setProducts(prev => [...prev, ...response.data.products]);
-          setIsLoadingMore(false);
+          // Filter out duplicates based on product ID before appending
+          setProducts((prev) => {
+            const existingIds = new Set(prev.map(p => p.id));
+            const uniqueNewProducts = newProducts.filter(p => !existingIds.has(p.id));
+            return [...prev, ...uniqueNewProducts];
+          });
         } else {
-          setProducts(response.data.products);
+          setProducts(newProducts);
         }
-        setTotalProducts(response.data.totalProducts);
+        setTotalProducts(response.data.totalProducts || 0);
       } else {
         console.error('No data received');
       }
@@ -145,16 +136,20 @@ const Home: React.FC = () => {
       console.error('Error fetching products:', err);
     } finally {
       setLoading(false);
-      setIsClearingFilters(false);
       // let images start loading, then fade in
       setTimeout(() => setIsTransitioning(false), 120);
-      
-      // Restore scroll position after products have been rendered
+
+      // Restore scroll position after render (double rAF beats setTimeout)
       if (savedScrollRef.current !== null) {
-        setTimeout(() => {
-          window.scrollTo({ top: savedScrollRef.current!, behavior: 'instant' as ScrollBehavior });
-          savedScrollRef.current = null; // Clear after restoring
-        }, 100);
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            window.scrollTo({ top: savedScrollRef.current!, behavior: 'instant' as ScrollBehavior });
+            savedScrollRef.current = null;
+            setIsLoadingMore(false);
+          });
+        });
+      } else {
+        setIsLoadingMore(false);
       }
     }
   };
@@ -170,25 +165,23 @@ const Home: React.FC = () => {
     setIsTransitioning(true);
     setIsLoadingMore(false);
     const { field, value } = filter;
-    setSelectedFilters(prev => {
+
+    setSelectedFilters((prev) => {
       const current = prev[field] || [];
       const next = { ...prev };
 
       if (value.includes(',')) {
         next[field] = [value];           // range overrides
       } else {
-        // checkbox toggle
         next[field] = current.includes(value)
-          ? current.filter(v => v !== value)
+          ? current.filter((v) => v !== value)
           : [...current, value];
         if (next[field].length === 0) delete next[field];
       }
 
-      // reset to page 1 whenever filters change
       setCurrentPage(1);
       setVisibleProducts(itemsPerPage);
 
-      // sync URL
       writeUrl({
         limit: itemsPerPage,
         offset: 0,
@@ -198,9 +191,10 @@ const Home: React.FC = () => {
 
       return next;
     });
-    // optional: instant scroll-to-top on filter change
+
     window.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior });
   };
+
   const handleSortChange = (sortMethod: string) => {
     const validSort: SortBy = isSortBy(sortMethod) ? sortMethod : 'most_popular';
     setIsTransitioning(true);
@@ -247,19 +241,19 @@ const Home: React.FC = () => {
   };
 
   const handleLoadMore = () => {
-    // Save scroll position immediately before any state changes
+    // Save scroll position right before state changes
     savedScrollRef.current = window.scrollY;
-    
     setIsLoadingMore(true);
-    
+
     const nextPage = currentPage + 1;
     setCurrentPage(nextPage);
-    setVisibleProducts(prev => {
+
+    // purely for UI labels (not slicing)
+    setVisibleProducts((prev) => {
       const nextVisible = prev + itemsPerPage;
       return nextVisible > totalProducts ? totalProducts : nextVisible;
     });
-    
-    // Update URL with new offset
+
     writeUrl({
       limit: itemsPerPage,
       offset: offsetFrom(nextPage, itemsPerPage),
@@ -269,7 +263,6 @@ const Home: React.FC = () => {
   };
 
   const handleClearFilters = () => {
-    setIsClearingFilters(true);
     setIsTransitioning(true);
     setIsLoadingMore(false);
     setSelectedFilters({});
@@ -293,21 +286,9 @@ const Home: React.FC = () => {
           <FilterSidebar
             onFilterChange={handleFilterChange}
             selectedFilters={selectedFilters}
-            isClearingFilters={isClearingFilters}
           />
-          <button 
-            className={styles.clearFiltersButton} 
-            onClick={handleClearFilters}
-            disabled={isClearingFilters}
-            style={{ 
-              display: 'flex', 
-              alignItems: 'center', 
-              justifyContent: 'center',
-              gap: '8px'
-            }}
-          >
-            {isClearingFilters && <ClipLoader color="#fff" size={16} />}
-            {isClearingFilters ? 'Clearing...' : 'Clear Filters'}
+          <button className={styles.clearFiltersButton} onClick={handleClearFilters}>
+            Clear Filters
           </button>
         </div>
         <div className="col-md-9">

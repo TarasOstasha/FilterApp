@@ -331,12 +331,17 @@ module.exports.getProducts = async (req, res, next) => {
     }
 
     const sql = `
-      SELECT DISTINCT p.*
+      WITH filtered_product_ids AS (
+        SELECT DISTINCT p.id
+        FROM products p
+        ${joinClauses}
+        WHERE 1=1
+        ${whereClauses}
+      )
+      SELECT p.*
       FROM products p
-      ${joinClauses}
-      WHERE 1=1
-      ${whereClauses}
-      ORDER BY ${sortField} ${sortDir}
+      INNER JOIN filtered_product_ids fpi ON fpi.id = p.id
+      ORDER BY p.${sortField} ${sortDir}, p.id ASC
       LIMIT :limit OFFSET :offset
     `;
 
