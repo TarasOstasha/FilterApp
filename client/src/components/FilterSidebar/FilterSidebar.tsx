@@ -24,6 +24,7 @@ interface FilterSidebarProps {
   onFilterChange: (filter: { field: string; value: any }) => void;
   selectedFilters: { [key: string]: string[] | undefined }; // allow undefined safely
   isClearingFilters?: boolean;
+  loading?: boolean;
 }
 
 function parseRangeValue(
@@ -108,7 +109,8 @@ function buildParams(
 const FilterSidebar: React.FC<FilterSidebarProps> = ({
   onFilterChange,
   selectedFilters,
-  isClearingFilters = false
+  isClearingFilters = false,
+  loading = false
 }) => {
   const [filterFields, setFilterFields] = useState<FilterField[]>([]);
   const [isLoadingFilters, setIsLoadingFilters] = useState(false);
@@ -461,7 +463,7 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
 
   return (
     <div className={styles.sidebar} style={{ width: '250px' }}>
-      {(isLoadingFilters || isClearingFilters) && (
+      {(isLoadingFilters || isClearingFilters || loading) && (
         <div style={{ 
           padding: '20px', 
           textAlign: 'center', 
@@ -472,7 +474,7 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
         }}>
           <ClipLoader color="#007bff" size={30} />
           <div style={{ marginTop: '10px', color: '#666', fontSize: '14px' }}>
-            Updating filters...
+            {loading ? 'Loading products...' : 'Updating filters...'}
           </div>
         </div>
       )}

@@ -294,6 +294,7 @@ const Home: React.FC = () => {
           <FilterSidebar
             onFilterChange={handleFilterChange}
             selectedFilters={selectedFilters}
+            loading={loading}
           />
           <button className={styles.clearFiltersButton} onClick={handleClearFilters}>
             Clear Filters
