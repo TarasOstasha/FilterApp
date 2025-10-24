@@ -31,13 +31,14 @@ const Home: React.FC = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [itemsPerPage, setItemsPerPage] = useState(27);
   const [currentPage, setCurrentPage] = useState(1);
-  const [visibleProducts, setVisibleProducts] = useState(27);
   const [totalProducts, setTotalProducts] = useState(0);
   const [loading, setLoading] = useState(false);
   const [sortBy, setSortBy] = useState<SortBy>('most_popular');
 
-  // load-more
+  // load-more - separate from pagination
   const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [loadedCount, setLoadedCount] = useState(0); // Track how many products loaded via "View More"
+  const [hasUsedLoadMore, setHasUsedLoadMore] = useState(false); // Track if "View More" has been used
 
   // —— helpers ——
   const offsetFrom = (page: number, limit: number) => Math.max(0, (page - 1) * limit);
@@ -74,7 +75,7 @@ const Home: React.FC = () => {
 
     setItemsPerPage(limit);
     setCurrentPage(Math.floor(offset / limit) + 1);
-    setVisibleProducts(limit);
+    setLoadedCount(limit);
 
     const q = sp.get('sortBy');
     const urlSort: SortBy = isSortBy(q) ? q : 'most_popular';
@@ -150,6 +151,7 @@ const Home: React.FC = () => {
   const handleFilterChange = (filter: { field: string; value: string }) => {
     setIsTransitioning(true);
     setIsLoadingMore(false);
+    setHasUsedLoadMore(false); // Reset when filter changes
     const { field, value } = filter;
 
     setSelectedFilters((prev) => {
@@ -166,7 +168,7 @@ const Home: React.FC = () => {
       }
 
       setCurrentPage(1);
-      setVisibleProducts(itemsPerPage);
+      setLoadedCount(itemsPerPage);
 
       writeUrl({
         limit: itemsPerPage,
@@ -185,9 +187,10 @@ const Home: React.FC = () => {
     const validSort: SortBy = isSortBy(sortMethod) ? sortMethod : 'most_popular';
     setIsTransitioning(true);
     setIsLoadingMore(false);
+    setHasUsedLoadMore(false); // Reset when sort changes
     setSortBy(validSort);
     setCurrentPage(1);
-    setVisibleProducts(itemsPerPage);
+    setLoadedCount(itemsPerPage);
     writeUrl({
       limit: itemsPerPage,
       offset: 0,
@@ -200,10 +203,11 @@ const Home: React.FC = () => {
   const handleItemsPerPageChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     setIsTransitioning(true);
     setIsLoadingMore(false);
+    setHasUsedLoadMore(false); // Reset when items per page changes
     const next = Number(e.target.value);
     setItemsPerPage(next);
     setCurrentPage(1);
-    setVisibleProducts(next);
+    setLoadedCount(next);
     writeUrl({
       limit: next,
       offset: 0,
@@ -215,6 +219,8 @@ const Home: React.FC = () => {
 
   const handlePageChange = (page: number) => {
     setIsTransitioning(true);
+    setHasUsedLoadMore(false); // Reset when navigating to new page
+    setIsLoadingMore(false);
     window.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior });
     setCurrentPage(page);
     const nextOffset = offsetFrom(page, itemsPerPage);
@@ -226,32 +232,50 @@ const Home: React.FC = () => {
     });
   };
 
-  const handleLoadMore = () => {
+  const handleLoadMore = async () => {
     setIsLoadingMore(true);
+    setHasUsedLoadMore(true); // Mark that "View More" has been used
 
-    const nextPage = currentPage + 1;
-    setCurrentPage(nextPage);
+    try {
+      const qp = new URLSearchParams();
+      qp.set('limit', String(itemsPerPage));
+      // Calculate offset: base offset of current page + products already loaded
+      const baseOffset = offsetFrom(currentPage, itemsPerPage);
+      const nextOffset = baseOffset + products.length;
+      qp.set('offset', String(nextOffset));
+      qp.set('sortBy', String(sortBy));
 
-    // purely for UI labels (not slicing)
-    setVisibleProducts((prev) => {
-      const nextVisible = prev + itemsPerPage;
-      return nextVisible > totalProducts ? totalProducts : nextVisible;
-    });
+      const catId = getCategoryIdFromPath();
+      Object.keys(selectedFilters).forEach((key) => {
+        if (key === 'sortBy') return;
+        qp.append(key, selectedFilters[key].join(','));
+      });
 
-    writeUrl({
-      limit: itemsPerPage,
-      offset: offsetFrom(nextPage, itemsPerPage),
-      sortBy,
-      filters: selectedFilters,
-    });
+      const response = await fetchProductsFromAPI(qp, catId);
+      if (response?.data) {
+        const newProducts: Product[] = response.data.products || [];
+        // Filter out duplicates and append
+        setProducts((prev) => {
+          const existingIds = new Set(prev.map(p => p.id));
+          const uniqueNewProducts = newProducts.filter(p => !existingIds.has(p.id));
+          return [...prev, ...uniqueNewProducts];
+        });
+        setLoadedCount(prev => prev + itemsPerPage);
+      }
+    } catch (err) {
+      console.error('Error loading more products:', err);
+    } finally {
+      setIsLoadingMore(false);
+    }
   };
 
   const handleClearFilters = () => {
     setIsTransitioning(true);
     setIsLoadingMore(false);
+    setHasUsedLoadMore(false); // Reset when clearing filters
     setSelectedFilters({});
     setCurrentPage(1);
-    setVisibleProducts(itemsPerPage);
+    setLoadedCount(itemsPerPage);
     writeUrl({
       limit: itemsPerPage,
       offset: 0,
@@ -299,10 +323,11 @@ const Home: React.FC = () => {
               currentPage={currentPage}
               totalPages={totalPages}
               onPageChange={handlePageChange}
-              visibleProducts={visibleProducts}
+              visibleProducts={products.length}
               totalProducts={totalProducts}
               onLoadMore={handleLoadMore}
               isLoadingMore={isLoadingMore}
+              hasUsedLoadMore={hasUsedLoadMore}
             />
           </div>
         </div>

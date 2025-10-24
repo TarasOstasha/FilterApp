@@ -10,6 +10,7 @@ interface PaginationControlsProps {
   totalPages: number;
   onPageChange: (page: number) => void;
   isLoadingMore?: boolean;
+  hasUsedLoadMore?: boolean;
 }
 
 
@@ -56,6 +57,7 @@ const PaginationControls: React.FC<PaginationControlsProps> = ({
   totalPages,
   onPageChange,
   isLoadingMore = false,
+  hasUsedLoadMore = false,
 }) => {
   return (
     <div className="pagination-controls">
@@ -74,21 +76,27 @@ const PaginationControls: React.FC<PaginationControlsProps> = ({
 
       {/* Page navigation */}
       <div className={styles['xyz-pagination-nav']}>
-        <button
-          type="button"
-          onClick={() => onPageChange(currentPage - 1)}
-          disabled={currentPage === 1}
-          className="btn"
-        >
-          Back
-        </button>
+        {/* Hide Back button and page counter when "View More" has been used */}
+        {!hasUsedLoadMore && (
+          <>
+            <button
+              type="button"
+              onClick={() => onPageChange(currentPage - 1)}
+              disabled={currentPage === 1}
+              className="btn"
+            >
+              Back
+            </button>
 
-        <span>{`Page ${currentPage} of ${totalPages}`}</span>
+            <span>{`Page ${currentPage} of ${totalPages}`}</span>
+          </>
+        )}
 
+        {/* Always show Next button */}
         <button
           type="button"
           onClick={() => onPageChange(currentPage + 1)}
-          disabled={currentPage === totalPages || visibleProducts >= totalProducts}
+          disabled={currentPage === totalPages || (!hasUsedLoadMore && visibleProducts >= totalProducts)}
           className="btn btn-default btn-xs btn_prevpage"
         >
           Next
