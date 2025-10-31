@@ -193,10 +193,28 @@ const processProductFiltersCsvFile = (csvFilePath) => {
       })
       .on('data', (row) => {
         try {
-          const product_id = parseInt(row.product_id, 10);
-          if (!product_id) {
-            errorRows.push({ row, reason: 'Missing product_id' });
+          // Get all keys and find the one that contains 'product_id' (handles BOM and hidden characters)
+          const keys = Object.keys(row);
+          const productIdKey = keys.find(k => k.includes('product_id') || k.trim() === 'product_id');
+          
+          // Try to get the value
+          let productIdRaw = productIdKey ? row[productIdKey] : (row.product || row[' product_id']);
+          
+          // If we found something, convert to string and trim
+          if (productIdRaw !== undefined && productIdRaw !== null && productIdRaw !== '') {
+            productIdRaw = String(productIdRaw).trim();
+          }
+          
+          // Parse to integer
+          const product_id = parseInt(productIdRaw, 10);
+          
+          // Check if we got a valid number
+          if (!productIdRaw || isNaN(product_id) || product_id <= 0) {
+            errorRows.push({ row, reason: 'Missing or invalid product_id', availableKeys: keys });
             console.error(chalk.red(`Missing product_id in row: ${JSON.stringify(row)}`));
+            console.error(chalk.yellow(`Available column headers: ${keys.join(', ')}`));
+            console.error(chalk.yellow(`productIdKey found: "${productIdKey}"`));
+            console.error(chalk.yellow(`productIdRaw value: "${productIdRaw}", parsed: ${product_id}`));
             return;
           }
 
