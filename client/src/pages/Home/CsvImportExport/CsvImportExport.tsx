@@ -14,6 +14,8 @@ const CsvImportExport: React.FC = () => {
     const [file, setFile] = useState<File | null>(null);
     const [selectedExportType, setSelectedExportType] = useState<string>('');
     const [showRules, setShowRules] = useState(false);
+    const [isUploading, setIsUploading] = useState(false);
+    const [isExporting, setIsExporting] = useState(false);
 
     const invalid = !!file && !isAllowedFileName(file.name);
     const errorLock = invalid && !showRules;
@@ -45,51 +47,28 @@ const CsvImportExport: React.FC = () => {
         }
 
         const fileName = file.name.toLowerCase();
-        const uploadType = getUploadTypeFromName(fileName); //getUploadType(fileName);
+        const uploadType = getUploadTypeFromName(fileName);
         if (uploadType === 'unknown') {
             toast.error('Unsupported file name.');
             setShowRules(true);
             return;
-          }
-
-        // if (uploadType === 'unknown') {
-        //     toast.error(
-        //         <div>
-        //             <p><strong>Invalid file name!</strong></p>
-        //             <p>Allowed file names are:</p>
-        //             <ul>
-        //                 <li><strong>"categories.csv"</strong> for uploading categories</li>
-        //                 <li><strong>"product_categories.csv"</strong> for uploading product categories</li>
-        //                 <li><strong>"product_filters.csv"</strong> for uploading product filters</li>
-        //                 <li><strong>"filter_fields.csv"</strong> for uploading filter fields</li>
-        //                 <li><strong>"products.csv"</strong> for uploading products</li>
-        //                 <li><strong>"products-remove.csv"</strong> for uploading products</li>
-        //             </ul>
-        //         </div>,
-        //         {
-        //             position: "top-right",
-        //             autoClose: 5000,
-        //             hideProgressBar: false,
-        //             closeOnClick: true,
-        //             pauseOnHover: true,
-        //             draggable: true,
-        //             progress: undefined,
-        //         }
-        //     );
-        //     return;
-        // }
-
+        }
 
         const formData = new FormData();
         formData.append('file', file);
+        
+        setIsUploading(true);
+        toast.info('Uploading and processing file... Please wait.', { autoClose: false, toastId: 'upload-progress' });
+        
         try {
             const response = await uploadCSV(uploadType, formData);
             const uploadTime = new Date().toLocaleString();
+            toast.dismiss('upload-progress');
             toast.success(`File uploaded successfully at ${uploadTime}`);
         } catch (error) {
+            toast.dismiss('upload-progress');
             if (axios.isAxiosError(error) && error.response?.data) {
                 const errorData = error.response.data;
-                // Check if there are specific error rows (400 status with errorRows)
                 if (errorData.errorRows && errorData.errorRows.length > 0) {
                     toast.error(`${errorData.message || 'File processed with errors'} ${errorData.errorRows.length} rows had issues.`);
                 } else if (errorData.message) {
@@ -102,13 +81,19 @@ const CsvImportExport: React.FC = () => {
             } else {
                 toast.error('Error uploading file');
             }
+        } finally {
+            setIsUploading(false);
         }
     };
 
     const handleExport = async (type: 'products' | 'categories' | 'product_categories' | 'filter_fields' | 'product_filters') => {
+        setIsExporting(true);
+        toast.info(`Exporting ${type} data... Please wait.`, { autoClose: false, toastId: 'export-progress' });
+        
         try {
-            const response: AxiosResponse<Blob> | undefined = await exportData(type)
-            // exportData
+            const response: AxiosResponse<Blob> | undefined = await exportData(type);
+            toast.dismiss('export-progress');
+            
             if (response && response.data) {
                 const url = window.URL.createObjectURL(new Blob([response.data]));
                 const link = document.createElement('a');
@@ -122,7 +107,10 @@ const CsvImportExport: React.FC = () => {
                 toast.error(`Failed to export ${type} data`);
             }
         } catch (error) {
+            toast.dismiss('export-progress');
             toast.error(`Error exporting ${type} data`);
+        } finally {
+            setIsExporting(false);
         }
     };
 
@@ -151,33 +139,27 @@ const CsvImportExport: React.FC = () => {
             />
             <Admin />
             <h2>Import CSV</h2>
-            <input type="file" onChange={handleFileChange} />
-            <button onClick={handleFileUpload} disabled={!file || invalid}>
-                Import CSV
+            <input type="file" onChange={handleFileChange} disabled={isUploading} />
+            <button onClick={handleFileUpload} disabled={!file || invalid || isUploading}>
+                {isUploading ? 'Uploading...' : 'Import CSV'}
             </button>
             <button
                 type="button"
                 className={styles.linkBtn}
-                disabled={errorLock}                       
-                aria-disabled={errorLock}
+                disabled={errorLock || isUploading}                       
+                aria-disabled={errorLock || isUploading}
                 onClick={() => setShowRules(v => !v)}
             >
                 {showRules ? 'Hide allowed import names' : 'Show allowed import names'}
             </button>
             <h2>Export Data</h2>
-            {/* <div className={styles['export-buttons']}>
-                <button onClick={() => handleExport('products')}>Export Products</button>
-                <button onClick={() => handleExport('categories')}>Export Categories</button>
-                <button onClick={() => handleExport('productCategories')}>Export Product Categories</button>
-                <button onClick={() => handleExport('filterFields')}>Export Filter Fields</button>
-                <button onClick={() => handleExport('productFilters')}>Export Product Filter</button>
-            </div> */}
             <div className={styles['export-buttons']}>
                 <label htmlFor="exportType">Select Export Type:</label>
                 <select
                     id="exportType"
                     value={selectedExportType}
                     onChange={(e) => setSelectedExportType(e.target.value)}
+                    disabled={isExporting}
                 >
                     <option value="">--Select an option--</option>
                     <option value="products">Export Products</option>
@@ -186,7 +168,9 @@ const CsvImportExport: React.FC = () => {
                     <option value="filter_fields">Export Filter Fields</option>
                     <option value="product_filters">Export Product Filter</option>
                 </select>
-                <button onClick={handleExportClick}>Export</button>
+                <button onClick={handleExportClick} disabled={isExporting}>
+                    {isExporting ? 'Exporting...' : 'Export'}
+                </button>
             </div>
             {shouldShowNote && (
                 <div className={styles.noteWrap}>
