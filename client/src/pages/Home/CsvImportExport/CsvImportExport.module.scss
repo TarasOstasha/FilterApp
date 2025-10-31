@@ -187,6 +187,16 @@
     font-weight: 800;
     color: #10b981;
   }
+
+  table {
+    margin-top: 15px;
+    th {
+      white-space: nowrap;
+    }
+    td {
+       white-space: nowrap;
+    }
+  }
 }
 
 /* when the whole note is in error mode, hint in red */
