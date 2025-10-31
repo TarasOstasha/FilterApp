@@ -27,6 +27,25 @@ const CsvImportExport: React.FC = () => {
         }
     };
 
+    const countCSVRows = (file: File): Promise<number> => {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const text = e.target?.result as string;
+                if (!text) {
+                    resolve(0);
+                    return;
+                }
+                // Count lines, subtract 1 for header row
+                const lines = text.split('\n').filter(line => line.trim() !== '');
+                const rowCount = Math.max(0, lines.length - 1);
+                resolve(rowCount);
+            };
+            reader.onerror = () => reject(new Error('Failed to read file'));
+            reader.readAsText(file);
+        });
+    };
+
     // const getUploadType = (fileName: string): string => {
     //     const cleanFileName = fileName.split('.')[0];
 
@@ -51,6 +70,28 @@ const CsvImportExport: React.FC = () => {
         if (uploadType === 'unknown') {
             toast.error('Unsupported file name.');
             setShowRules(true);
+            return;
+        }
+
+        // Check row count before uploading
+        try {
+            toast.info('Validating file...', { autoClose: 2000 });
+            const rowCount = await countCSVRows(file);
+            
+            if (rowCount > 10000) {
+                toast.error(
+                    <div>
+                        <p><strong>File too large!</strong></p>
+                        <p>Your file contains <strong>{rowCount.toLocaleString()}</strong> rows.</p>
+                        <p>Maximum allowed: <strong>10,000</strong> rows.</p>
+                        <p>Please split your file into smaller chunks and upload them separately.</p>
+                    </div>,
+                    { autoClose: 10000 }
+                );
+                return;
+            }
+        } catch (error) {
+            toast.error('Failed to validate file. Please try again.');
             return;
         }
 
