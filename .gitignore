@@ -37,3 +37,5 @@ yarn-error.log*
 client/src/components/FilterSidebar/FilterSidebar-old-old.tsx
 client/src/components/FilterSidebar/FilterSidebar-old.tsx
 client/src/components/ProductList/product-list-old.txt
+
+*.md

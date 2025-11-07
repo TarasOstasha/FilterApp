@@ -111,6 +111,17 @@ module.exports.importProductFilters = async (req, res, next) => {
       });
     } catch (err) {
       console.error('Error processing CSV file:', err);
+      
+      // Handle validation errors specifically
+      if (err.validationError) {
+        return res.status(400).json({
+          message: err.message,
+          validationErrors: err.details,
+          errorRows: err.errorRows,
+          status: 'validation_failed'
+        });
+      }
+      
       next(createHttpError(500, 'Error processing file'));
     }
   };
@@ -127,4 +138,3 @@ module.exports.importFilterFields = async (req, res, next) => {
         next(createHttpError(500, 'Error processing file'));
     }
 };
-
