@@ -168,7 +168,8 @@ module.exports.getPriceRange = async (req, res, next) => {
            AND EXISTS (
              SELECT 1
              FROM unnest(string_to_array(pf_check${checkIdx}.filter_value, ',')) AS filter_val
-             WHERE trim(filter_val) = ANY(ARRAY[:vals${checkIdx}]::text[])
+             CROSS JOIN unnest(ARRAY[:vals${checkIdx}]::text[]) AS selected_val
+             WHERE LOWER(TRIM(REGEXP_REPLACE(filter_val, '\\s+', ' ', 'g'))) LIKE '%' || LOWER(TRIM(REGEXP_REPLACE(selected_val, '\\s+', ' ', 'g'))) || '%'
            )
         `;
         checkIdx++;
@@ -309,7 +310,8 @@ module.exports.getProducts = async (req, res, next) => {
            AND EXISTS (
              SELECT 1
              FROM unnest(string_to_array(${alias}.filter_value, ',')) AS filter_val
-             WHERE trim(filter_val) = ANY(ARRAY[:checkVals${joinIndex}]::text[])
+             CROSS JOIN unnest(ARRAY[:checkVals${joinIndex}]::text[]) AS selected_val
+             WHERE LOWER(TRIM(REGEXP_REPLACE(filter_val, '\\s+', ' ', 'g'))) LIKE '%' || LOWER(TRIM(REGEXP_REPLACE(selected_val, '\\s+', ' ', 'g'))) || '%'
            )
         `;
 
@@ -568,7 +570,8 @@ module.exports.getWidthRange = async (req, res, next) => {
            AND EXISTS (
              SELECT 1
              FROM unnest(string_to_array(pf_check${checkIdx}.filter_value, ',')) AS filter_val
-             WHERE trim(filter_val) = ANY(ARRAY[:vals${checkIdx}]::text[])
+             CROSS JOIN unnest(ARRAY[:vals${checkIdx}]::text[]) AS selected_val
+             WHERE LOWER(TRIM(REGEXP_REPLACE(filter_val, '\\s+', ' ', 'g'))) LIKE '%' || LOWER(TRIM(REGEXP_REPLACE(selected_val, '\\s+', ' ', 'g'))) || '%'
            )
         `;
         checkIdx++;
@@ -687,7 +690,8 @@ module.exports.getHeightRange = async (req, res, next) => {
            AND EXISTS (
              SELECT 1
              FROM unnest(string_to_array(pf_check${checkIdx}.filter_value, ',')) AS filter_val
-             WHERE trim(filter_val) = ANY(ARRAY[:vals${checkIdx}]::text[])
+             CROSS JOIN unnest(ARRAY[:vals${checkIdx}]::text[]) AS selected_val
+             WHERE LOWER(TRIM(REGEXP_REPLACE(filter_val, '\\s+', ' ', 'g'))) LIKE '%' || LOWER(TRIM(REGEXP_REPLACE(selected_val, '\\s+', ' ', 'g'))) || '%'
            )
         `;
         checkIdx++;
