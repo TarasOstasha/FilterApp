@@ -55,8 +55,8 @@ const Home: React.FC = () => {
     const currentFilters = next.filters || selectedFilters;
     Object.entries(currentFilters).forEach(([k, arr]) => {
       if (Array.isArray(arr) && arr.length > 0) {
-        const encodedKey = encodeURIComponent(k);
-        sp.set(encodedKey, arr.join(','));
+        //const encodedKey = encodeURIComponent(k);
+        sp.set(k, arr.join(','));
       }
     });
 
@@ -101,7 +101,7 @@ const Home: React.FC = () => {
   // —— FETCH PRODUCTS ——
   const fetchProducts = async () => {
     setLoading(true);
-
+    console.log(selectedFilters, 'selectedFilters');
     try {
       const qp = new URLSearchParams();
       qp.set('limit', String(itemsPerPage));
@@ -153,7 +153,6 @@ const Home: React.FC = () => {
     setIsLoadingMore(false);
     setHasUsedLoadMore(false); // Reset when filter changes
     const { field, value } = filter;
-
     setSelectedFilters((prev) => {
       const current = prev[field] || [];
       const next = { ...prev };
@@ -276,10 +275,12 @@ const Home: React.FC = () => {
     setSelectedFilters({});
     setCurrentPage(1);
     setLoadedCount(itemsPerPage);
+    // Always reset to most_popular when clearing filters
+    setSortBy('most_popular');
     writeUrl({
       limit: itemsPerPage,
       offset: 0,
-      sortBy,
+      sortBy: 'most_popular',
       filters: {},
     });
     window.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior });
@@ -291,14 +292,14 @@ const Home: React.FC = () => {
     <div className="container">
       <div className="row">
         <div className="col-md-3">
+          <button className={styles.clearFiltersButton} onClick={handleClearFilters}>
+            Clear Filters
+          </button>
           <FilterSidebar
             onFilterChange={handleFilterChange}
             selectedFilters={selectedFilters}
             loading={loading}
           />
-          <button className={styles.clearFiltersButton} onClick={handleClearFilters}>
-            Clear Filters
-          </button>
         </div>
         <div className="col-md-9">
           <div className="controls d-flex justify-content-between">

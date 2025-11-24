@@ -156,7 +156,7 @@ module.exports.getPriceRange = async (req, res, next) => {
         rangeIdx++;
       } else {
         const values = Array.isArray(rawVal)
-          ? rawVal
+          ? rawVal.map(v => v.trim())
           : String(rawVal).split(',').map((v) => v.trim());
 
         replacements[`vals${checkIdx}`] = values;
@@ -165,7 +165,11 @@ module.exports.getPriceRange = async (req, res, next) => {
           JOIN product_filters pf_check${checkIdx}
             ON pf_check${checkIdx}.product_id = p.id
            AND pf_check${checkIdx}.filter_field_id = ${field.id}
-           AND string_to_array(pf_check${checkIdx}.filter_value, ',') <@ ARRAY[:vals${checkIdx}]::text[]
+           AND EXISTS (
+             SELECT 1
+             FROM unnest(string_to_array(pf_check${checkIdx}.filter_value, ',')) AS filter_val
+             WHERE trim(filter_val) = ANY(ARRAY[:vals${checkIdx}]::text[])
+           )
         `;
         checkIdx++;
       }
@@ -295,14 +299,18 @@ module.exports.getProducts = async (req, res, next) => {
       const fieldDef = allFilterFields.find(f => f.field_name === fieldName);
 
       if (fieldDef.field_type === 'checkbox') {
-        const values = String(rawValue).split(',');
+        const values = String(rawValue).split(',').map(v => v.trim());
         const alias = `pf_check${joinIndex}`;
 
         joinClauses += `
           JOIN product_filters ${alias}
             ON ${alias}.product_id = p.id
            AND ${alias}.filter_field_id = ${fieldId}
-           AND string_to_array(${alias}.filter_value, ',') <@ ARRAY[:checkVals${joinIndex}]::text[]
+           AND EXISTS (
+             SELECT 1
+             FROM unnest(string_to_array(${alias}.filter_value, ',')) AS filter_val
+             WHERE trim(filter_val) = ANY(ARRAY[:checkVals${joinIndex}]::text[])
+           )
         `;
 
         replacements[`checkVals${joinIndex}`] = values;
@@ -320,7 +328,7 @@ module.exports.getProducts = async (req, res, next) => {
         `;
 
         whereClauses += `
-          AND CAST(regexp_replace(${alias}.filter_value, '[^0-9.]', '', 'g') AS FLOAT)
+          AND CAST(regexp_replace(${alias}.filter_value, '[^0-9\\.]', '', 'g') AS FLOAT)
               BETWEEN :min${joinIndex} AND :max${joinIndex}
         `;
 
@@ -548,7 +556,7 @@ module.exports.getWidthRange = async (req, res, next) => {
         rangeIdx++;
       } else {
         const values = Array.isArray(rawVal)
-          ? rawVal
+          ? rawVal.map(v => v.trim())
           : String(rawVal).split(',').map((v) => v.trim());
 
         replacements[`vals${checkIdx}`] = values;
@@ -557,7 +565,11 @@ module.exports.getWidthRange = async (req, res, next) => {
           JOIN product_filters pf_check${checkIdx}
             ON pf_check${checkIdx}.product_id = p.id
            AND pf_check${checkIdx}.filter_field_id = ${field.id}
-           AND string_to_array(pf_check${checkIdx}.filter_value, ',') <@ ARRAY[:vals${checkIdx}]::text[]
+           AND EXISTS (
+             SELECT 1
+             FROM unnest(string_to_array(pf_check${checkIdx}.filter_value, ',')) AS filter_val
+             WHERE trim(filter_val) = ANY(ARRAY[:vals${checkIdx}]::text[])
+           )
         `;
         checkIdx++;
       }
@@ -663,7 +675,7 @@ module.exports.getHeightRange = async (req, res, next) => {
         rangeIdx++;
       } else {
         const values = Array.isArray(rawVal)
-          ? rawVal
+          ? rawVal.map(v => v.trim())
           : String(rawVal).split(',').map((v) => v.trim());
 
         replacements[`vals${checkIdx}`] = values;
@@ -672,7 +684,11 @@ module.exports.getHeightRange = async (req, res, next) => {
           JOIN product_filters pf_check${checkIdx}
             ON pf_check${checkIdx}.product_id = p.id
            AND pf_check${checkIdx}.filter_field_id = ${field.id}
-           AND string_to_array(pf_check${checkIdx}.filter_value, ',') <@ ARRAY[:vals${checkIdx}]::text[]
+           AND EXISTS (
+             SELECT 1
+             FROM unnest(string_to_array(pf_check${checkIdx}.filter_value, ',')) AS filter_val
+             WHERE trim(filter_val) = ANY(ARRAY[:vals${checkIdx}]::text[])
+           )
         `;
         checkIdx++;
       }

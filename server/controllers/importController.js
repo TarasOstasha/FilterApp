@@ -37,13 +37,29 @@ module.exports.importProducts = async (req, res, next) => {
 }
 
 module.exports.importRemoveProducts = async (req, res, next) => {
+    console.log(chalk.blue('=== importRemoveProducts endpoint called ==='));
+    
     if (!req.file) {
+        console.log(chalk.red('No file uploaded or invalid file format'));
         return next(createHttpError(400, 'No file uploaded or invalid file format (only .csv allowed)'));
     }
+    
+    console.log(chalk.cyan(`File uploaded: ${req.file.originalname}, path: ${req.file.path}`));
+    
     try {
-        await processRemoveProductsCsvFile(req.file.path);
-        res.status(200).json({ message: 'File processed successfully' });
+        const result = await processRemoveProductsCsvFile(req.file.path);
+        console.log(chalk.green('Remove products process completed successfully'));
+        console.log(chalk.cyan(`Deleted ${result.deleted} products`));
+        
+        res.status(200).json({ 
+            message: 'File processed successfully',
+            result: {
+                deleted: result.deleted,
+                totalIdsProcessed: result.ids.length
+            } 
+        });
     } catch (err) {
+        console.error(chalk.red('Error in importRemoveProducts:'), err);
         next(createHttpError(500, 'Error processing file'));
     }
 }

@@ -92,6 +92,10 @@
   //width: 100%;
   //aspect-ratio: 4 / 3;     
   //object-fit: contain;
+    width: 100%;
+  height: 240px;            // adjust height as needed (e.g. 220px or 250px)
+  object-fit: cover;        // keeps aspect ratio and fills the box
+
 
 }
 

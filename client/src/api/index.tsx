@@ -115,6 +115,7 @@ export const fetchDynamicFilters = async (
     params: Record<string, string>,
     catId: string
 ) => {
+    console.log(params, catId, '<< params and catId in fetchDynamicFilters');
     try {
         return await axiosInstance.get('/dynamic-filters', { params: { ...params, catId } });
     } catch (err) {
@@ -124,11 +125,33 @@ export const fetchDynamicFilters = async (
 };
 
 export const uploadCSV = async (uploadType: string, formData: FormData): Promise<AxiosResponse<any>> => {
-    return await axiosInstance.post(`/upload-csv/${uploadType}`, formData, {
-        headers: {
-            'Content-Type': 'multipart/form-data',
-        },
+    console.log(`Uploading CSV file of type: ${uploadType}`, {
+        uploadType,
+        apiURL: `${API_BASE}/upload-csv/${uploadType}`,
+        formDataKeys: Array.from(formData.keys())
     });
+    
+    try {
+        console.log("Making axios POST request...");
+        const response = await axiosInstance.post(`/upload-csv/${uploadType}`, formData, {
+            headers: {
+                'Content-Type': 'multipart/form-data',
+            },
+        });
+        console.log("Upload response received:", response);
+        return response;
+    } catch (error) {
+        console.error("Error in uploadCSV function:", error);
+        if (axios.isAxiosError(error)) {
+            console.error("Axios error details:", {
+                status: error.response?.status,
+                statusText: error.response?.statusText,
+                data: error.response?.data,
+                message: error.message
+            });
+        }
+        throw error; // Re-throw to be handled by the component
+    }
 };
 
 export const exportData = async (type: string): Promise<AxiosResponse<Blob> | undefined> => {

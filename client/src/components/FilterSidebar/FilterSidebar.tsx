@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import ReactSlider from 'react-slider';
 import { ClipLoader } from 'react-spinners';
 import styles from './FilterSidebar.module.scss';
@@ -136,10 +136,38 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
   // Track if we've initialized from filterFields to prevent overwrites
   const initializedFromFilterFields = useRef(false);
 
+  // Debounced range values for immediate UI updates
+  const [debouncedPriceRange, setDebouncedPriceRange] = useState<[number, number] | null>(null);
+  const [debouncedWidthRange, setDebouncedWidthRange] = useState<[number, number] | null>(null);
+  const [debouncedHeightRange, setDebouncedHeightRange] = useState<[number, number] | null>(null);
+  
+  // Refs for debounce timeouts
+  const priceDebounceTimeout = useRef<number>();
+  const widthDebounceTimeout = useRef<number>();
+  const heightDebounceTimeout = useRef<number>();
+  
+  // Refs to track if we're updating from text input (to prevent slider interference)
+  const updatingFromInputRef = useRef(false);
+  
+  // Store last manual input values to detect when user is typing vs when component is updating
+  const lastManualInputRef = useRef<{
+    widthMin?: number;
+    widthMax?: number;
+    heightMin?: number;
+    heightMax?: number;
+  }>({});
+
   // Reset width/height to category-specific values when all filters are cleared
   useEffect(() => {
     const safeFilters = sanitizeFilters(selectedFilters);
     const hasFilters = Object.keys(safeFilters).length > 0;
+    
+    // Clear debounced states when filters are cleared
+    if (!hasFilters) {
+      setDebouncedPriceRange(null);
+      setDebouncedWidthRange(null);
+      setDebouncedHeightRange(null);
+    }
     
     // Only reset if we've initialized AND there are no filters
     if (!hasFilters && initializedFromFilterFields.current) {
@@ -181,22 +209,54 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
     onFilterChange({ field, value });
   }
 
-  function handleRangeSliderChange(fieldName: string, sliderValue: number | number[]) {
-    if (Array.isArray(sliderValue) && sliderValue.length === 2) {
-      onFilterChange({
-        field: fieldName,
-        value: `${sliderValue[0]},${sliderValue[1]}`
-      });
+  // Debounced handler for range changes
+  const handleRangeSliderChange = useCallback((fieldName: string, sliderValue: number | number[]) => {
+    if (!Array.isArray(sliderValue) || sliderValue.length !== 2) return;
+    console.log(sliderValue, 'sliderValue for', fieldName);
+    // Update local state immediately for smooth UI
+    if (fieldName === 'Product Price') {
+      setDebouncedPriceRange([sliderValue[0], sliderValue[1]]);
+      window.clearTimeout(priceDebounceTimeout.current);
+      priceDebounceTimeout.current = window.setTimeout(() => {
+        onFilterChange({
+          field: fieldName,
+          value: `${sliderValue[0]},${sliderValue[1]}`
+        });
+      }, 500); // 500ms delay
+    } else if (fieldName === 'Display Width') {
+      setDebouncedWidthRange([sliderValue[0], sliderValue[1]]);
+      window.clearTimeout(widthDebounceTimeout.current);
+      widthDebounceTimeout.current = window.setTimeout(() => {
+        onFilterChange({
+          field: fieldName,
+          value: `${sliderValue[0]},${sliderValue[1]}`
+        });
+      }, 500); // 500ms delay
+    } else if (fieldName === 'Display Height') {
+      setDebouncedHeightRange([sliderValue[0], sliderValue[1]]);
+      window.clearTimeout(heightDebounceTimeout.current);
+      heightDebounceTimeout.current = window.setTimeout(() => {
+        onFilterChange({
+          field: fieldName,
+          value: `${sliderValue[0]},${sliderValue[1]}`
+        });
+      }, 500); // 500ms delay
     }
-  }
+  }, [onFilterChange]);
+
+  // Cleanup timeouts on unmount
+  useEffect(() => {
+    return () => {
+      window.clearTimeout(priceDebounceTimeout.current);
+      window.clearTimeout(widthDebounceTimeout.current);
+      window.clearTimeout(heightDebounceTimeout.current);
+    };
+  }, []);
 
   function handleUnitSwitch(fieldName: string) {
     const next = (unitSelections[fieldName] || 'in') === 'ft' ? 'in' : 'ft';
-    if (fieldName === 'Display Width') {
-      onFilterChange({ field: fieldName, value: `${widthMin || globalMinWidth},${widthMax || globalMaxWidth}` });
-    } else if (fieldName === 'Display Height') {
-      onFilterChange({ field: fieldName, value: `${heightMin || globalMinHeight},${heightMax || globalMaxHeight}` });
-    }
+    // Just update the unit selection - don't change the filter values
+    // The selected filter values remain in inches internally, only the display changes
     setUnitSelections((prev) => ({ ...prev, [fieldName]: next }));
   }
 
@@ -215,6 +275,7 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
 
   // ----- INITIALIZE RANGES FROM FILTER FIELDS ON FIRST LOAD -----
   useEffect(() => {
+    console.log(filterFields.length, 'filterFields.length');
     // Only initialize once when filter fields first load
     if (filterFields.length === 0 || initializedFromFilterFields.current) return;
 
@@ -253,6 +314,9 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
       // Don't fetch if we haven't initialized, OR if there are no filters applied
       if (!initializedFromFilterFields.current) return;
       
+      // Don't update ranges while user is typing in the input fields
+      if (updatingFromInputRef.current) return;
+      
       const safeFilters = sanitizeFilters(selectedFilters);
       const hasFilters = Object.keys(safeFilters).length > 0;
       if (!hasFilters) return; // Don't fetch on initial load
@@ -272,7 +336,7 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
       })();
     },
     [selectedFilters],
-    800
+    1500
   );
 
   // ----- LIVE FILTERED HEIGHT RANGE -----
@@ -280,6 +344,9 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
     () => {
       // Don't fetch if we haven't initialized, OR if there are no filters applied
       if (!initializedFromFilterFields.current) return;
+      
+      // Don't update ranges while user is typing in the input fields
+      if (updatingFromInputRef.current) return;
       
       const safeFilters = sanitizeFilters(selectedFilters);
       const hasFilters = Object.keys(safeFilters).length > 0;
@@ -300,7 +367,7 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
       })();
     },
     [selectedFilters],
-    800
+    1500
   );
 
   // ----- MAIN: FETCH FIELDS + PRICE (safe) -----
@@ -350,8 +417,11 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
 
     window.clearTimeout(priceFetchTimeout.current);
     priceFetchTimeout.current = window.setTimeout(() => {
-      // Sidebar fields - always fetch, but preserve existing state on failure
-      if (keys.length === 0) {
+      // Sidebar fields - always fetch on initial load or when no filters are applied
+      // Also fetch when we only have price filter and no other filters
+      const onlyHasPriceFilter = keys.length === 1 && keys[0] === 'Product Price' && nonPrice.length === 0;
+      
+      if (keys.length === 0 || onlyHasPriceFilter || filterFields.length === 0) {
         const catId = getCategoryIdFromPath();
         fetchFilterSidebarData(catId)
           .then((r) => {
@@ -461,22 +531,40 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
     return () => window.clearTimeout(priceFetchTimeout.current);
   }, [selectedFilters]); // Simplified dependencies to prevent infinite loops
 
+  const isLoading = isLoadingFilters || isClearingFilters || loading;
+
   return (
-    <div className={styles.sidebar} style={{ width: '250px' }}>
-      {(isLoadingFilters || isClearingFilters || loading) && (
-        <div style={{ 
-          padding: '20px', 
-          textAlign: 'center', 
-          background: '#f8f9fa', 
-          borderRadius: '8px',
-          marginBottom: '15px',
-          boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
-        }}>
-          <ClipLoader color="#007bff" size={30} />
-          <div style={{ marginTop: '10px', color: '#666', fontSize: '14px' }}>
-            {loading ? 'Loading products...' : 'Updating filters...'}
+    <div className={styles.sidebar} style={{ width: '250px', position: 'relative' }}>
+      {isLoading && (
+        <>
+          {/* Loading indicator */}
+          <div style={{ 
+            padding: '20px', 
+            textAlign: 'center', 
+            background: '#f8f9fa', 
+            borderRadius: '8px',
+            marginBottom: '15px',
+            boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+            position: 'relative',
+            zIndex: 2
+          }}>
+            <ClipLoader color="#007bff" size={30} />
+            <div style={{ marginTop: '10px', color: '#666', fontSize: '14px' }}>
+              {loading ? 'Loading products...' : 'Updating filters...'}
+            </div>
           </div>
-        </div>
+          {/* Overlay to block interactions */}
+          <div style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(255, 255, 255, 0.7)',
+            zIndex: 1,
+            cursor: 'not-allowed'
+          }} />
+        </>
       )}
       {filterFields.map((ff) => {
         const { field_name: fn, field_type: ft } = ff;
@@ -532,8 +620,25 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
             const railMin = hasRealRange ? priceMin : 0;
             const railMax = hasRealRange ? priceMax : bpLast;
 
+            // Don't render the filter if we don't have valid price data yet
+            if (railMax === 0 || railMin === railMax) {
+              return (
+                <div key={ff.id} className={styles['filter-section']}>
+                  <h4>{fn}</h4>
+                  <div style={{ padding: '10px', color: '#666', fontSize: '14px' }}>
+                    Loading price range...
+                  </div>
+                </div>
+              );
+            }
+
+            // Use debounced values if available for immediate UI feedback
             let effMin = Number.isFinite(curMinRaw) ? curMinRaw : railMin;
             let effMax = Number.isFinite(curMaxRaw) ? curMaxRaw : railMax;
+            if (debouncedPriceRange) {
+              effMin = debouncedPriceRange[0];
+              effMax = debouncedPriceRange[1];
+            }
             if (effMin > effMax) { effMin = railMin; effMax = railMax; }
 
             const railBps = priceBreakpoints.filter(v => v >= railMin && v <= railMax);
@@ -641,8 +746,14 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
 
             const isFrozen = uiMin >= uiMax;
 
-            const selMinIn = Number.isFinite(curMinRaw) ? curMinRaw : railMinIn;
-            const selMaxIn = Number.isFinite(curMaxRaw) ? curMaxRaw : railMaxIn;
+            let selMinIn = Number.isFinite(curMinRaw) ? curMinRaw : railMinIn;
+            let selMaxIn = Number.isFinite(curMaxRaw) ? curMaxRaw : railMaxIn;
+
+            // Use debounced values if available for immediate UI feedback
+            if (debouncedWidthRange) {
+              selMinIn = debouncedWidthRange[0];
+              selMaxIn = debouncedWidthRange[1];
+            }
 
             const lo = clamp(toUi(selMinIn), uiMin, uiMax);
             const hi = clamp(toUi(selMaxIn), uiMin, uiMax);
@@ -669,6 +780,8 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
                   withTracks
                   minDistance={isFrozen ? 0 : 1}
                   onChange={(vals) => {
+                    // Ignore slider changes when updating from text input
+                    if (updatingFromInputRef.current) return;
                     if (isFrozen || !Array.isArray(vals)) return;
                     const a = clamp(vals[0], uiMin, uiMax);
                     const b = clamp(vals[1], uiMin, uiMax);
@@ -679,37 +792,55 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
                 <div className={styles['range-values']}>
                   <input
                     type="text"
-                    min={uiMin}
-                    max={uiMax}
-                    value={unit === 'ft' ? lo : clamp(selMinIn, railMinIn, railMaxIn)}
+                    value={unit === 'ft' ? lo : Math.round(selMinIn)}
                     disabled={isFrozen}
                     onChange={(e) => {
                       if (isFrozen) return;
+                      updatingFromInputRef.current = true;
                       const raw = Number(e.target.value);
-                      if (Number.isNaN(raw)) return;
-                      const v = clamp(raw, uiMin, uiMax);
-                      handleRangeSliderChange(fn, [
-                        unit === 'ft' ? fromUi(v) : v,
-                        unit === 'ft' ? fromUi(hi) : clamp(selMaxIn, railMinIn, railMaxIn),
-                      ]);
+                      if (Number.isNaN(raw) || raw < 0) {
+                        updatingFromInputRef.current = false;
+                        return;
+                      }
+                      // Accept any positive value the user types
+                      if (unit === 'ft') {
+                        const inchValue = fromUi(raw);
+                        lastManualInputRef.current.widthMin = inchValue;
+                        handleRangeSliderChange(fn, [inchValue, fromUi(hi)]);
+                      } else {
+                        // In inches mode, accept the raw value directly
+                        lastManualInputRef.current.widthMin = raw;
+                        const currentMax = debouncedWidthRange ? debouncedWidthRange[1] : selMaxIn;
+                        handleRangeSliderChange(fn, [raw, currentMax]);
+                      }
+                      setTimeout(() => { updatingFromInputRef.current = false; }, 200);
                     }}
                     style={{ width: 80, marginRight: 8 }}
                   />
                   <input
                     type="text"
-                    min={uiMin}
-                    max={uiMax}
-                    value={unit === 'ft' ? hi : clamp(selMaxIn, railMinIn, railMaxIn)}
+                    value={unit === 'ft' ? hi : Math.round(selMaxIn)}
                     disabled={isFrozen}
                     onChange={(e) => {
                       if (isFrozen) return;
+                      updatingFromInputRef.current = true;
                       const raw = Number(e.target.value);
-                      if (Number.isNaN(raw)) return;
-                      const v = clamp(raw, uiMin, uiMax);
-                      handleRangeSliderChange(fn, [
-                        unit === 'ft' ? fromUi(lo) : clamp(selMinIn, railMinIn, railMaxIn),
-                        unit === 'ft' ? fromUi(v) : v,
-                      ]);
+                      if (Number.isNaN(raw) || raw < 0) {
+                        updatingFromInputRef.current = false;
+                        return;
+                      }
+                      // Accept any positive value the user types
+                      if (unit === 'ft') {
+                        const inchValue = fromUi(raw);
+                        lastManualInputRef.current.widthMax = inchValue;
+                        handleRangeSliderChange(fn, [fromUi(lo), inchValue]);
+                      } else {
+                        // In inches mode, accept the raw value directly
+                        lastManualInputRef.current.widthMax = raw;
+                        const currentMin = debouncedWidthRange ? debouncedWidthRange[0] : selMinIn;
+                        handleRangeSliderChange(fn, [currentMin, raw]);
+                      }
+                      setTimeout(() => { updatingFromInputRef.current = false; }, 200);
                     }}
                     style={{ width: 80 }}
                   />
@@ -740,8 +871,14 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
 
             const isFrozen = minUi >= maxUi;
 
-            const selMinIn = Number.isFinite(curMinRaw) ? curMinRaw : railMinIn;
-            const selMaxIn = Number.isFinite(curMaxRaw) ? curMaxRaw : railMaxIn;
+            let selMinIn = Number.isFinite(curMinRaw) ? curMinRaw : railMinIn;
+            let selMaxIn = Number.isFinite(curMaxRaw) ? curMaxRaw : railMaxIn;
+
+            // Use debounced values if available for immediate UI feedback
+            if (debouncedHeightRange) {
+              selMinIn = debouncedHeightRange[0];
+              selMaxIn = debouncedHeightRange[1];
+            }
 
             const lo = clamp(toUi(selMinIn), minUi, maxUi);
             const hi = clamp(toUi(selMaxIn), minUi, maxUi);
@@ -768,6 +905,8 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
                   withTracks
                   minDistance={isFrozen ? 0 : 1}
                   onChange={vals => {
+                    // Ignore slider changes when updating from text input
+                    if (updatingFromInputRef.current) return;
                     if (isFrozen || !Array.isArray(vals)) return;
                     const a = clamp(vals[0], minUi, maxUi);
                     const b = clamp(vals[1], minUi, maxUi);
@@ -778,37 +917,55 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
                 <div className={styles['range-values']}>
                   <input
                     type="text"
-                    min={minUi}
-                    max={maxUi}
-                    value={unit === 'ft' ? lo : clamp(selMinIn, railMinIn, railMaxIn)}
+                    value={unit === 'ft' ? lo : Math.round(selMinIn)}
                     disabled={isFrozen}
                     onChange={e => {
                       if (isFrozen) return;
+                      updatingFromInputRef.current = true;
                       const raw = Number(e.target.value);
-                      if (Number.isNaN(raw)) return;
-                      const v = clamp(raw, minUi, maxUi);
-                      handleRangeSliderChange(fn, [
-                        unit === 'ft' ? fromUi(v) : v,
-                        unit === 'ft' ? fromUi(hi) : clamp(selMaxIn, railMinIn, railMaxIn),
-                      ]);
+                      if (Number.isNaN(raw) || raw < 0) {
+                        updatingFromInputRef.current = false;
+                        return;
+                      }
+                      // Accept any positive value the user types
+                      if (unit === 'ft') {
+                        const inchValue = fromUi(raw);
+                        lastManualInputRef.current.heightMin = inchValue;
+                        handleRangeSliderChange(fn, [inchValue, fromUi(hi)]);
+                      } else {
+                        // In inches mode, accept the raw value directly
+                        lastManualInputRef.current.heightMin = raw;
+                        const currentMax = debouncedHeightRange ? debouncedHeightRange[1] : selMaxIn;
+                        handleRangeSliderChange(fn, [raw, currentMax]);
+                      }
+                      setTimeout(() => { updatingFromInputRef.current = false; }, 200);
                     }}
                     style={{ width: 80, marginRight: 8 }}
                   />
                   <input
                     type="text"
-                    min={minUi}
-                    max={maxUi}
-                    value={unit === 'ft' ? hi : clamp(selMaxIn, railMinIn, railMaxIn)}
+                    value={unit === 'ft' ? hi : Math.round(selMaxIn)}
                     disabled={isFrozen}
                     onChange={e => {
                       if (isFrozen) return;
+                      updatingFromInputRef.current = true;
                       const raw = Number(e.target.value);
-                      if (Number.isNaN(raw)) return;
-                      const v = clamp(raw, minUi, maxUi);
-                      handleRangeSliderChange(fn, [
-                        unit === 'ft' ? fromUi(lo) : clamp(selMinIn, railMinIn, railMaxIn),
-                        unit === 'ft' ? fromUi(v) : v,
-                      ]);
+                      if (Number.isNaN(raw) || raw < 0) {
+                        updatingFromInputRef.current = false;
+                        return;
+                      }
+                      // Accept any positive value the user types
+                      if (unit === 'ft') {
+                        const inchValue = fromUi(raw);
+                        lastManualInputRef.current.heightMax = inchValue;
+                        handleRangeSliderChange(fn, [fromUi(lo), inchValue]);
+                      } else {
+                        // In inches mode, accept the raw value directly
+                        lastManualInputRef.current.heightMax = raw;
+                        const currentMin = debouncedHeightRange ? debouncedHeightRange[0] : selMinIn;
+                        handleRangeSliderChange(fn, [currentMin, raw]);
+                      }
+                      setTimeout(() => { updatingFromInputRef.current = false; }, 200);
                     }}
                     style={{ width: 80 }}
                   />

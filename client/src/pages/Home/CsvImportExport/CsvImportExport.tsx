@@ -60,6 +60,8 @@ const CsvImportExport: React.FC = () => {
     // };
 
     const handleFileUpload = async () => {
+        console.log("Upload button clicked", { file });
+        
         if (!file) {
             toast.error('Please select a file!');
             return;
@@ -67,6 +69,8 @@ const CsvImportExport: React.FC = () => {
 
         const fileName = file.name.toLowerCase();
         const uploadType = getUploadTypeFromName(fileName);
+        console.log("File information:", { fileName, uploadType, size: file.size });
+        
         if (uploadType === 'unknown') {
             toast.error('Unsupported file name.');
             setShowRules(true);
@@ -102,11 +106,26 @@ const CsvImportExport: React.FC = () => {
         toast.info('Uploading and processing file... Please wait.', { autoClose: false, toastId: 'upload-progress' });
         
         try {
+            console.log("Attempting to upload file", { uploadType });
             const response = await uploadCSV(uploadType, formData);
+            console.log("Upload response received:", response);
             const uploadTime = new Date().toLocaleString();
             toast.dismiss('upload-progress');
-            toast.success(`File uploaded successfully at ${uploadTime}`);
+            
+            if (uploadType === 'product-remove') {
+               
+                const deleted = response.data.result?.deleted || 0;
+                toast.success(`File processed successfully. ${deleted} product(s) removed at ${uploadTime}`);
+            } else {
+                toast.success(`File uploaded successfully at ${uploadTime}`);
+            }
+            
+            // Reset the file input after successful upload
+            setFile(null);
+            const fileInput = document.getElementById('csv-file-input') as HTMLInputElement;
+            if (fileInput) fileInput.value = '';
         } catch (error) {
+            console.error("Error during upload:", error);
             toast.dismiss('upload-progress');
             if (axios.isAxiosError(error) && error.response?.data) {
                 const errorData = error.response.data;
@@ -180,8 +199,26 @@ const CsvImportExport: React.FC = () => {
             />
             <Admin />
             <h2>Import CSV</h2>
-            <input type="file" onChange={handleFileChange} disabled={isUploading} />
-            <button onClick={handleFileUpload} disabled={!file || invalid || isUploading}>
+            <input 
+                type="file" 
+                onChange={handleFileChange} 
+                disabled={isUploading} 
+                id="csv-file-input"
+            />
+            <button 
+                onClick={handleFileUpload} 
+                disabled={!file || invalid || isUploading}
+                style={{ 
+                    padding: '8px 16px', 
+                    margin: '10px 0', 
+                    cursor: !file || invalid || isUploading ? 'not-allowed' : 'pointer',
+                    backgroundColor: !file ? '#cccccc' : invalid ? '#ffcccc' : '#4CAF50',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '4px'
+                }}
+                id="import-csv-button"
+            >
                 {isUploading ? 'Uploading...' : 'Import CSV'}
             </button>
             <button

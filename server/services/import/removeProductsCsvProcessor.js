@@ -9,6 +9,9 @@ const { Op } = require('sequelize');
 const { sequelize } = db;
 const Product = db.Product;
 
+// Add more detailed logging for debugging
+console.log(chalk.blue('Loading removeProductsCsvProcessor.js'));
+
 const CHUNK = 3000; // safety for huge batches
 
 function readCsv(csvFilePath, { debug = false } = {}) {
@@ -97,8 +100,11 @@ async function destroyInChunks(productIds, { transaction, force }) {
  */
 async function processRemoveProductsCsvFile(
   csvFilePath,
-  { dryRun = false, force = false, caseInsensitive = false, debug = false } = {}
+  { dryRun = false, force = false, caseInsensitive = false, debug = true } = {}
 ) {
+  console.log(chalk.green('Starting product removal process'));
+  console.log(chalk.cyan(`Processing CSV file: ${csvFilePath}`));
+  
   if (!fs.existsSync(csvFilePath)) {
     console.error(chalk.red(`CSV not found: ${csvFilePath}`));
     return { deleted: 0, ids: [] };
@@ -136,6 +142,7 @@ async function processRemoveProductsCsvFile(
 
   if (!productIds.length) {
     console.log(chalk.yellow('No matching products found.'));
+    console.log(chalk.yellow('Products in CSV may not exist in the database.'));
     return { deleted: 0, ids: [] };
   }
 
@@ -155,16 +162,19 @@ async function processRemoveProductsCsvFile(
   }
 
   return sequelize.transaction(async (t) => {
-    // One or more chunked destroys; DB ON DELETE CASCADE cleans related rows
-    const deleted = await destroyInChunks(productIds, { transaction: t, force });
-    console.log(chalk.green(`Deleted ${deleted} product(s) (cascade applied in DB).`));
-    return { deleted, ids: productIds, missing };
+    try {
+      // One or more chunked destroys; DB ON DELETE CASCADE cleans related rows
+      console.log(chalk.cyan(`Attempting to delete ${productIds.length} products...`));
+      const deleted = await destroyInChunks(productIds, { transaction: t, force });
+      console.log(chalk.green(`Successfully deleted ${deleted} product(s) (cascade applied in DB).`));
+      return { deleted, ids: productIds, missing };
+    } catch (error) {
+      console.error(chalk.red('Error during product deletion:'), error);
+      throw error; // Re-throw to be caught by the controller
+    }
   });
 }
 
 
 module.exports = processRemoveProductsCsvFile;               
-//module.exports.removeProductsFromCsv = removeProductsFromCsv; 
-
-
-
+//module.exports.removeProductsFromCsv = removeProductsFromCsv;

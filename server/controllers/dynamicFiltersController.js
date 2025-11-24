@@ -171,7 +171,11 @@ module.exports.getDynamicFilters = async (req, res, next) => {
            AND pf${joinIdx}.filter_field_id = (
                  SELECT id FROM filter_fields WHERE field_name = :fieldName${joinIdx}
                )
-           AND string_to_array(pf${joinIdx}.filter_value, ',') <@ string_to_array(:csv${joinIdx}, ',')
+           AND EXISTS (
+             SELECT 1
+             FROM unnest(string_to_array(pf${joinIdx}.filter_value, ',')) AS filter_val
+             WHERE trim(filter_val) = ANY(string_to_array(:csv${joinIdx}, ','))
+           )
         `;
 
         fieldReplacements[`fieldName${joinIdx}`] = filterFieldName;
