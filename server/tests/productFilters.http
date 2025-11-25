@@ -1,0 +1,24 @@
+### 200 []
+GET http://localhost:5000/productFilter
+
+### 200 []
+GET http://localhost:5000/productFilter?page=50&results=-50
+
+
+### Test Filtered Products with Category
+GET http://localhost:5000/products?category=Modular&limit=27&offset=0
+
+### 
+GET http://localhost:5000/products?Product%20Type=Modular&limit=27&offset=0
+### 
+GET http://localhost:5000/products?Product%20Type=Exhibit&limit=27&offset=0
+### 
+GET http://localhost:5000/products?Product%20Type=Display&limit=27&offset=0
+###
+GET http://localhost:5000/products?limit=27&offset=0&sortBy=price_asc&Product+Type=Modular
+###
+GET http://localhost:5000/api/products?limit=27&offset=0&sortBy=price_asc&Product+Type=Exhibit
+###
+GET http://localhost:5000/api/products?limit=27&offset=0&sortBy=price_asc&Product+Type=Display
+### 
+GET http://localhost:5000/api/products?limit=27&offset=0&sortBy=price_asc&Product+Type=Display
