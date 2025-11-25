@@ -291,14 +291,14 @@ const Home: React.FC = () => {
     <div className="container">
       <div className="row">
         <div className="col-md-3">
+          <button className={styles.clearFiltersButton} onClick={handleClearFilters}>
+            Clear Filters
+          </button>
           <FilterSidebar
             onFilterChange={handleFilterChange}
             selectedFilters={selectedFilters}
             loading={loading}
           />
-          <button className={styles.clearFiltersButton} onClick={handleClearFilters}>
-            Clear Filters
-          </button>
         </div>
         <div className="col-md-9">
           <div className="controls d-flex justify-content-between">
