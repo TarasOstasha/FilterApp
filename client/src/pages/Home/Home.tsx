@@ -39,6 +39,7 @@ const Home: React.FC = () => {
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [loadedCount, setLoadedCount] = useState(0); // Track how many products loaded via "View More"
   const [hasUsedLoadMore, setHasUsedLoadMore] = useState(false); // Track if "View More" has been used
+  const [isClearingFilters, setIsClearingFilters] = useState(false);
 
   // —— helpers ——
   const offsetFrom = (page: number, limit: number) => Math.max(0, (page - 1) * limit);
@@ -136,6 +137,7 @@ const Home: React.FC = () => {
     } finally {
       setLoading(false);
       setIsLoadingMore(false);
+      setIsClearingFilters(false); // Reset clearing state when fetch completes
       // let images start loading, then fade in
       setTimeout(() => setIsTransitioning(false), 120);
     }
@@ -273,6 +275,7 @@ const Home: React.FC = () => {
     setIsTransitioning(true);
     setIsLoadingMore(false);
     setHasUsedLoadMore(false); // Reset when clearing filters
+    setIsClearingFilters(true); // Freeze sidebar during clear operation
     setSelectedFilters({});
     setCurrentPage(1);
     setLoadedCount(itemsPerPage);
@@ -297,6 +300,7 @@ const Home: React.FC = () => {
           <FilterSidebar
             onFilterChange={handleFilterChange}
             selectedFilters={selectedFilters}
+            isClearingFilters={isClearingFilters}
             loading={loading}
           />
         </div>

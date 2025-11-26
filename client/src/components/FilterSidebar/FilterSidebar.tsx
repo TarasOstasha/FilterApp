@@ -462,8 +462,29 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
   }, [selectedFilters]); // Simplified dependencies to prevent infinite loops
 
   return (
-    <div className={styles.sidebar} style={{ width: '250px' }}>
-      {(isLoadingFilters || isClearingFilters || loading) && (
+    <div className={styles.sidebar} style={{ width: '250px', position: 'relative' }}>
+      {isClearingFilters && (
+        <div style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(255, 255, 255, 0.85)',
+          zIndex: 1000,
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          borderRadius: '8px'
+        }}>
+          <ClipLoader color="#007bff" size={40} />
+          <div style={{ marginTop: '15px', color: '#333', fontSize: '16px', fontWeight: '500' }}>
+            Clearing filters...
+          </div>
+        </div>
+      )}
+      {(isLoadingFilters || loading) && (
         <div style={{ 
           padding: '20px', 
           textAlign: 'center', 
@@ -478,6 +499,7 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
           </div>
         </div>
       )}
+      <div style={{ opacity: isClearingFilters ? 0.4 : 1, pointerEvents: isClearingFilters ? 'none' : 'auto' }}>
       {filterFields.map((ff) => {
         const { field_name: fn, field_type: ft } = ff;
 
@@ -827,6 +849,7 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
 
         return null;
       })}
+      </div>
     </div>
   );
 };
