@@ -192,11 +192,10 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
 
   function handleUnitSwitch(fieldName: string) {
     const next = (unitSelections[fieldName] || 'in') === 'ft' ? 'in' : 'ft';
-    if (fieldName === 'Display Width') {
-      onFilterChange({ field: fieldName, value: `${widthMin || globalMinWidth},${widthMax || globalMaxWidth}` });
-    } else if (fieldName === 'Display Height') {
-      onFilterChange({ field: fieldName, value: `${heightMin || globalMinHeight},${heightMax || globalMaxHeight}` });
-    }
+    
+    // Simply toggle the unit - don't call onFilterChange
+    // The values are stored in inches in the backend, and the UI conversion 
+    // is handled by toUi/fromUi functions in the render logic
     setUnitSelections((prev) => ({ ...prev, [fieldName]: next }));
   }
 
