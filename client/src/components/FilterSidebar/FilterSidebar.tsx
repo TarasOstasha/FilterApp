@@ -133,6 +133,18 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
   const [heightMin, setHeightMin] = useState(0);
   const [heightMax, setHeightMax] = useState(0);
   
+  // Editing state for Width and Height inputs
+  const [editingWidthMin, setEditingWidthMin] = useState<string>('');
+  const [editingWidthMax, setEditingWidthMax] = useState<string>('');
+  const [editingHeightMin, setEditingHeightMin] = useState<string>('');
+  const [editingHeightMax, setEditingHeightMax] = useState<string>('');
+  
+  // Timeouts for debounced input changes
+  const widthMinTimeout = useRef<number>();
+  const widthMaxTimeout = useRef<number>();
+  const heightMinTimeout = useRef<number>();
+  const heightMaxTimeout = useRef<number>();
+  
   // Track if we've initialized from filterFields to prevent overwrites
   const initializedFromFilterFields = useRef(false);
 
@@ -699,38 +711,70 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
                 />
                 <div className={styles['range-values']}>
                   <input
-                    type="text"
+                    type="number"
                     min={uiMin}
                     max={uiMax}
-                    value={unit === 'ft' ? lo : clamp(selMinIn, railMinIn, railMaxIn)}
+                    value={editingWidthMin || lo}
                     disabled={isFrozen}
+                    onFocus={() => setEditingWidthMin(String(lo))}
                     onChange={(e) => {
-                      if (isFrozen) return;
-                      const raw = Number(e.target.value);
-                      if (Number.isNaN(raw)) return;
-                      const v = clamp(raw, uiMin, uiMax);
-                      handleRangeSliderChange(fn, [
-                        unit === 'ft' ? fromUi(v) : v,
-                        unit === 'ft' ? fromUi(hi) : clamp(selMaxIn, railMinIn, railMaxIn),
-                      ]);
+                      const value = e.target.value;
+                      setEditingWidthMin(value);
+                      
+                      // Clear existing timeout
+                      window.clearTimeout(widthMinTimeout.current);
+                      
+                      // Set new timeout to apply filter after delay
+                      widthMinTimeout.current = window.setTimeout(() => {
+                        const raw = Number(value);
+                        if (!Number.isNaN(raw)) {
+                          const v = clamp(raw, uiMin, uiMax);
+                          handleRangeSliderChange(fn, [fromUi(v), fromUi(hi)]);
+                        }
+                      }, 600);
+                    }}
+                    onBlur={() => {
+                      window.clearTimeout(widthMinTimeout.current);
+                      const raw = Number(editingWidthMin);
+                      if (!Number.isNaN(raw)) {
+                        const v = clamp(raw, uiMin, uiMax);
+                        handleRangeSliderChange(fn, [fromUi(v), fromUi(hi)]);
+                      }
+                      setEditingWidthMin('');
                     }}
                     style={{ width: 80, marginRight: 8 }}
                   />
                   <input
-                    type="text"
+                    type="number"
                     min={uiMin}
                     max={uiMax}
-                    value={unit === 'ft' ? hi : clamp(selMaxIn, railMinIn, railMaxIn)}
+                    value={editingWidthMax || hi}
                     disabled={isFrozen}
+                    onFocus={() => setEditingWidthMax(String(hi))}
                     onChange={(e) => {
-                      if (isFrozen) return;
-                      const raw = Number(e.target.value);
-                      if (Number.isNaN(raw)) return;
-                      const v = clamp(raw, uiMin, uiMax);
-                      handleRangeSliderChange(fn, [
-                        unit === 'ft' ? fromUi(lo) : clamp(selMinIn, railMinIn, railMaxIn),
-                        unit === 'ft' ? fromUi(v) : v,
-                      ]);
+                      const value = e.target.value;
+                      setEditingWidthMax(value);
+                      
+                      // Clear existing timeout
+                      window.clearTimeout(widthMaxTimeout.current);
+                      
+                      // Set new timeout to apply filter after delay
+                      widthMaxTimeout.current = window.setTimeout(() => {
+                        const raw = Number(value);
+                        if (!Number.isNaN(raw)) {
+                          const v = clamp(raw, uiMin, uiMax);
+                          handleRangeSliderChange(fn, [fromUi(lo), fromUi(v)]);
+                        }
+                      }, 600);
+                    }}
+                    onBlur={() => {
+                      window.clearTimeout(widthMaxTimeout.current);
+                      const raw = Number(editingWidthMax);
+                      if (!Number.isNaN(raw)) {
+                        const v = clamp(raw, uiMin, uiMax);
+                        handleRangeSliderChange(fn, [fromUi(lo), fromUi(v)]);
+                      }
+                      setEditingWidthMax('');
                     }}
                     style={{ width: 80 }}
                   />
@@ -798,38 +842,70 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
                 />
                 <div className={styles['range-values']}>
                   <input
-                    type="text"
+                    type="number"
                     min={minUi}
                     max={maxUi}
-                    value={unit === 'ft' ? lo : clamp(selMinIn, railMinIn, railMaxIn)}
+                    value={editingHeightMin || lo}
                     disabled={isFrozen}
+                    onFocus={() => setEditingHeightMin(String(lo))}
                     onChange={e => {
-                      if (isFrozen) return;
-                      const raw = Number(e.target.value);
-                      if (Number.isNaN(raw)) return;
-                      const v = clamp(raw, minUi, maxUi);
-                      handleRangeSliderChange(fn, [
-                        unit === 'ft' ? fromUi(v) : v,
-                        unit === 'ft' ? fromUi(hi) : clamp(selMaxIn, railMinIn, railMaxIn),
-                      ]);
+                      const value = e.target.value;
+                      setEditingHeightMin(value);
+                      
+                      // Clear existing timeout
+                      window.clearTimeout(heightMinTimeout.current);
+                      
+                      // Set new timeout to apply filter after delay
+                      heightMinTimeout.current = window.setTimeout(() => {
+                        const raw = Number(value);
+                        if (!Number.isNaN(raw)) {
+                          const v = clamp(raw, minUi, maxUi);
+                          handleRangeSliderChange(fn, [fromUi(v), fromUi(hi)]);
+                        }
+                      }, 600);
+                    }}
+                    onBlur={() => {
+                      window.clearTimeout(heightMinTimeout.current);
+                      const raw = Number(editingHeightMin);
+                      if (!Number.isNaN(raw)) {
+                        const v = clamp(raw, minUi, maxUi);
+                        handleRangeSliderChange(fn, [fromUi(v), fromUi(hi)]);
+                      }
+                      setEditingHeightMin('');
                     }}
                     style={{ width: 80, marginRight: 8 }}
                   />
                   <input
-                    type="text"
+                    type="number"
                     min={minUi}
                     max={maxUi}
-                    value={unit === 'ft' ? hi : clamp(selMaxIn, railMinIn, railMaxIn)}
+                    value={editingHeightMax || hi}
                     disabled={isFrozen}
+                    onFocus={() => setEditingHeightMax(String(hi))}
                     onChange={e => {
-                      if (isFrozen) return;
-                      const raw = Number(e.target.value);
-                      if (Number.isNaN(raw)) return;
-                      const v = clamp(raw, minUi, maxUi);
-                      handleRangeSliderChange(fn, [
-                        unit === 'ft' ? fromUi(lo) : clamp(selMinIn, railMinIn, railMaxIn),
-                        unit === 'ft' ? fromUi(v) : v,
-                      ]);
+                      const value = e.target.value;
+                      setEditingHeightMax(value);
+                      
+                      // Clear existing timeout
+                      window.clearTimeout(heightMaxTimeout.current);
+                      
+                      // Set new timeout to apply filter after delay
+                      heightMaxTimeout.current = window.setTimeout(() => {
+                        const raw = Number(value);
+                        if (!Number.isNaN(raw)) {
+                          const v = clamp(raw, minUi, maxUi);
+                          handleRangeSliderChange(fn, [fromUi(lo), fromUi(v)]);
+                        }
+                      }, 600);
+                    }}
+                    onBlur={() => {
+                      window.clearTimeout(heightMaxTimeout.current);
+                      const raw = Number(editingHeightMax);
+                      if (!Number.isNaN(raw)) {
+                        const v = clamp(raw, minUi, maxUi);
+                        handleRangeSliderChange(fn, [fromUi(lo), fromUi(v)]);
+                      }
+                      setEditingHeightMax('');
                     }}
                     style={{ width: 80 }}
                   />
