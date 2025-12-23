@@ -118,13 +118,33 @@ module.exports.getDynamicFilters = async (req, res, next) => {
       return res.status(400).json({ error: 'At least one filter or catId is required' });
     }
 
-    // Get all filter fields first
-    const allFieldsQuery = `
-      SELECT id, field_name, field_type, sort_order 
-      FROM filter_fields 
-      ORDER BY sort_order
-    `;
-    const allFields = await sequelize.query(allFieldsQuery, { type: QueryTypes.SELECT });
+    // Get only filter fields that are actually used by products in this category
+    // This ensures we don't show irrelevant filters
+    let allFields;
+    if (catId) {
+      const allFieldsQuery = `
+        SELECT DISTINCT ff.id, ff.field_name, ff.field_type, ff.sort_order 
+        FROM filter_fields ff
+        JOIN product_filters pf ON pf.filter_field_id = ff.id
+        JOIN product_categories pc ON pc.product_id = pf.product_id 
+        WHERE pc.category_id = :catId
+        ORDER BY ff.sort_order
+      `;
+      allFields = await sequelize.query(allFieldsQuery, { 
+        replacements: { catId },
+        type: QueryTypes.SELECT 
+      });
+      console.log(chalk.yellow(`Fields for category ${catId}:`), allFields.length);
+    } else {
+      // No category - get all fields
+      const allFieldsQuery = `
+        SELECT id, field_name, field_type, sort_order 
+        FROM filter_fields 
+        ORDER BY sort_order
+      `;
+      allFields = await sequelize.query(allFieldsQuery, { type: QueryTypes.SELECT });
+      console.log(chalk.yellow(`All fields (no category):`), allFields.length);
+    }
 
     const replacements = {};
     if (catId) replacements.catId = catId;
@@ -165,17 +185,47 @@ module.exports.getDynamicFilters = async (req, res, next) => {
         const csv = Array.isArray(rawVal) ? rawVal.join(',') : String(rawVal);
         if (!csv.trim()) return;
 
-        joins += `
-          JOIN product_filters pf${joinIdx}
-            ON pf${joinIdx}.product_id = base.product_id
-           AND pf${joinIdx}.filter_field_id = (
-                 SELECT id FROM filter_fields WHERE field_name = :fieldName${joinIdx}
-               )
-           AND string_to_array(pf${joinIdx}.filter_value, ',') <@ string_to_array(:csv${joinIdx}, ',')
-        `;
+        // Special handling for range filters like Product Price
+        if (filterFieldName === 'Product Price') {
+          const [minPrice, maxPrice] = csv.split(',').map(v => parseFloat(v) || 0);
+          joins += `
+            JOIN products p${joinIdx}
+              ON p${joinIdx}.id = base.product_id
+             AND p${joinIdx}.product_price BETWEEN :minPrice${joinIdx} AND :maxPrice${joinIdx}
+          `;
+          fieldReplacements[`minPrice${joinIdx}`] = minPrice;
+          fieldReplacements[`maxPrice${joinIdx}`] = maxPrice;
+        } 
+        // Handle Display Width and Height as range filters
+        else if (filterFieldName === 'Display Width' || filterFieldName === 'Display Height') {
+          const [min, max] = csv.split(',').map(v => parseFloat(v) || 0);
+          joins += `
+            JOIN product_filters pf${joinIdx}
+              ON pf${joinIdx}.product_id = base.product_id
+             AND pf${joinIdx}.filter_field_id = (
+                   SELECT id FROM filter_fields WHERE field_name = :fieldName${joinIdx}
+                 )
+             AND CAST(regexp_replace(pf${joinIdx}.filter_value, '[^0-9\\.]', '', 'g') AS double precision)
+                 BETWEEN :min${joinIdx} AND :max${joinIdx}
+          `;
+          fieldReplacements[`fieldName${joinIdx}`] = filterFieldName;
+          fieldReplacements[`min${joinIdx}`] = min;
+          fieldReplacements[`max${joinIdx}`] = max;
+        }
+        // Handle checkbox filters
+        else {
+          joins += `
+            JOIN product_filters pf${joinIdx}
+              ON pf${joinIdx}.product_id = base.product_id
+             AND pf${joinIdx}.filter_field_id = (
+                   SELECT id FROM filter_fields WHERE field_name = :fieldName${joinIdx}
+                 )
+             AND string_to_array(pf${joinIdx}.filter_value, ',') <@ string_to_array(:csv${joinIdx}, ',')
+          `;
+          fieldReplacements[`fieldName${joinIdx}`] = filterFieldName;
+          fieldReplacements[`csv${joinIdx}`] = csv;
+        }
 
-        fieldReplacements[`fieldName${joinIdx}`] = filterFieldName;
-        fieldReplacements[`csv${joinIdx}`] = csv;
         joinIdx++;
       });
 

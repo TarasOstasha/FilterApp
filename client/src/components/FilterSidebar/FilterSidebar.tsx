@@ -133,13 +133,17 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
   const [heightMin, setHeightMin] = useState(0);
   const [heightMax, setHeightMax] = useState(0);
   
-  // Editing state for Width and Height inputs
+  // Editing state for Price, Width and Height inputs
+  const [editingPriceMin, setEditingPriceMin] = useState<string>('');
+  const [editingPriceMax, setEditingPriceMax] = useState<string>('');
   const [editingWidthMin, setEditingWidthMin] = useState<string>('');
   const [editingWidthMax, setEditingWidthMax] = useState<string>('');
   const [editingHeightMin, setEditingHeightMin] = useState<string>('');
   const [editingHeightMax, setEditingHeightMax] = useState<string>('');
   
   // Timeouts for debounced input changes
+  const priceMinTimeout = useRef<number>();
+  const priceMaxTimeout = useRef<number>();
   const widthMinTimeout = useRef<number>();
   const widthMaxTimeout = useRef<number>();
   const heightMinTimeout = useRef<number>();
@@ -261,26 +265,37 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
   // ----- LIVE FILTERED WIDTH RANGE -----
   useDebouncedEffect(
     () => {
-      // Don't fetch if we haven't initialized, OR if there are no filters applied
+      // Don't fetch if we haven't initialized
       if (!initializedFromFilterFields.current) return;
       
       const safeFilters = sanitizeFilters(selectedFilters);
-      const hasFilters = Object.keys(safeFilters).length > 0;
-      if (!hasFilters) return; // Don't fetch on initial load
       
-      (async () => {
-        try {
-          const params = buildParams(selectedFilters, 'Display Width');
-          const catId = getCategoryIdFromPath();
-          const res = await fetchWidthRange(params, catId);
-          const mn = res?.data?.min ?? 0;
-          const mx = res?.data?.max ?? 0;
-          setWidthMin((prev) => (prev === mn ? prev : mn));
-          setWidthMax((prev) => (prev === mx ? prev : mx));
-        } catch (err) {
-          console.error('Error fetching width range:', err);
-        }
-      })();
+      // Check if there are any filters (excluding Display Width itself)
+      const relevantFilters = Object.fromEntries(
+        Object.entries(safeFilters).filter(([k]) => k !== 'Display Width')
+      );
+      const hasRelevantFilters = Object.keys(relevantFilters).length > 0;
+      
+      // If there are relevant filters, fetch the updated range
+      if (hasRelevantFilters) {
+        (async () => {
+          try {
+            const params = Object.fromEntries(
+              Object.entries(relevantFilters).map(([k, v]) => [k, v.join(',')])
+            );
+            const catId = getCategoryIdFromPath();
+            console.log('Fetching width range with params:', params);
+            const res = await fetchWidthRange(params, catId);
+            const mn = res?.data?.min ?? 0;
+            const mx = res?.data?.max ?? 0;
+            console.log('Fetched width range:', mn, '-', mx);
+            setWidthMin((prev) => (prev === mn ? prev : mn));
+            setWidthMax((prev) => (prev === mx ? prev : mx));
+          } catch (err) {
+            console.error('Error fetching width range:', err);
+          }
+        })();
+      }
     },
     [selectedFilters],
     800
@@ -289,26 +304,37 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
   // ----- LIVE FILTERED HEIGHT RANGE -----
   useDebouncedEffect(
     () => {
-      // Don't fetch if we haven't initialized, OR if there are no filters applied
+      // Don't fetch if we haven't initialized
       if (!initializedFromFilterFields.current) return;
       
       const safeFilters = sanitizeFilters(selectedFilters);
-      const hasFilters = Object.keys(safeFilters).length > 0;
-      if (!hasFilters) return; // Don't fetch on initial load
       
-      (async () => {
-        try {
-          const params = buildParams(selectedFilters, 'Display Height');
-          const catId = getCategoryIdFromPath();
-          const res = await fetchHeightRange(params, catId);
-          const mn = res?.data?.min ?? 0;
-          const mx = res?.data?.max ?? 0;
-          setHeightMin((prev) => (prev === mn ? prev : mn));
-          setHeightMax((prev) => (prev === mx ? prev : mx));
-        } catch (err) {
-          console.error('Error fetching height range:', err);
-        }
-      })();
+      // Check if there are any filters (excluding Display Height itself)
+      const relevantFilters = Object.fromEntries(
+        Object.entries(safeFilters).filter(([k]) => k !== 'Display Height')
+      );
+      const hasRelevantFilters = Object.keys(relevantFilters).length > 0;
+      
+      // If there are relevant filters, fetch the updated range
+      if (hasRelevantFilters) {
+        (async () => {
+          try {
+            const params = Object.fromEntries(
+              Object.entries(relevantFilters).map(([k, v]) => [k, v.join(',')])
+            );
+            const catId = getCategoryIdFromPath();
+            console.log('Fetching height range with params:', params);
+            const res = await fetchHeightRange(params, catId);
+            const mn = res?.data?.min ?? 0;
+            const mx = res?.data?.max ?? 0;
+            console.log('Fetched height range:', mn, '-', mx);
+            setHeightMin((prev) => (prev === mn ? prev : mn));
+            setHeightMax((prev) => (prev === mx ? prev : mx));
+          } catch (err) {
+            console.error('Error fetching height range:', err);
+          }
+        })();
+      }
     },
     [selectedFilters],
     800
@@ -617,15 +643,36 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
                       type="number"
                       min={railMin}
                       max={railMax}
-                      value={effMin}
+                      value={editingPriceMin || effMin}
                       disabled={isFrozen}
+                      onFocus={() => setEditingPriceMin(String(effMin))}
                       onChange={(e) => {
                         if (isFrozen) return;
-                        const raw = Number(e.target.value);
-                        if (Number.isNaN(raw)) return;
-                        const clamped = Math.max(railMin, Math.min(raw, railMax));
-                        const i = lastIdxLE(clamped);
-                        handleRangeSliderChange(fn, [safeRailBps[i], effMax]);
+                        const value = e.target.value;
+                        setEditingPriceMin(value);
+                        
+                        // Clear existing timeout
+                        window.clearTimeout(priceMinTimeout.current);
+                        
+                        // Set new timeout to apply filter after delay
+                        priceMinTimeout.current = window.setTimeout(() => {
+                          const raw = Number(value);
+                          if (!Number.isNaN(raw)) {
+                            const clamped = Math.max(railMin, Math.min(raw, railMax));
+                            const i = lastIdxLE(clamped);
+                            handleRangeSliderChange(fn, [safeRailBps[i], effMax]);
+                          }
+                        }, 600);
+                      }}
+                      onBlur={() => {
+                        window.clearTimeout(priceMinTimeout.current);
+                        const raw = Number(editingPriceMin);
+                        if (!Number.isNaN(raw)) {
+                          const clamped = Math.max(railMin, Math.min(raw, railMax));
+                          const i = lastIdxLE(clamped);
+                          handleRangeSliderChange(fn, [safeRailBps[i], effMax]);
+                        }
+                        setEditingPriceMin('');
                       }}
                       style={{ width: 80, marginRight: 8 }}
                     />
@@ -633,15 +680,36 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
                       type="number"
                       min={railMin}
                       max={railMax}
-                      value={effMax}
+                      value={editingPriceMax || effMax}
                       disabled={isFrozen}
+                      onFocus={() => setEditingPriceMax(String(effMax))}
                       onChange={(e) => {
                         if (isFrozen) return;
-                        const raw = Number(e.target.value);
-                        if (Number.isNaN(raw)) return;
-                        const clamped = Math.max(railMin, Math.min(raw, railMax));
-                        const i = lastIdxLE(clamped);
-                        handleRangeSliderChange(fn, [effMin, safeRailBps[i]]);
+                        const value = e.target.value;
+                        setEditingPriceMax(value);
+                        
+                        // Clear existing timeout
+                        window.clearTimeout(priceMaxTimeout.current);
+                        
+                        // Set new timeout to apply filter after delay
+                        priceMaxTimeout.current = window.setTimeout(() => {
+                          const raw = Number(value);
+                          if (!Number.isNaN(raw)) {
+                            const clamped = Math.max(railMin, Math.min(raw, railMax));
+                            const i = lastIdxLE(clamped);
+                            handleRangeSliderChange(fn, [effMin, safeRailBps[i]]);
+                          }
+                        }, 600);
+                      }}
+                      onBlur={() => {
+                        window.clearTimeout(priceMaxTimeout.current);
+                        const raw = Number(editingPriceMax);
+                        if (!Number.isNaN(raw)) {
+                          const clamped = Math.max(railMin, Math.min(raw, railMax));
+                          const i = lastIdxLE(clamped);
+                          handleRangeSliderChange(fn, [effMin, safeRailBps[i]]);
+                        }
+                        setEditingPriceMax('');
                       }}
                       style={{ width: 80 }}
                     />
