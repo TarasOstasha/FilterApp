@@ -74,7 +74,7 @@ const CategoryTester: React.FC<CategoryTesterProps> = ({ onCategoryChange, OnFil
             </button>
           </div>
           <p className={styles.hint}>
-            Current: {localStorage.getItem('testCategoryId') || 'From URL or default (63)'}
+            Current: {localStorage.getItem('testCategoryId') || 'From URL or default '}
           </p>
         </div>
       )}

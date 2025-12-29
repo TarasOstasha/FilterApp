@@ -80,13 +80,23 @@ const processProductCategoriesCsvFile = (csvFilePath) => {
             .map((id) => id.trim())
             .filter((id) => id !== '');
 
+          // First, delete existing product_categories for this product
+          await db.sequelize.query(
+            `DELETE FROM product_categories WHERE product_id = :product_id`,
+            {
+              replacements: { product_id },
+              type: db.sequelize.QueryTypes.DELETE,
+            }
+          );
+
+          console.log(chalk.yellow(`Deleted existing categories for product_id: ${product_id}`));
+
           // Insert each (product_id, category_id)
           for (const id of categoryIds) {
             await db.sequelize.query(
               `
                 INSERT INTO product_categories (product_id, category_id)
                 VALUES (:product_id, :category_id)
-                ON CONFLICT (product_id, category_id) DO NOTHING
               `,
               {
                 replacements: { product_id, category_id: id },
@@ -94,6 +104,8 @@ const processProductCategoriesCsvFile = (csvFilePath) => {
               }
             );
           }
+
+          console.log(chalk.green(`Inserted ${categoryIds.length} categories for product_id: ${product_id}`));
 
           results.push(row);
         } catch (err) {
@@ -121,4 +133,3 @@ const processProductCategoriesCsvFile = (csvFilePath) => {
 };
 
 module.exports = processProductCategoriesCsvFile;
-
