@@ -6,6 +6,7 @@ import ItemsPerPageDropdown from '../../components/ItemsPerPageDropdown/ItemsPer
 import PaginationControls from '../../components/PaginationControls/PaginationControls';
 import { fetchProductsFromAPI } from '../../api';
 import MegaFilter from '../../components/MegaFilter/MegaFilter';
+import CategoryTester from '../../components/CategoryTester/CategoryTester';
 import styles from './Home.module.scss';
 import { getCategoryIdFromPath } from '../../utils/helpers';
 
@@ -286,10 +287,23 @@ const Home: React.FC = () => {
     window.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior });
   };
 
+  const handleCategoryChange = () => {
+    // Reset everything and refetch with new category
+    setIsTransitioning(true);
+    setIsLoadingMore(false);
+    setHasUsedLoadMore(false);
+    setCurrentPage(1);
+    setLoadedCount(itemsPerPage);
+    // Trigger refetch by forcing a state update
+    fetchProducts();
+  };
+
   const totalPages = Math.ceil(totalProducts / itemsPerPage);
 
   return (
-    <div className="container">
+    <>
+      <CategoryTester onCategoryChange={handleCategoryChange} OnFilterSideBarReload={handleClearFilters} />
+      <div className="container">
       <div className="row">
         <div className="col-md-3">
           <button className={styles.clearFiltersButton} onClick={handleClearFilters}>
@@ -334,7 +348,8 @@ const Home: React.FC = () => {
           </div>
         </div>
       </div>
-    </div>
+      </div>
+    </>
   );
 };
 
