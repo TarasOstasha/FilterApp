@@ -1,109 +1,75 @@
 const createHttpError = require('http-errors')
-//const { FilterField } = require('../models');
+const { sequelize, FilterField } = require('../models');
+const { QueryTypes } = require('sequelize');
 const chalk = require('chalk');
 
-// module.exports.getAllFilterFields = async (req, res, next) => {
-//   try {
-//     const { catId } = req.query;
-//     const foundFilterFields = await FilterField.findAll({
-//       order: [['sort_order', 'ASC']],
-//     });
-//     // i'm modifying data here becaouse i need allowed_values be array of string
-//     const modifiedFilterFields = foundFilterFields.map((field) => {
-//       return {
-//         ...field.dataValues,
-//         allowed_values: typeof field.dataValues.allowed_values === 'string'
-//           ? field.dataValues.allowed_values.split(',').map((val) => val.trim())
-//           : field.dataValues.allowed_values,
-//       };
-//     });
-//     res.status(200).send(modifiedFilterFields);
-//   } catch (err) {
-//     next(err)
-//   }
-// }
-
-
-const { Product, Category, ProductFilter, FilterField } = require('../models');
 module.exports.getAllFilterFields = async (req, res, next) => {
   try {
     const catId = req.query.catId ? Number(req.query.catId) : null;
     console.log(chalk.blue('getAllFilterFields catId:'), catId);
 
-    // Build include for product/category scoping
-    const productInclude = catId
-      ? [{
-          model: Product,
-          attributes: [],
-          required: true,
-          include: [{
-            model: Category,
-            attributes: [],
-            required: true,
-            where: { id: catId },
-            through: { attributes: [] },
-          }],
-        }]
-      : [{
-          model: Product,
-          attributes: [],
-          required: true,           // only products that exist
-        }];
-
-    // Pull all product_filters that match the scope + their FilterField meta
-    const pfRows = await ProductFilter.findAll({
-      attributes: ['filter_field_id', 'filter_value'],
-      include: [
-        ...productInclude,
-        {
-          model: FilterField,
-          attributes: ['id', 'field_name', 'field_type', 'sort_order'],
-          required: true,
-        },
-      ],
+    // Load all filter fields
+    const allFilterFields = await FilterField.findAll({
+      attributes: ['id', 'field_name', 'field_type', 'sort_order'],
       raw: true,
     });
 
-    // Aggregate values per field, splitting CSVs like "Blue, Large"
-    const byField = new Map();
-    for (const row of pfRows) {
-      const fieldId   = row.filter_field_id;
-      const fieldName = row['FilterField.field_name'];
-      const fieldType = row['FilterField.field_type'];
-      const sortOrder = row['FilterField.sort_order'];
-      const csv       = String(row.filter_value || '');
-
-      if (!byField.has(fieldId)) {
-        byField.set(fieldId, {
-          id: fieldId,
-          field_name: fieldName,
-          field_type: fieldType,
-          sort_order: sortOrder,
-          values: new Set(),
-        });
-      }
-
-      csv.split(',')
-        .map(v => v.trim())
-        .filter(v => v.length > 0)
-        .forEach(v => byField.get(fieldId).values.add(v));
+    // Build category filter if provided
+    let categoryJoin = '';
+    const replacements = {};
+    
+    if (catId) {
+      categoryJoin = `
+        JOIN product_categories pc
+          ON pc.product_id = p.id
+         AND pc.category_id = :catId
+      `;
+      replacements.catId = catId;
     }
 
-    // Build response: only fields that actually have values
-    const result = Array.from(byField.values())
-      .map(f => ({
-        id: f.id,
-        field_name: f.field_name,
-        field_type: f.field_type,
-        sort_order: f.sort_order,
-        allowed_values: Array.from(f.values)
-          .sort((a, b) => a.localeCompare(b, undefined, { numeric: true })),
-      }))
-      .filter(f => f.allowed_values.length > 0)
-      .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
-    console.log(chalk.green('getAllFilterFields result:'), result);
+    // For each field, get the distinct values from products in this category
+    const results = [];
 
-    return res.status(200).send(result);
+    for (const field of allFilterFields) {
+      const sql = `
+        WITH base_products AS (
+          SELECT DISTINCT p.id
+          FROM products p
+          ${categoryJoin}
+          WHERE 1=1
+        )
+        SELECT DISTINCT cleaned.val
+        FROM product_filters pf
+        CROSS JOIN LATERAL unnest(string_to_array(pf.filter_value, ',')) AS raw_val(val)
+        CROSS JOIN LATERAL (SELECT trim(raw_val.val) AS val) AS cleaned
+        JOIN base_products bp ON bp.id = pf.product_id
+        WHERE pf.filter_field_id = :fieldId
+          AND cleaned.val <> ''
+        ORDER BY cleaned.val;
+      `;
+
+      const fieldRepl = { ...replacements, fieldId: field.id };
+
+      console.log(chalk.cyan(`Fetching values for field: ${field.field_name}`));
+
+      const values = await sequelize.query(sql, {
+        replacements: fieldRepl,
+        type: QueryTypes.SELECT,
+      });
+
+      if (values.length > 0) {
+        results.push({
+          id: field.id,
+          field_name: field.field_name,
+          field_type: field.field_type,
+          sort_order: field.sort_order,
+          allowed_values: values.map((v) => v.val),
+        });
+      }
+    }
+
+    console.log(chalk.green(`getAllFilterFields found ${results.length} fields with values`));
+    return res.status(200).send(results);
   } catch (err) {
     console.error(chalk.red('getAllFilterFields error:'), err);
     next(err);
