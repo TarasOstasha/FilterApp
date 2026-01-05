@@ -11,6 +11,7 @@ module.exports.getAllFilterFields = async (req, res, next) => {
     // Load all filter fields
     const allFilterFields = await FilterField.findAll({
       attributes: ['id', 'field_name', 'field_type', 'sort_order'],
+      order: [['sort_order', 'ASC']],
       raw: true,
     });
 
