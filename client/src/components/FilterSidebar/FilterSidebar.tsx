@@ -620,8 +620,9 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
             const railMin = hasRealRange ? priceMin : 0;
             const railMax = hasRealRange ? priceMax : bpLast;
 
-            // Don't render the filter if we don't have valid price data yet
-            if (railMax === 0 || railMin === railMax) {
+            // Only show loading if we truly don't have price data yet (initial load)
+            // Don't show loading if the range collapsed due to filters (railMin === railMax is ok after initialization)
+            if (railMax === 0 && !initializedFromFilterFields.current) {
               return (
                 <div key={ff.id} className={styles['filter-section']}>
                   <h4>{fn}</h4>

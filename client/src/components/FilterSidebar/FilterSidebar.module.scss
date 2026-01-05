@@ -61,13 +61,14 @@
 }
 
 .range-slider-thumb {
+  position: absolute;
   height: 15px;
   width: 15px;
   background-color: #40a3db;//#fe0000;
   border-radius: 50%;
   cursor: pointer;
   top: 50%;
-  transform: translateY(-50%);
+  transform: translate(-50%, -50%);
 }
 
 .range-slider-track {
@@ -102,6 +103,3 @@
   background: #eeeeee;
   border: none;
 }
-
-
-
