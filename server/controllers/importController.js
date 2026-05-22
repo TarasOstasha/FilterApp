@@ -31,9 +31,11 @@ module.exports.importProducts = async (req, res, next) => {
     try {
         const results = await processProductCsvFile(req.file.path);
         if (results.errorRows && results.errorRows.length > 0) {
-            return res.status(400).json({
-                message: `Product price is 0 (${results.errorRows.length} product(s) skipped).`,
+            const skipped = results.errorRows.length;
+            return res.status(200).json({
+                message: `${skipped} product(s) skipped. Download error report for details.`,
                 errorRows: results.errorRows,
+                skippedCount: skipped,
             });
         }
         res.status(200).json({ message: 'File processed successfully' });

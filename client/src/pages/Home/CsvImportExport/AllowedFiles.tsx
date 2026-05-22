@@ -240,6 +240,7 @@ const AllowedFilenamesNote: React.FC<NoteProps> = ({ file, open = false, onClose
                                     <th scope="col">product_img_link</th>
                                     <th scope="col">product_price</th>
                                     <th scope="col">most_popular</th>
+                                    <th scope="col">category_ids</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -251,6 +252,7 @@ const AllowedFilenamesNote: React.FC<NoteProps> = ({ file, open = false, onClose
                                     <td>https://www.xyzDisplays.com/v/vspfiles/photos/AB10103-1.jpg</td>
                                     <td>670</td>
                                     <td>7</td>
+                                    <td>51,171,6455</td>
                                 </tr>
                             </tbody>
                         </table>

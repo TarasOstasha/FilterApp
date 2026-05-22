@@ -12,13 +12,12 @@ const manageExportedFiles = () => {
             return console.error(chalk.red('Error reading export directory:', err));
         }
 
-        // Filter only CSV files
-        const csvFiles = files.filter(file => file.endsWith('.csv'));
+        const exportFiles = files.filter(
+            (file) => file.endsWith('.csv') || file.endsWith('.xml')
+        );
 
-        // If there are more than 10 files, delete the older ones
-        if (csvFiles.length > 10) {
-            // Sort files by creation time (oldest first)
-            const sortedFiles = csvFiles
+        if (exportFiles.length > 10) {
+            const sortedFiles = exportFiles
                 .map(file => ({ file, time: fs.statSync(path.join(exportDirectory, file)).mtime.getTime() }))
                 .sort((a, b) => a.time - b.time);
 

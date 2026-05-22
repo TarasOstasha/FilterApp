@@ -7,6 +7,51 @@ import styles from './CsvImportExport.module.scss';
 import { exportData, uploadCSV } from '../../../api/index';
 import Admin from '../../Admin/Admin';
 import AllowedFilenamesNote, { isAllowedFileName, getUploadTypeFromName } from './AllowedFiles';
+import {
+    downloadImportErrorReport,
+    getImportErrorPreview,
+    ImportErrorRow,
+} from '../../../utils/importErrorReport';
+
+const renderSkippedImportToast = (
+    skippedCount: number,
+    errorRows: ImportErrorRow[],
+    onDownload: () => void
+) => {
+    const preview = getImportErrorPreview(errorRows, 3);
+
+    return (
+        <div>
+            <p>
+                <strong>{skippedCount} product(s) skipped.</strong> Download error report for details.
+            </p>
+            {preview.length > 0 && (
+                <ul style={{ margin: '8px 0', paddingLeft: '18px', textAlign: 'left' }}>
+                    {preview.map((row, index) => (
+                        <li key={`${row.product_code}-${index}`}>
+                            <strong>{row.product_code || '(no code)'}</strong>: {row.reason}
+                        </li>
+                    ))}
+                </ul>
+            )}
+            <button
+                type="button"
+                onClick={onDownload}
+                style={{
+                    marginTop: '8px',
+                    padding: '6px 12px',
+                    background: '#d97706',
+                    color: '#fff',
+                    border: 'none',
+                    borderRadius: '4px',
+                    cursor: 'pointer',
+                }}
+            >
+                Download Error Report
+            </button>
+        </div>
+    );
+};
 
 
 
@@ -16,6 +61,7 @@ const CsvImportExport: React.FC = () => {
     const [showRules, setShowRules] = useState(false);
     const [isUploading, setIsUploading] = useState(false);
     const [isExporting, setIsExporting] = useState(false);
+    const [importErrorRows, setImportErrorRows] = useState<ImportErrorRow[] | null>(null);
 
     const invalid = !!file && !isAllowedFileName(file.name);
     const errorLock = invalid && !showRules;
@@ -103,6 +149,7 @@ const CsvImportExport: React.FC = () => {
         formData.append('file', file);
         
         setIsUploading(true);
+        setImportErrorRows(null);
         toast.info('Uploading and processing file... Please wait.', { autoClose: false, toastId: 'upload-progress' });
         
         try {
@@ -111,16 +158,32 @@ const CsvImportExport: React.FC = () => {
             console.log("Upload response received:", response);
             const uploadTime = new Date().toLocaleString();
             toast.dismiss('upload-progress');
-            
-            if (uploadType === 'product-remove') {
-               
-                const deleted = response.data.result?.deleted || 0;
-                toast.success(`File processed successfully. ${deleted} product(s) removed at ${uploadTime}`);
+
+            const skippedRows: ImportErrorRow[] = response.data?.errorRows ?? [];
+            const skippedCount = response.data?.skippedCount ?? skippedRows.length;
+
+            if (skippedRows.length > 0) {
+                setImportErrorRows(skippedRows);
+                const downloadReport = () => downloadImportErrorReport(skippedRows);
+                toast.warning(
+                    renderSkippedImportToast(skippedCount, skippedRows, downloadReport),
+                    { autoClose: 20000 }
+                );
             } else {
-                toast.success(`File uploaded successfully at ${uploadTime}`);
+                setImportErrorRows(null);
             }
             
-            // Reset the file input after successful upload
+            if (uploadType === 'product-remove') {
+                const deleted = response.data.result?.deleted || 0;
+                if (skippedRows.length === 0) {
+                    toast.success(`File processed successfully. ${deleted} product(s) removed at ${uploadTime}`);
+                }
+            } else if (skippedRows.length === 0) {
+                toast.success(`File uploaded successfully at ${uploadTime}`);
+            } else {
+                toast.info(`Valid rows were imported at ${uploadTime}`);
+            }
+            
             setFile(null);
             const fileInput = document.getElementById('csv-file-input') as HTMLInputElement;
             if (fileInput) fileInput.value = '';
@@ -129,8 +192,15 @@ const CsvImportExport: React.FC = () => {
             toast.dismiss('upload-progress');
             if (axios.isAxiosError(error) && error.response?.data) {
                 const errorData = error.response.data;
-                if (errorData.errorRows && errorData.errorRows.length > 0) {
-                    toast.error(errorData.message || `File processed with errors. ${errorData.errorRows.length} row(s) had issues.`);
+                const skippedRows: ImportErrorRow[] = errorData.errorRows ?? [];
+                if (skippedRows.length > 0) {
+                    setImportErrorRows(skippedRows);
+                    const skippedCount = errorData.skippedCount ?? skippedRows.length;
+                    const downloadReport = () => downloadImportErrorReport(skippedRows);
+                    toast.warning(
+                        renderSkippedImportToast(skippedCount, skippedRows, downloadReport),
+                        { autoClose: 20000 }
+                    );
                 } else if (errorData.message) {
                     toast.error(errorData.message);
                 } else {
@@ -158,7 +228,8 @@ const CsvImportExport: React.FC = () => {
                 const url = window.URL.createObjectURL(new Blob([response.data]));
                 const link = document.createElement('a');
                 link.href = url;
-                link.setAttribute('download', `${type}.csv`);
+                const ext = type === 'products' ? 'xml' : 'csv';
+                link.setAttribute('download', `${type}.${ext}`);
                 document.body.appendChild(link);
                 link.click();
                 document.body.removeChild(link);
@@ -230,6 +301,36 @@ const CsvImportExport: React.FC = () => {
             >
                 {showRules ? 'Hide allowed import names' : 'Show allowed import names'}
             </button>
+            {importErrorRows && importErrorRows.length > 0 && (
+                <div className={styles.importErrorPanel} role="alert">
+                    <p className={styles.importErrorTitle}>
+                        {importErrorRows.length} product(s) skipped. Download error report for details.
+                    </p>
+                    <ul className={styles.importErrorPreview}>
+                        {getImportErrorPreview(importErrorRows, 3).map((row, index) => (
+                            <li key={`${row.product_code}-${index}`}>
+                                <strong>{row.product_code || '(no code)'}</strong>: {row.reason}
+                            </li>
+                        ))}
+                    </ul>
+                    <div className={styles.importErrorActions}>
+                        <button
+                            type="button"
+                            className={styles.downloadErrorBtn}
+                            onClick={() => downloadImportErrorReport(importErrorRows)}
+                        >
+                            Download Error Report
+                        </button>
+                        <button
+                            type="button"
+                            className={styles.dismissErrorBtn}
+                            onClick={() => setImportErrorRows(null)}
+                        >
+                            Dismiss
+                        </button>
+                    </div>
+                </div>
+            )}
             <h2>Export Data</h2>
             <div className={styles['export-buttons']}>
                 <label htmlFor="exportType">Select Export Type:</label>
@@ -240,7 +341,7 @@ const CsvImportExport: React.FC = () => {
                     disabled={isExporting}
                 >
                     <option value="">--Select an option--</option>
-                    <option value="products">Export Products</option>
+                    <option value="products">Export Products (XML)</option>
                     <option value="categories">Export Categories</option>
                     <option value="product_categories">Export Product Categories</option>
                     <option value="filter_fields">Export Filter Fields</option>

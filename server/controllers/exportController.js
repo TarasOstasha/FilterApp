@@ -2,19 +2,23 @@
 const { 
     exportCategoryDataToCSV, 
     exportProductCategoriesToCSV, 
-    exportProductDataToCSV, 
+    exportProductDataToXML, 
     exportProductFilterDataToCSV, 
     exportFilterFieldDataToCSV } = require('../services/export');
 
 module.exports.exportData = async (req, res, next) => {
     const { type } = req.params;
     try {
+        if (type === 'products') {
+            const xmlData = await exportProductDataToXML();
+            res.setHeader('Content-Type', 'application/xml; charset=utf-8');
+            res.setHeader('Content-Disposition', 'attachment; filename=products.xml');
+            return res.status(200).send(xmlData);
+        }
+
         let csvData;
 
         switch (type) {
-            case 'products':
-                csvData = await exportProductDataToCSV()
-                break;
             case 'categories':
                 csvData = await exportCategoryDataToCSV();
                 break;

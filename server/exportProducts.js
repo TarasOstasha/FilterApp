@@ -1,8 +1,7 @@
 const chalk = require('chalk');
-const { exportProductDataToCSV } = require('./services/export'); //require('./services/csvExporter');
+const { exportProductDataToXML } = require('./services/export');
 
-// Call the export function
-exportProductDataToCSV()
+exportProductDataToXML()
   .then(() => {
     console.log(chalk.green('Export completed successfully.'));
   })

@@ -11,6 +11,34 @@ const normalizeProductImgLink = (url) => {
   return url.replace(OLD_PRODUCT_IMG_PREFIX, NEW_PRODUCT_IMG_PREFIX);
 };
 
+const parseCategoryIds = (raw) =>
+  String(raw || '')
+    .split(',')
+    .map((id) => parseInt(id.trim(), 10))
+    .filter(Number.isInteger);
+
+const getCategoryIdsFromRows = (rows) => {
+  const hasCategoryIdsColumn = rows.some((row) => 'category_ids' in row);
+  if (!hasCategoryIdsColumn) return [];
+  return parseCategoryIds(rows[0].category_ids);
+};
+
+const validateCategoryIds = (categoryIds, validCategoryIds) => {
+  if (categoryIds.length === 0) {
+    return { valid: false, reason: 'Missing category_ids' };
+  }
+
+  const missingIds = categoryIds.filter((id) => !validCategoryIds.has(id));
+  if (missingIds.length > 0) {
+    return {
+      valid: false,
+      reason: `Category ID does not exist: ${missingIds.join(', ')}`,
+    };
+  }
+
+  return { valid: true };
+};
+
 const processProductCsvFile = (csvFilePath) => {
   return new Promise((resolve, reject) => {
     const productMap = new Map(); // product_code → row group
@@ -27,6 +55,12 @@ const processProductCsvFile = (csvFilePath) => {
       .on('end', async () => {
         try {
           const errorRows = [];
+          const { rows: categoryRows } = await pool.query(
+            'SELECT category_id FROM categories'
+          );
+          const validCategoryIds = new Set(
+            categoryRows.map((row) => row.category_id).filter((id) => id != null)
+          );
 
           for (const [product_code, rows] of productMap.entries()) {
             const {
@@ -34,7 +68,8 @@ const processProductCsvFile = (csvFilePath) => {
               product_link,
               product_img_link,
               product_price,
-              most_popular
+              most_popular,
+              category_ids: rawCategoryIds,
             } = rows[0]; // take first for product insert
 
             const price = parseFloat(product_price);
@@ -42,13 +77,23 @@ const processProductCsvFile = (csvFilePath) => {
               errorRows.push({
                 product_code,
                 product_price,
-                reason: 'Product price is 0',
+                reason: 'Invalid product_price',
+              });
+              continue;
+            }
+
+            const categoryIds = getCategoryIdsFromRows(rows);
+            const categoryValidation = validateCategoryIds(categoryIds, validCategoryIds);
+            if (!categoryValidation.valid) {
+              errorRows.push({
+                product_code,
+                category_ids: rawCategoryIds ?? '',
+                reason: categoryValidation.reason,
               });
               continue;
             }
 
             const normalizedImgLink = normalizeProductImgLink(product_img_link);
-            //console.log(chalk.red('Processing product product_img_link:', Object.values(rows[0])));
             const productResult = await pool.query(
               `INSERT INTO products (product_code, product_name, product_link, product_img_link, product_price, most_popular)
                VALUES ($1, $2, $3, $4, $5, $6)
@@ -64,21 +109,23 @@ const processProductCsvFile = (csvFilePath) => {
 
             const productId = productResult.rows[0].id;
 
-            const uniqueCategories = new Set();
+            await pool.query(
+              'DELETE FROM product_categories WHERE product_id = $1',
+              [productId]
+            );
+            for (const categoryId of categoryIds) {
+              await pool.query(
+                `INSERT INTO product_categories (product_id, category_id)
+                 VALUES ($1, $2)
+                 ON CONFLICT (product_id, category_id) DO NOTHING`,
+                [productId, categoryId]
+              );
+            }
+
             const uniqueFilters = new Set();
 
             for (const row of rows) {
-              const { category_id, filter_field_id, filter_value } = row;
-
-              if (category_id && !uniqueCategories.has(category_id)) {
-                await pool.query(
-                  `INSERT INTO product_categories (product_id, category_id)
-                   VALUES ($1, $2)
-                   ON CONFLICT (product_id, category_id) DO NOTHING;`,
-                  [productId, category_id]
-                );
-                uniqueCategories.add(category_id);
-              }
+              const { filter_field_id, filter_value } = row;
 
               const filterKey = `${filter_field_id}|${filter_value}`;
               if (filter_field_id && filter_value && !uniqueFilters.has(filterKey)) {
@@ -94,7 +141,11 @@ const processProductCsvFile = (csvFilePath) => {
           }
 
           if (errorRows.length > 0) {
-            console.log(chalk.yellow(`CSV processed with ${errorRows.length} product(s) skipped due to invalid price`));
+            console.log(
+              chalk.yellow(
+                `CSV processed with ${errorRows.length} product(s) skipped (see errorRows)`
+              )
+            );
             resolve({ errorRows });
             return;
           }
