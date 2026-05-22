@@ -123,15 +123,19 @@ module.exports.importProductFilters = async (req, res, next) => {
       const { successRows, errorRows } = await processProductFiltersCsvFile(req.file.path);
   
       if (errorRows.length > 0) {
-        return res.status(400).json({
-          message: `Processed with ${errorRows.length} errors.`,
-          errorRows
+        const skipped = errorRows.length;
+        return res.status(200).json({
+          message: `${skipped} product(s) skipped. Download error report for details.`,
+          errorRows,
+          skippedCount: skipped,
+          importedCount: successRows.length,
         });
       }
-  
+
       res.status(200).json({
         message: `Imported ${successRows.length} filters successfully.`,
-        status: 'ok'
+        status: 'ok',
+        importedCount: successRows.length,
       });
     } catch (err) {
       console.error('Error processing CSV file:', err);

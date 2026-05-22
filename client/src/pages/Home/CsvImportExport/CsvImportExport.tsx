@@ -228,7 +228,7 @@ const CsvImportExport: React.FC = () => {
                 const url = window.URL.createObjectURL(new Blob([response.data]));
                 const link = document.createElement('a');
                 link.href = url;
-                const ext = type === 'products' ? 'xml' : 'csv';
+                const ext = type === 'products' || type === 'product_filters' ? 'xml' : 'csv';
                 link.setAttribute('download', `${type}.${ext}`);
                 document.body.appendChild(link);
                 link.click();
@@ -345,7 +345,7 @@ const CsvImportExport: React.FC = () => {
                     <option value="categories">Export Categories</option>
                     <option value="product_categories">Export Product Categories</option>
                     <option value="filter_fields">Export Filter Fields</option>
-                    <option value="product_filters">Export Product Filter</option>
+                    <option value="product_filters">Export Product Filters (XML)</option>
                 </select>
                 <button onClick={handleExportClick} disabled={isExporting}>
                     {isExporting ? 'Exporting...' : 'Export'}

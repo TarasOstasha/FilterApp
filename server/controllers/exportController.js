@@ -3,7 +3,7 @@ const {
     exportCategoryDataToCSV, 
     exportProductCategoriesToCSV, 
     exportProductDataToXML, 
-    exportProductFilterDataToCSV, 
+    exportProductFilterDataToXML, 
     exportFilterFieldDataToCSV } = require('../services/export');
 
 module.exports.exportData = async (req, res, next) => {
@@ -13,6 +13,13 @@ module.exports.exportData = async (req, res, next) => {
             const xmlData = await exportProductDataToXML();
             res.setHeader('Content-Type', 'application/xml; charset=utf-8');
             res.setHeader('Content-Disposition', 'attachment; filename=products.xml');
+            return res.status(200).send(xmlData);
+        }
+
+        if (type === 'product_filters') {
+            const xmlData = await exportProductFilterDataToXML();
+            res.setHeader('Content-Type', 'application/xml; charset=utf-8');
+            res.setHeader('Content-Disposition', 'attachment; filename=product_filters.xml');
             return res.status(200).send(xmlData);
         }
 
@@ -27,9 +34,6 @@ module.exports.exportData = async (req, res, next) => {
                 break;
             case 'filter_fields':
                 csvData = await exportFilterFieldDataToCSV();
-                break;
-            case 'product_filters':
-                csvData = await exportProductFilterDataToCSV();
                 break;
             default:
                 return res.status(400).json({ message: 'Invalid type for export' });
