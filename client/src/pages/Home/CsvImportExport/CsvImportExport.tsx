@@ -130,7 +130,7 @@ const CsvImportExport: React.FC = () => {
             if (axios.isAxiosError(error) && error.response?.data) {
                 const errorData = error.response.data;
                 if (errorData.errorRows && errorData.errorRows.length > 0) {
-                    toast.error(`${errorData.message || 'File processed with errors'} ${errorData.errorRows.length} rows had issues.`);
+                    toast.error(errorData.message || `File processed with errors. ${errorData.errorRows.length} row(s) had issues.`);
                 } else if (errorData.message) {
                     toast.error(errorData.message);
                 } else {

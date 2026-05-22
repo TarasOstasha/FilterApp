@@ -29,7 +29,13 @@ module.exports.importProducts = async (req, res, next) => {
         return next(createHttpError(400, 'No file uploaded or invalid file format (only .csv allowed)'));
     }
     try {
-        await processProductCsvFile(req.file.path);
+        const results = await processProductCsvFile(req.file.path);
+        if (results.errorRows && results.errorRows.length > 0) {
+            return res.status(400).json({
+                message: `Product price is 0 (${results.errorRows.length} product(s) skipped).`,
+                errorRows: results.errorRows,
+            });
+        }
         res.status(200).json({ message: 'File processed successfully' });
     } catch (err) {
         next(createHttpError(500, 'Error processing file'));

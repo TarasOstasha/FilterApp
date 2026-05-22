@@ -1,0 +1,51 @@
+### 200 {} example
+GET http://www.xyzDisplays.com/net/WebService.aspx?Login=tonyjoss1990@gmail.com&EncryptedPassword=10E3D99C2F6A05DC62ED6E81BE814668BF70F6ACC14E5DD100AC1B6D798B7927&EDI_Name=Generic\Products&SELECT_Columns=p.ProductCode,p.ProductID,p.ProductName,p.Vendor_PartNo&WHERE_Column=p.ProductCode&WHERE_Value=WS54360
+
+### 200 {}
+GET https://www.xyzDisplays.com/net/WebService.aspx?
+Login=tonyjoss1990@gmail.com
+&EncryptedPassword=10E3D99C2F6A05DC62ED6E81BE814668BF70F6ACC14E5DD100AC1B6D798B7927
+&EDI_Name=Generic\Products
+&SELECT_Columns=p.ProductCode,p.ProductName,p.ProductPrice,p.LastModified
+&WHERE_Column=p.LastModified
+&WHERE_Value=2026-03-12
+
+
+
+
+###
+GET https://www.xyzDisplays.com/net/WebService.aspx?Login=tonyjoss1990@gmail.com&EncryptedPassword=10E3D99C2F6A05DC62ED6E81BE814668BF70F6ACC14E5DD100AC1B6D798B7927&EDI_Name=Generic\Products&SELECT_Columns=p.ProductCode,p.ProductName,p.ProductPrice,p.LastModified&WHERE_Column=p.LastModified&WHERE_Value=%3E%3D2026-05-21%20AND%20%3C2026-05-22
+
+### 1
+GET https://www.xyzDisplays.com/net/WebService.aspx?Login=tonyjoss1990@gmail.com&EncryptedPassword=10E3D99C2F6A05DC62ED6E81BE814668BF70F6ACC14E5DD100AC1B6D798B7927&EDI_Name=Generic\Products&SELECT_Columns=p.ProductCode,p.ProductName,p.ProductPrice,p.LastModified&WHERE_Column=p.LastModified&WHERE_Value=%3E%3D2026-05-21
+### 2 
+GET https://www.xyzDisplays.com/net/WebService.aspx?Login=tonyjoss1990@gmail.com&EncryptedPassword=10E3D99C2F6A05DC62ED6E81BE814668BF70F6ACC14E5DD100AC1B6D798B7927&EDI_Name=Generic\Products&SELECT_Columns=p.ProductCode,p.ProductName,p.ProductPrice,p.LastModified&WHERE_Column=p.LastModified&WHERE_Value=%3E%3D2026-05-21%20AND%20%3C2026-05-22
+
+### 3 works
+GET https://www.xyzDisplays.com/net/WebService.aspx?Login=tonyjoss1990@gmail.com&EncryptedPassword=10E3D99C2F6A05DC62ED6E81BE814668BF70F6ACC14E5DD100AC1B6D798B7927&EDI_Name=Generic\Products&SELECT_Columns=p.ProductCode,p.ProductName,p.ProductPrice,p.LastModified
+
+### 4
+GET https://www.xyzDisplays.com/net/WebService.aspx?Login=tonyjoss1990@gmail.com&EncryptedPassword=10E3D99C2F6A05DC62ED6E81BE814668BF70F6ACC14E5DD100AC1B6D798B7927&EDI_Name=Generic\Products&SELECT_Columns=p.ProductCode,p.ProductID,p.ProductName,p.ProductPrice,p.LastModified&WHERE_Column=p.LastModified&WHERE_Value=5/21/2026
+
+
+
+
+
+https://www.xyzDisplays.com/net/WebService.aspx?Login=xxx&EncryptedPassword=xxx&EDI_Name=Generic\Products&SELECT_Columns=p.ProductCode,p.ProductName,p.ProductPrice,p.LastModified&WHERE_Column=p.LastModified&WHERE_Value=5/21/2026
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+http://www.xyzDisplays.com/net/WebService.aspx?Login=xxx
+&EncryptedPassword=xxx
+&EDI_Name=Generic\Products&SELECT_Columns=p.ProductCode,p.ProductID,p.ProductName,p.Vendor_PartNo&WHERE_Column=p.ProductCode&WHERE_Value=WS54360

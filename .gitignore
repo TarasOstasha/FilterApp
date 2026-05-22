@@ -42,3 +42,6 @@ client/src/components/ProductList/product-list-old.txt
 
 products-remove-test.csv
 test-upload.js
+
+*.md
+*.csv
