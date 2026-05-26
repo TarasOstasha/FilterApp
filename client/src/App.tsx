@@ -5,8 +5,6 @@ import './styles/App.scss';
 import CsvImportExport from './pages/Home/CsvImportExport/CsvImportExport';
 import Login from './pages/Login/Login';
 import ProtectedRoute from './components/ProtectedRoute/ProtectedRoute';
-import RootRedirect from './components/RootRedirect/RootRedirect';
-import { PRODUCTS_PATH } from './constants/routes';
 
 
 const App: React.FC = () => {
@@ -15,8 +13,6 @@ const App: React.FC = () => {
     <div className="App">
       <Router>
         <Routes>
-          <Route path="/" element={<RootRedirect />} />
-          <Route path={PRODUCTS_PATH} element={<Home />} />
           <Route path="/login" element={<Login />} />
           <Route
             path="/admin"
@@ -26,7 +22,7 @@ const App: React.FC = () => {
               </ProtectedRoute>
             }
           />
-          {/* <Route path="/admin" element={<CsvImportExport />} /> */}
+          <Route path="*" element={<Home />} />
         </Routes>
       </Router>
       {/* <Home /> */}

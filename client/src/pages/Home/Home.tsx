@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import FilterSidebar from '../../components/FilterSidebar/FilterSidebar';
 import ProductList from '../../components/ProductList/ProductList';
 import SortDropdown from '../../components/SortDropdown/SortDropdown';
@@ -8,8 +8,10 @@ import { fetchProductsFromAPI } from '../../api';
 import MegaFilter from '../../components/MegaFilter/MegaFilter';
 import CategoryTester from '../../components/CategoryTester/CategoryTester';
 import styles from './Home.module.scss';
-import { getCategoryIdFromPath } from '../../utils/helpers';
-import { buildProductsUrl } from '../../constants/routes';
+import {
+  getCategoryIdFromPath,
+  getCategoryIdFromPathname,
+} from '../../utils/helpers';
 
 interface Product {
   id: number;
@@ -24,6 +26,39 @@ export const allowedSorts = ['most_popular', 'price_asc', 'price_desc'] as const
 export type SortBy = typeof allowedSorts[number];
 export const isSortBy = (v: unknown): v is SortBy =>
   typeof v === 'string' && (allowedSorts as readonly string[]).includes(v);
+
+const URL_META_KEYS = new Set(['limit', 'offset', 'sortBy', 'catId']);
+const RANGE_FILTER_KEYS = ['Product Price', 'Display Width', 'Display Height'];
+
+const parseFiltersFromSearch = (search: string): {
+  limit: number;
+  offset: number;
+  sortBy: SortBy;
+  filters: { [key: string]: string[] };
+} => {
+  const sp = new URLSearchParams(search);
+
+  const urlLimit = Number(sp.get('limit'));
+  const urlOffset = Number(sp.get('offset'));
+  const limit = Number.isFinite(urlLimit) && urlLimit > 0 ? urlLimit : 27;
+  const offset = Number.isFinite(urlOffset) && urlOffset >= 0 ? urlOffset : 0;
+
+  const q = sp.get('sortBy');
+  const sortBy: SortBy = isSortBy(q) ? q : 'most_popular';
+
+  const filters: { [key: string]: string[] } = {};
+  sp.forEach((val, rawKey) => {
+    if (URL_META_KEYS.has(rawKey)) return;
+    const decodedKey = decodeURIComponent(rawKey).replace(/\+/g, ' ');
+    if (RANGE_FILTER_KEYS.includes(decodedKey)) {
+      filters[decodedKey] = [val];
+    } else {
+      filters[decodedKey] = val.split(',');
+    }
+  });
+
+  return { limit, offset, sortBy, filters };
+};
 
 const Home: React.FC = () => {
   const [isTransitioning, setIsTransitioning] = useState(false);
@@ -59,8 +94,13 @@ const Home: React.FC = () => {
     if (typeof next.offset === 'number') sp.set('offset', String(next.offset));
     if (typeof next.sortBy === 'string') sp.set('sortBy', next.sortBy);
 
-    const catId = next.catId !== undefined ? next.catId : getCategoryIdFromPath();
-    if (catId) sp.set('catId', catId);
+    const pathnameCatId = getCategoryIdFromPathname();
+    if (pathnameCatId) {
+      sp.delete('catId');
+    } else {
+      const catId = next.catId !== undefined ? next.catId : getCategoryIdFromPath();
+      if (catId) sp.set('catId', catId);
+    }
 
     const currentFilters = next.filters || selectedFilters;
     Object.entries(currentFilters).forEach(([k, arr]) => {
@@ -70,49 +110,63 @@ const Home: React.FC = () => {
       }
     });
 
-    const newUrl = buildProductsUrl(sp.toString());
+    const newUrl = `${window.location.pathname}?${sp.toString()}`;
     window.history.replaceState({}, '', newUrl);
   };
 
-  // —— hydrate state from URL on first mount ——
-  useEffect(() => {
-    const sp = new URLSearchParams(window.location.search);
-
-    const urlLimit = Number(sp.get('limit'));
-    const urlOffset = Number(sp.get('offset'));
-    const limit = Number.isFinite(urlLimit) && urlLimit > 0 ? urlLimit : 27;
-    const offset = Number.isFinite(urlOffset) && urlOffset >= 0 ? urlOffset : 0;
+  const hydrateFromUrl = useCallback((options?: { syncCatIdToUrl?: boolean }) => {
+    const { limit, offset, sortBy: urlSort, filters } = parseFiltersFromSearch(
+      window.location.search
+    );
 
     setItemsPerPage(limit);
     setCurrentPage(Math.floor(offset / limit) + 1);
     setLoadedCount(limit);
-
-    const q = sp.get('sortBy');
-    const urlSort: SortBy = isSortBy(q) ? q : 'most_popular';
     setSortBy(urlSort);
+    setSelectedFilters(filters);
+    setIsLoadingMore(false);
+    setHasUsedLoadMore(false);
 
-    const meta = new Set(['limit', 'offset', 'sortBy', 'catId']);
-    const valrangeDigits = ['Product Price', 'Display Width', 'Display Height'];
-    const restored: { [k: string]: string[] } = {};
+    if (options?.syncCatIdToUrl) {
+      const sp = new URLSearchParams(window.location.search);
+      const pathnameCatId = getCategoryIdFromPathname();
+      let shouldUpdate = false;
 
-    sp.forEach((val, rawKey) => {
-      if (meta.has(rawKey)) return;
-      const decodedKey = decodeURIComponent(rawKey).replace(/\+/g, ' ');
-      if (valrangeDigits.includes(decodedKey)) {
-        restored[decodedKey] = [val];     // "min,max"
+      if (pathnameCatId) {
+        if (sp.has('catId')) {
+          sp.delete('catId');
+          shouldUpdate = true;
+        }
       } else {
-        restored[decodedKey] = val.split(',');
+        const catId = getCategoryIdFromPath();
+        if (catId && !sp.get('catId')) {
+          sp.set('catId', catId);
+          shouldUpdate = true;
+        }
       }
-    });
 
-    setSelectedFilters(restored);
-
-    const catId = getCategoryIdFromPath();
-    if (catId && !sp.get('catId')) {
-      sp.set('catId', catId);
-      window.history.replaceState({}, '', buildProductsUrl(sp.toString()));
+      if (shouldUpdate) {
+        window.history.replaceState(
+          {},
+          '',
+          `${window.location.pathname}?${sp.toString()}`
+        );
+      }
     }
   }, []);
+
+  useEffect(() => {
+    hydrateFromUrl({ syncCatIdToUrl: true });
+  }, [hydrateFromUrl]);
+
+  useEffect(() => {
+    const onPopState = () => {
+      setIsTransitioning(true);
+      hydrateFromUrl({ syncCatIdToUrl: false });
+    };
+    window.addEventListener('popstate', onPopState);
+    return () => window.removeEventListener('popstate', onPopState);
+  }, [hydrateFromUrl]);
 
   // —— FETCH PRODUCTS ——
   const fetchProducts = async () => {
