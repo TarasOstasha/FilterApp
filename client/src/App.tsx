@@ -1,10 +1,12 @@
-import React, {useEffect } from 'react';
+import React from 'react';
 import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
 import Home from './pages/Home/Home';
 import './styles/App.scss';
 import CsvImportExport from './pages/Home/CsvImportExport/CsvImportExport';
 import Login from './pages/Login/Login';
 import ProtectedRoute from './components/ProtectedRoute/ProtectedRoute';
+import RootRedirect from './components/RootRedirect/RootRedirect';
+import { PRODUCTS_PATH } from './constants/routes';
 
 
 const App: React.FC = () => {
@@ -13,7 +15,8 @@ const App: React.FC = () => {
     <div className="App">
       <Router>
         <Routes>
-          <Route path="/" element={<Home />} />
+          <Route path="/" element={<RootRedirect />} />
+          <Route path={PRODUCTS_PATH} element={<Home />} />
           <Route path="/login" element={<Login />} />
           <Route
             path="/admin"

@@ -9,6 +9,7 @@ import MegaFilter from '../../components/MegaFilter/MegaFilter';
 import CategoryTester from '../../components/CategoryTester/CategoryTester';
 import styles from './Home.module.scss';
 import { getCategoryIdFromPath } from '../../utils/helpers';
+import { buildProductsUrl } from '../../constants/routes';
 
 interface Product {
   id: number;
@@ -69,7 +70,7 @@ const Home: React.FC = () => {
       }
     });
 
-    const newUrl = `${window.location.pathname}?${sp.toString()}`;
+    const newUrl = buildProductsUrl(sp.toString());
     window.history.replaceState({}, '', newUrl);
   };
 
@@ -109,7 +110,7 @@ const Home: React.FC = () => {
     const catId = getCategoryIdFromPath();
     if (catId && !sp.get('catId')) {
       sp.set('catId', catId);
-      window.history.replaceState({}, '', `${window.location.pathname}?${sp.toString()}`);
+      window.history.replaceState({}, '', buildProductsUrl(sp.toString()));
     }
   }, []);
 
