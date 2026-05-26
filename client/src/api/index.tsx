@@ -83,7 +83,11 @@ export const fetchHeightRange = async (params?: Record<string, string>, catId?: 
 //         return undefined;
 //     }
 // };
-export const fetchMegaFilteredProductsFromAPI = async (searchTerm: string, sortBy: string): Promise<AxiosResponse<any> | undefined> => {
+export const fetchMegaFilteredProductsFromAPI = async (
+    searchTerm: string,
+    sortBy: string,
+    catId?: string
+): Promise<AxiosResponse<any> | undefined> => {
     console.log(sortBy, '<< sortBy API');
     const queryParams = new URLSearchParams();
     if (searchTerm) {
@@ -91,6 +95,9 @@ export const fetchMegaFilteredProductsFromAPI = async (searchTerm: string, sortB
     }
     if (sortBy) {
         queryParams.append('sortBy', sortBy);  // Pass the sort method as a query parameter
+    }
+    if (catId) {
+        queryParams.append('catId', catId);
     }
     //console.log(sortBy, '<< sortBy');
     try {

@@ -22,7 +22,7 @@ module.exports.getAllProducts = async (req, res, next) => {
 module.exports.getMegaFilteredProductItems = async (req, res, next) => {
   try {
     const limit = 54;
-    const { sortBy = 'price_asc', searchTerms = '' } = req.query;
+    const { sortBy = 'price_asc', searchTerms = '', catId = null } = req.query;
 
     // 1) Determine sort order
     let order;
@@ -57,9 +57,22 @@ module.exports.getMegaFilteredProductItems = async (req, res, next) => {
       ? { [Op.and]: andConditions }
       : {};
 
-    // 5) Execute the query
+    // 5) Execute the query (scoped to category when catId is provided)
+    const productWhere = { ...where };
+
+    if (catId) {
+      const safeCatId = parseInt(catId, 10);
+      if (Number.isFinite(safeCatId)) {
+        productWhere.id = {
+          [Op.in]: sequelize.literal(
+            `(SELECT product_id FROM product_categories WHERE category_id = ${safeCatId})`
+          ),
+        };
+      }
+    }
+
     const foundProducts = await Product.findAll({
-      where,
+      where: productWhere,
       order,
       limit,
     });

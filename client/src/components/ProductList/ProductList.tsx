@@ -254,6 +254,7 @@ interface ProductListProps {
   products: Product[] | null | undefined; // ← be defensive
   filters: { [key: string]: string[] };
   loading: boolean;
+  excludeProductIds?: number[];
 }
 
 /** Image component: lazy-load + preload + retry + skeleton + fade-in */
@@ -386,13 +387,20 @@ const formatPrice = (value: unknown): string => {
   return n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 };
 
-const ProductList: React.FC<ProductListProps> = ({ products = [], filters, loading }) => {
+const ProductList: React.FC<ProductListProps> = ({
+  products = [],
+  filters,
+  loading,
+  excludeProductIds = [],
+}) => {
   if (loading) return <p>Loading products...</p>;
 
   const list = Array.isArray(products) ? products : [];
+  const excludeSet = new Set(excludeProductIds);
 
   // Filter out products with invalid or missing data
   const validProducts = list.filter((product) => {
+    if (excludeSet.has(product.id)) return false;
     // Check if price is valid (not null, not undefined, and is a finite number)
     const priceValue = typeof product.product_price === 'number'
       ? product.product_price

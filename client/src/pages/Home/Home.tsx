@@ -35,6 +35,7 @@ const Home: React.FC = () => {
   const [totalProducts, setTotalProducts] = useState(0);
   const [loading, setLoading] = useState(false);
   const [sortBy, setSortBy] = useState<SortBy>('most_popular');
+  const [megaSearchResultIds, setMegaSearchResultIds] = useState<number[]>([]);
 
   // load-more - separate from pagination
   const [isLoadingMore, setIsLoadingMore] = useState(false);
@@ -331,9 +332,20 @@ const Home: React.FC = () => {
 
           {/* Fade this whole region during transitions */}
           <div className={`${styles.pageTransition} ${!isTransitioning ? styles.show : ''}`}>
-            <MegaFilter sortBy={sortBy} filters={selectedFilters} loading={loading} />
+            <MegaFilter
+              sortBy={sortBy}
+              filters={selectedFilters}
+              loading={loading}
+              categoryId={getCategoryIdFromPath()}
+              onSearchResultIdsChange={setMegaSearchResultIds}
+            />
 
-            <ProductList products={products} filters={selectedFilters} loading={loading} />
+            <ProductList
+              products={products}
+              filters={selectedFilters}
+              loading={loading}
+              excludeProductIds={megaSearchResultIds}
+            />
 
             <PaginationControls
               currentPage={currentPage}
