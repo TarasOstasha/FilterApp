@@ -1,16 +1,23 @@
 export const getCategoryIdFromPath = (): string => {
     try {
-      // First, check if there's a test category ID in localStorage
       const testCategoryId = localStorage.getItem('testCategoryId');
-      if (testCategoryId && testCategoryId.trim()) {
+      if (testCategoryId?.trim()) {
         return testCategoryId.trim();
       }
-      
-      // If no test ID, extract from URL path
-      const path = window.location.pathname; 
-      const m = path.match(/\/(\d+)\.htm(?:$|\?)/i);
-      return m ? m[1] : ''; // Default to '63' if no match
+
+      const path = window.location.pathname;
+      const pathMatch = path.match(/\/(\d+)\.htm(?:$|\?)/i);
+      if (pathMatch) {
+        return pathMatch[1];
+      }
+
+      const fromQuery = new URLSearchParams(window.location.search).get('catId');
+      if (fromQuery?.trim()) {
+        return fromQuery.trim();
+      }
+
+      return '';
     } catch {
-      return ''; 
+      return '';
     }
   };

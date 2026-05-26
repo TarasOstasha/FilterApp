@@ -46,13 +46,20 @@ const Home: React.FC = () => {
   const offsetFrom = (page: number, limit: number) => Math.max(0, (page - 1) * limit);
 
   const writeUrl = (next: {
-    limit?: number; offset?: number; sortBy?: string; filters?: { [k: string]: string[] };
+    limit?: number;
+    offset?: number;
+    sortBy?: string;
+    filters?: { [k: string]: string[] };
+    catId?: string;
   }) => {
     const sp = new URLSearchParams();
 
     if (typeof next.limit === 'number') sp.set('limit', String(next.limit));
     if (typeof next.offset === 'number') sp.set('offset', String(next.offset));
     if (typeof next.sortBy === 'string') sp.set('sortBy', next.sortBy);
+
+    const catId = next.catId !== undefined ? next.catId : getCategoryIdFromPath();
+    if (catId) sp.set('catId', catId);
 
     const currentFilters = next.filters || selectedFilters;
     Object.entries(currentFilters).forEach(([k, arr]) => {
@@ -83,7 +90,7 @@ const Home: React.FC = () => {
     const urlSort: SortBy = isSortBy(q) ? q : 'most_popular';
     setSortBy(urlSort);
 
-    const meta = new Set(['limit', 'offset', 'sortBy']);
+    const meta = new Set(['limit', 'offset', 'sortBy', 'catId']);
     const valrangeDigits = ['Product Price', 'Display Width', 'Display Height'];
     const restored: { [k: string]: string[] } = {};
 
@@ -98,6 +105,12 @@ const Home: React.FC = () => {
     });
 
     setSelectedFilters(restored);
+
+    const catId = getCategoryIdFromPath();
+    if (catId && !sp.get('catId')) {
+      sp.set('catId', catId);
+      window.history.replaceState({}, '', `${window.location.pathname}?${sp.toString()}`);
+    }
   }, []);
 
   // —— FETCH PRODUCTS ——
@@ -289,13 +302,18 @@ const Home: React.FC = () => {
   };
 
   const handleCategoryChange = () => {
-    // Reset everything and refetch with new category
     setIsTransitioning(true);
     setIsLoadingMore(false);
     setHasUsedLoadMore(false);
     setCurrentPage(1);
     setLoadedCount(itemsPerPage);
-    // Trigger refetch by forcing a state update
+    writeUrl({
+      limit: itemsPerPage,
+      offset: 0,
+      sortBy,
+      filters: selectedFilters,
+      catId: getCategoryIdFromPath(),
+    });
     fetchProducts();
   };
 
