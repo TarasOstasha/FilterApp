@@ -9,6 +9,7 @@ const importRouter = require('./importRouter');
 const exportRouter = require('./exportRouter');
 const authRouter = require('./authRouter');
 const dynamicFilterRouter = require('./dynamicFilterRouter');
+const imageProxyRouter = require('./imageProxyRouter');
 
 
 
@@ -25,6 +26,7 @@ router.use('/upload-csv', importRouter);
 router.use('/export', exportRouter);
 router.use('/admin', authRouter);
 router.use('/dynamic-filters', dynamicFilterRouter);
+router.use('/image-proxy', imageProxyRouter);
 
 
 

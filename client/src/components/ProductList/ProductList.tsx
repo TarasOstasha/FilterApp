@@ -257,6 +257,19 @@ interface ProductListProps {
   excludeProductIds?: number[];
 }
 
+const VOLUSION_CDN_PREFIX = 'https://cdn4.volusion.store/';
+
+/** Same-origin /api path in prod; full API origin when REACT_APP_API_URL is set (dev). */
+const resolveProductImageSrc = (productImgLink: string): string => {
+  if (!productImgLink.startsWith(VOLUSION_CDN_PREFIX)) {
+    return productImgLink;
+  }
+  const apiRoot = process.env.REACT_APP_API_URL
+    ? process.env.REACT_APP_API_URL.replace(/\/api\/?$/, '')
+    : '';
+  return `${apiRoot}/api/image-proxy?url=${encodeURIComponent(productImgLink)}`;
+};
+
 /** Image component: lazy-load + preload + retry + skeleton + fade-in */
 const ImageWithRetry: React.FC<{
   src: string;
@@ -430,7 +443,7 @@ const ProductList: React.FC<ProductListProps> = ({
             role="listitem"
           >
             <ImageWithRetry
-              src={product.product_img_link}
+              src={resolveProductImageSrc(product.product_img_link)}
               alt={product.product_name}
               className={styles.productImage}
               fallbackSrc={noPhoto}
