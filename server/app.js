@@ -24,6 +24,11 @@ app.use(
   }),
 );
 
+app.use((req, res, next) => {
+  res.setHeader("X-Robots-Tag", "noindex, nofollow");
+  next();
+});
+
 // app.get('/category', categoryController.getAllCategories);
 // app.get('/filterField', filterFieldController.getAllFilterFields);
 // app.get('/productCategory', productCategoryController.getAllProductCategories);

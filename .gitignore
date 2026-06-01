@@ -45,3 +45,4 @@ test-upload.js
 
 *.md
 *.csv
+env-production.txt
