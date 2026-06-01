@@ -1,19 +1,19 @@
 const { sequelize, FilterField } = require('../models');
 const { QueryTypes } = require('sequelize');
 const chalk = require('chalk');
+const {
+  extractFiltersFromQuery,
+  DISTINCT_FILTER_VALUE_SQL,
+  buildFilterJoins,
+} = require('../utils/filterQuery');
+const { normalizeFilterResultsSortOrder } = require('../utils/filterFieldOrder');
 
 module.exports.getDynamicFilters = async (req, res, next) => {
   try {
     const catId = req.query.catId ? Number(req.query.catId) : null;
     console.log(chalk.red('getDynamicFilters catId:'), catId);
 
-    // Copy query and strip non-filter params
-    const filters = { ...req.query };
-    delete filters.catId;
-    delete filters.limit;
-    delete filters.offset;
-    delete filters.sortBy;
-
+    const filters = extractFiltersFromQuery(req.query);
     const filterKeys = Object.keys(filters);
     console.log(chalk.blue('getDynamicFilters trigger'), { catId, filterKeys });
 
@@ -24,6 +24,7 @@ module.exports.getDynamicFilters = async (req, res, next) => {
     // Load all filter fields (same as getProducts)
     const allFilterFields = await FilterField.findAll({
       attributes: ['id', 'field_name', 'field_type', 'sort_order'],
+      order: [['sort_order', 'ASC']],
       raw: true,
     });
 
@@ -33,85 +34,27 @@ module.exports.getDynamicFilters = async (req, res, next) => {
       return acc;
     }, {});
 
-    // Build base filters (shared for ALL dynamic fields) - SAME AS getProducts
-    let joinClauses = '';
-    let whereClauses = '';
-    const replacements = {};
-    let joinIndex = 0;
-
-    // Category filter (same as getProducts)
-    if (catId) {
-      joinClauses += `
+    const categoryJoin = catId
+      ? `
         JOIN product_categories pc
           ON pc.product_id = p.id
          AND pc.category_id = :catId
-      `;
-      replacements.catId = catId;
-    }
+      `
+      : '';
 
-    // Build filter joins - EXACTLY like getProducts
-    for (const [fieldName, rawValue] of Object.entries(filters)) {
-      if (!rawValue) continue;
-
-      // Special case: Product Price works on products.product_price
-      if (fieldName === 'Product Price') {
-        const [minPrice, maxPrice] = String(rawValue)
-          .split(',')
-          .map((v) => parseFloat(v) || 0);
-
-        whereClauses += `
-          AND p.product_price BETWEEN :minPrice AND :maxPrice
-        `;
-        replacements.minPrice = minPrice;
-        replacements.maxPrice = maxPrice;
-        continue;
-      }
-
-      if (!fieldIdMap[fieldName]) continue;
-      const fieldId = fieldIdMap[fieldName];
-      const fieldDef = allFilterFields.find(f => f.field_name === fieldName);
-
-      if (fieldDef.field_type === 'checkbox') {
-        const values = String(rawValue).split(',').map(v => v.trim());
-        const alias = `pf_check${joinIndex}`;
-
-        joinClauses += `
-          JOIN product_filters ${alias}
-            ON ${alias}.product_id = p.id
-           AND ${alias}.filter_field_id = ${fieldId}
-           AND EXISTS (
-             SELECT 1
-             FROM unnest(string_to_array(${alias}.filter_value, ',')) AS filter_val
-             CROSS JOIN unnest(ARRAY[:checkVals${joinIndex}]::text[]) AS selected_val
-             WHERE LOWER(TRIM(REGEXP_REPLACE(filter_val, '\\s+', ' ', 'g'))) 
-                   LIKE '%' || LOWER(TRIM(REGEXP_REPLACE(selected_val, '\\s+', ' ', 'g'))) || '%'
-           )
-        `;
-
-        replacements[`checkVals${joinIndex}`] = values;
-        joinIndex++;
-      } else if (fieldDef.field_type === 'range') {
-        const [min, max] = String(rawValue)
-          .split(',')
-          .map((v) => parseFloat(v) || 0);
-        const alias = `pf_range${joinIndex}`;
-
-        joinClauses += `
-          JOIN product_filters ${alias}
-            ON ${alias}.product_id = p.id
-           AND ${alias}.filter_field_id = ${fieldId}
-        `;
-
-        whereClauses += `
-          AND CAST(regexp_replace(${alias}.filter_value, '[^0-9\\.]', '', 'g') AS FLOAT)
-              BETWEEN :min${joinIndex} AND :max${joinIndex}
-        `;
-
-        replacements[`min${joinIndex}`] = min;
-        replacements[`max${joinIndex}`] = max;
-        joinIndex++;
-      }
-    }
+    const buildJoins = () => {
+      const built = buildFilterJoins({
+        filters,
+        allFilterFields,
+        fieldIdMap,
+      });
+      if (catId) built.replacements.catId = catId;
+      return {
+        joinClauses: categoryJoin + built.joinClauses,
+        whereClauses: built.whereClauses,
+        replacements: built.replacements,
+      };
+    };
 
     // Now for EACH field compute which values are available in filtered products
     const results = [];
@@ -119,6 +62,7 @@ module.exports.getDynamicFilters = async (req, res, next) => {
     for (const field of allFilterFields) {
       // Handle Product Price specially - get min/max instead of discrete values
       if (field.field_name === 'Product Price') {
+        const { joinClauses, whereClauses, replacements } = buildJoins();
         const priceSql = `
           WITH base_products AS (
             SELECT DISTINCT p.id, p.product_price
@@ -164,7 +108,9 @@ module.exports.getDynamicFilters = async (req, res, next) => {
         continue;
       }
 
-      // FIXED SQL: CROSS JOIN before WHERE
+      // Facet list: same scope as product list (only values on matching products)
+      const { joinClauses, whereClauses, replacements } = buildJoins();
+
       const sql = `
         WITH base_products AS (
           SELECT DISTINCT p.id
@@ -173,14 +119,7 @@ module.exports.getDynamicFilters = async (req, res, next) => {
           WHERE 1=1
           ${whereClauses}
         )
-        SELECT DISTINCT cleaned.val
-        FROM product_filters pf
-        CROSS JOIN LATERAL unnest(string_to_array(pf.filter_value, ',')) AS raw_val(val)
-        CROSS JOIN LATERAL (SELECT trim(raw_val.val) AS val) AS cleaned
-        JOIN base_products bp ON bp.id = pf.product_id
-        WHERE pf.filter_field_id = :fieldId
-          AND cleaned.val <> ''
-        ORDER BY cleaned.val;
+        ${DISTINCT_FILTER_VALUE_SQL}
       `;
 
       const fieldRepl = { ...replacements, fieldId: field.id };
@@ -205,6 +144,8 @@ module.exports.getDynamicFilters = async (req, res, next) => {
         });
       }
     }
+
+    normalizeFilterResultsSortOrder(results);
 
     console.log(chalk.green(`Dynamic filters found: ${results.length}`));
     res.json(results);

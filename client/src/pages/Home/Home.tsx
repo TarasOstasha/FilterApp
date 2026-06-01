@@ -12,6 +12,12 @@ import {
   getCategoryIdFromPath,
   getCategoryIdFromPathname,
 } from '../../utils/helpers';
+import {
+  RANGE_FILTER_KEYS,
+  appendFilterValues,
+  parseFiltersFromSearch,
+  buildProductQueryParams,
+} from '../../utils/filterParams';
 
 interface Product {
   id: number;
@@ -26,39 +32,6 @@ export const allowedSorts = ['most_popular', 'price_asc', 'price_desc'] as const
 export type SortBy = typeof allowedSorts[number];
 export const isSortBy = (v: unknown): v is SortBy =>
   typeof v === 'string' && (allowedSorts as readonly string[]).includes(v);
-
-const URL_META_KEYS = new Set(['limit', 'offset', 'sortBy', 'catId']);
-const RANGE_FILTER_KEYS = ['Product Price', 'Display Width', 'Display Height'];
-
-const parseFiltersFromSearch = (search: string): {
-  limit: number;
-  offset: number;
-  sortBy: SortBy;
-  filters: { [key: string]: string[] };
-} => {
-  const sp = new URLSearchParams(search);
-
-  const urlLimit = Number(sp.get('limit'));
-  const urlOffset = Number(sp.get('offset'));
-  const limit = Number.isFinite(urlLimit) && urlLimit > 0 ? urlLimit : 27;
-  const offset = Number.isFinite(urlOffset) && urlOffset >= 0 ? urlOffset : 0;
-
-  const q = sp.get('sortBy');
-  const sortBy: SortBy = isSortBy(q) ? q : 'most_popular';
-
-  const filters: { [key: string]: string[] } = {};
-  sp.forEach((val, rawKey) => {
-    if (URL_META_KEYS.has(rawKey)) return;
-    const decodedKey = decodeURIComponent(rawKey).replace(/\+/g, ' ');
-    if (RANGE_FILTER_KEYS.includes(decodedKey)) {
-      filters[decodedKey] = [val];
-    } else {
-      filters[decodedKey] = val.split(',');
-    }
-  });
-
-  return { limit, offset, sortBy, filters };
-};
 
 const Home: React.FC = () => {
   const [isTransitioning, setIsTransitioning] = useState(false);
@@ -105,8 +78,7 @@ const Home: React.FC = () => {
     const currentFilters = next.filters || selectedFilters;
     Object.entries(currentFilters).forEach(([k, arr]) => {
       if (Array.isArray(arr) && arr.length > 0) {
-        //const encodedKey = encodeURIComponent(k);
-        sp.set(k, arr.join(','));
+        appendFilterValues(sp, k, arr);
       }
     });
 
@@ -115,9 +87,10 @@ const Home: React.FC = () => {
   };
 
   const hydrateFromUrl = useCallback((options?: { syncCatIdToUrl?: boolean }) => {
-    const { limit, offset, sortBy: urlSort, filters } = parseFiltersFromSearch(
+    const { limit, offset, sortBy: urlSortRaw, filters } = parseFiltersFromSearch(
       window.location.search
     );
+    const urlSort: SortBy = isSortBy(urlSortRaw) ? urlSortRaw : 'most_popular';
 
     setItemsPerPage(limit);
     setCurrentPage(Math.floor(offset / limit) + 1);
@@ -173,17 +146,14 @@ const Home: React.FC = () => {
     setLoading(true);
     console.log(selectedFilters, 'selectedFilters');
     try {
-      const qp = new URLSearchParams();
-      qp.set('limit', String(itemsPerPage));
-      qp.set('offset', String(offsetFrom(currentPage, itemsPerPage)));
-      qp.set('sortBy', String(sortBy));
-
-      const catId = getCategoryIdFromPath();
-      Object.keys(selectedFilters).forEach((key) => {
-        if (key === 'sortBy') return;
-        qp.append(key, selectedFilters[key].join(','));
+      const qp = buildProductQueryParams({
+        limit: itemsPerPage,
+        offset: offsetFrom(currentPage, itemsPerPage),
+        sortBy: String(sortBy),
+        filters: selectedFilters,
       });
 
+      const catId = getCategoryIdFromPath();
       const response = await fetchProductsFromAPI(qp, catId);
       if (response?.data) {
         const newProducts: Product[] = response.data.products || [];
@@ -227,8 +197,8 @@ const Home: React.FC = () => {
       const current = prev[field] || [];
       const next = { ...prev };
 
-      if (value.includes(',')) {
-        next[field] = [value];           // range overrides
+      if (RANGE_FILTER_KEYS.includes(field)) {
+        next[field] = [value];
       } else {
         next[field] = current.includes(value)
           ? current.filter((v) => v !== value)
@@ -306,20 +276,16 @@ const Home: React.FC = () => {
     setHasUsedLoadMore(true); // Mark that "View More" has been used
 
     try {
-      const qp = new URLSearchParams();
-      qp.set('limit', String(itemsPerPage));
-      // Calculate offset: base offset of current page + products already loaded
       const baseOffset = offsetFrom(currentPage, itemsPerPage);
       const nextOffset = baseOffset + products.length;
-      qp.set('offset', String(nextOffset));
-      qp.set('sortBy', String(sortBy));
-
-      const catId = getCategoryIdFromPath();
-      Object.keys(selectedFilters).forEach((key) => {
-        if (key === 'sortBy') return;
-        qp.append(key, selectedFilters[key].join(','));
+      const qp = buildProductQueryParams({
+        limit: itemsPerPage,
+        offset: nextOffset,
+        sortBy: String(sortBy),
+        filters: selectedFilters,
       });
 
+      const catId = getCategoryIdFromPath();
       const response = await fetchProductsFromAPI(qp, catId);
       if (response?.data) {
         const newProducts: Product[] = response.data.products || [];

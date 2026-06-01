@@ -12,7 +12,10 @@ interface WidthRangeResponse {
 const API_BASE = process.env.REACT_APP_API_URL || `${window.location.origin}/api`;
 
 const axiosInstance = axios.create({
-    baseURL: API_BASE //'http://localhost:5000/api',
+    baseURL: API_BASE, //'http://localhost:5000/api',
+    paramsSerializer: {
+        indexes: null, // Product_Type=a&Product_Type=b (comma stays inside one value)
+    },
 });
 
 //console.log('API_BASE:', process.env.REACT_APP_API_URL);
@@ -31,8 +34,10 @@ export const fetchProductsFromAPI = async (
     }
 };
 
+type FilterQueryParams = Record<string, string | string[]>;
+
 // price range
-export const fetchPriceRange = async (params?: Record<string,string>, catId?: string) => {
+export const fetchPriceRange = async (params?: FilterQueryParams, catId?: string) => {
     try {
         //console.log(params ? Object.values(params) : [], '<< params in fetchPriceRange');
       const allParams = catId ? { ...params, catId } : params;
@@ -46,7 +51,7 @@ export const fetchPriceRange = async (params?: Record<string,string>, catId?: st
   };
 
 
-export const fetchWidthRange = async (params?: Record<string, string>, catId?: string) => {
+export const fetchWidthRange = async (params?: FilterQueryParams, catId?: string) => {
     try {
       //console.log(params ? Object.values(params) : [], '<< params in fetchWidthRange');
       const allParams = catId ? { ...params, catId } : params;
@@ -58,7 +63,7 @@ export const fetchWidthRange = async (params?: Record<string, string>, catId?: s
   };
 
   // height range
-export const fetchHeightRange = async (params?: Record<string, string>, catId?: string) => {
+export const fetchHeightRange = async (params?: FilterQueryParams, catId?: string) => {
     try {
       //console.log(params ? Object.values(params) : [], '<< params in fetchHeightRange');
       const allParams = catId ? { ...params, catId } : params;
@@ -119,7 +124,7 @@ export const fetchFilterSidebarData = async (catId: string): Promise<AxiosRespon
 
 // fetch dynamic filters
 export const fetchDynamicFilters = async (
-    params: Record<string, string>,
+    params: FilterQueryParams,
     catId: string
 ) => {
     console.log(params, catId, '<< params and catId in fetchDynamicFilters');

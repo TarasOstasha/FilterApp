@@ -11,14 +11,13 @@ import {
 } from '../../api';
 import { useDebouncedEffect } from '../../utils/useDebouncedEffect';
 import { getCategoryIdFromPath } from '../../utils/helpers';
+import {
+  filtersToQueryParams,
+  normalizeFilterFieldsOrder,
+  SidebarFilterField,
+} from '../../utils/filterParams';
 
-interface FilterField {
-  id: number;
-  field_name: string;
-  field_type: 'checkbox' | 'range';
-  allowed_values: any;
-  sort_order: number;
-}
+type FilterField = SidebarFilterField & { allowed_values: any };
 
 interface FilterSidebarProps {
   onFilterChange: (filter: { field: string; value: any }) => void;
@@ -87,13 +86,13 @@ function sanitizeFilters(raw: Record<string, string[] | undefined> = {}) {
 function buildParams(
   raw: Record<string, string[] | undefined>,
   omitKey?: string
-): Record<string, string> {
+): Record<string, string | string[]> {
   const safe = sanitizeFilters(raw);
-  return Object.fromEntries(
-    Object.entries(safe)
-      .filter(([k, v]) => k !== omitKey && v && v.length > 0)
-      .map(([k, v]) => [k, v.join(',')])
-  );
+  if (omitKey && safe[omitKey]) {
+    const { [omitKey]: _removed, ...rest } = safe;
+    return filtersToQueryParams(rest);
+  }
+  return filtersToQueryParams(safe);
 }
 // --------------------------------
 // Helper: extract the digits right before ".htm" at the end of the path
@@ -421,11 +420,11 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
       // Also fetch when we only have price filter and no other filters
       const onlyHasPriceFilter = keys.length === 1 && keys[0] === 'Product Price' && nonPrice.length === 0;
       
-      if (keys.length === 0 || onlyHasPriceFilter || filterFields.length === 0) {
+      if (keys.length === 0 || onlyHasPriceFilter) {
         const catId = getCategoryIdFromPath();
         fetchFilterSidebarData(catId)
           .then((r) => {
-            const next = r?.data ?? [];
+            const next = normalizeFilterFieldsOrder((r?.data ?? []) as FilterField[]);
             if (next.length > 0) { // Only update if we got valid data
               setFilterFields((prev) => {
                 // More robust comparison to prevent unnecessary updates
@@ -452,20 +451,24 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
           });
       } else if (nonPrice.length > 0) {
         setIsLoadingFilters(true);
-        const params = Object.fromEntries(nonPrice.map((k) => [k, normalized[k].join(',')]));
+        const params = filtersToQueryParams(
+          Object.fromEntries(nonPrice.map((k) => [k, normalized[k]]))
+        );
         const catId = getCategoryIdFromPath();
         fetchDynamicFilters(params, catId)
           .then((r) => {
             setIsLoadingFilters(false);
             const d = r?.data;
             if (Array.isArray(d) && d.length > 0) { // Only update if we got valid data
-              const next: FilterField[] = d.map((f: any) => ({
-                id: f.filter_field_id,
-                field_name: f.field_name,
-                field_type: f.field_type,
-                allowed_values: f.values,
-                sort_order: f.sort_order ?? 0,
-              }));
+              const next: FilterField[] = normalizeFilterFieldsOrder(
+                d.map((f: any) => ({
+                  id: f.filter_field_id,
+                  field_name: f.field_name,
+                  field_type: f.field_type,
+                  allowed_values: f.values,
+                  sort_order: f.sort_order ?? 0,
+                }))
+              );
               setFilterFields((prev) => {
                 // More robust comparison to prevent unnecessary updates
                 if (prev.length !== next.length) return next;
@@ -492,7 +495,9 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
             const catId = getCategoryIdFromPath();
             fetchFilterSidebarData(catId)
               .then((r) => {
-                const fallbackData = r?.data ?? [];
+                const fallbackData = normalizeFilterFieldsOrder(
+                  (r?.data ?? []) as FilterField[]
+                );
                 if (fallbackData.length > 0) {
                   setFilterFields(fallbackData);
                 }
@@ -508,7 +513,9 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
       // Only fetch if we've initialized OR if there are actual filters applied
       if (initializedFromFilterFields.current || nonPrice.length > 0) {
         const priceParams = nonPrice.length > 0
-          ? Object.fromEntries(nonPrice.map((k) => [k, normalized[k].join(',')]))
+          ? filtersToQueryParams(
+              Object.fromEntries(nonPrice.map((k) => [k, normalized[k]]))
+            )
           : undefined;
 
         const catId = getCategoryIdFromPath();

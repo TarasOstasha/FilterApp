@@ -2,6 +2,13 @@ const createHttpError = require('http-errors')
 const chalk = require('chalk')
 const { Product, Category, FilterField, ProductFilter, sequelize } = require('../models')
 const { Op, fn, col, where, cast, QueryTypes } = require('sequelize');
+const {
+  META_QUERY_KEYS,
+  extractFiltersFromQuery,
+  parseCheckboxFilterValues,
+  appendCheckboxFilterJoins,
+  buildFilterJoins,
+} = require('../utils/filterQuery');
 
 
 module.exports.getAllProducts = async (req, res, next) => {
@@ -147,7 +154,7 @@ module.exports.getPriceRange = async (req, res, next) => {
     }
 
     for (const fieldName of Object.keys(req.query)) {
-      if (fieldName === 'Product Price') continue;
+      if (fieldName === 'Product Price' || META_QUERY_KEYS.has(fieldName)) continue;
 
       const rawVal = req.query[fieldName];
       const field = filterMap[fieldName];
@@ -168,24 +175,18 @@ module.exports.getPriceRange = async (req, res, next) => {
         `;
         rangeIdx++;
       } else {
-        const values = Array.isArray(rawVal)
-          ? rawVal.map(v => v.trim())
-          : String(rawVal).split(',').map((v) => v.trim());
+        const values = parseCheckboxFilterValues(rawVal);
+        if (!values.length) continue;
 
-        replacements[`vals${checkIdx}`] = values;
-        //console.log(chalk.green(Object.keys(replacements), '<< current replacements'));
-        joins += `
-          JOIN product_filters pf_check${checkIdx}
-            ON pf_check${checkIdx}.product_id = p.id
-           AND pf_check${checkIdx}.filter_field_id = ${field.id}
-           AND EXISTS (
-             SELECT 1
-             FROM unnest(string_to_array(pf_check${checkIdx}.filter_value, ',')) AS filter_val
-             CROSS JOIN unnest(ARRAY[:vals${checkIdx}]::text[]) AS selected_val
-             WHERE LOWER(TRIM(REGEXP_REPLACE(filter_val, '\\s+', ' ', 'g'))) LIKE '%' || LOWER(TRIM(REGEXP_REPLACE(selected_val, '\\s+', ' ', 'g'))) || '%'
-           )
-        `;
-        checkIdx++;
+        const appended = appendCheckboxFilterJoins(
+          joins,
+          replacements,
+          field.id,
+          values,
+          checkIdx
+        );
+        joins = appended.joinClauses;
+        checkIdx = appended.joinIndex;
       }
     }
 
@@ -241,8 +242,8 @@ module.exports.getPriceRange = async (req, res, next) => {
 
 module.exports.getProducts = async (req, res, next) => {
   try {
-    const filters = req.query;
-    console.log(chalk.blue('getProducts called with filters:'), req.query);
+    const filters = extractFiltersFromQuery(req.query);
+    console.log(chalk.blue('getProducts called with filters:'), filters);
     const limit = parseInt(req.query.limit, 10) || 27;
     const offset = parseInt(req.query.offset, 10) || 0;
     const catId = req.query.catId || null;
@@ -279,78 +280,23 @@ module.exports.getProducts = async (req, res, next) => {
       return acc;
     }, {});
 
-    let joinClauses = '';
-    let whereClauses = '';
-    const replacements = {};
-    let joinIndex = 0;
+    const built = buildFilterJoins({
+      filters,
+      allFilterFields,
+      fieldIdMap,
+    });
 
-    // add category filter only if catId exists
+    let joinClauses = built.joinClauses;
+    let whereClauses = built.whereClauses;
+    const replacements = built.replacements;
+
     if (catId) {
-      joinClauses += `
+      joinClauses = `
         JOIN product_categories pc
           ON pc.product_id = p.id
          AND pc.category_id = :catId
-      `;
+      ` + joinClauses;
       replacements.catId = catId;
-    }
-
-    for (const [fieldName, rawValue] of Object.entries(filters)) {
-      if (fieldName === 'Product Price') {
-        const [minPrice, maxPrice] = String(rawValue)
-          .split(',')
-          .map((v) => parseFloat(v) || 0);
-    
-        whereClauses += `
-          AND p.product_price BETWEEN :minPrice AND :maxPrice
-        `;
-        replacements.minPrice = minPrice;
-        replacements.maxPrice = maxPrice;
-        continue;
-      }
-    
-      if (!fieldIdMap[fieldName]) continue;
-      const fieldId = fieldIdMap[fieldName];
-      const fieldDef = allFilterFields.find(f => f.field_name === fieldName);
-
-      if (fieldDef.field_type === 'checkbox') {
-        const values = String(rawValue).split(',').map(v => v.trim());
-        const alias = `pf_check${joinIndex}`;
-
-        joinClauses += `
-          JOIN product_filters ${alias}
-            ON ${alias}.product_id = p.id
-           AND ${alias}.filter_field_id = ${fieldId}
-           AND EXISTS (
-             SELECT 1
-             FROM unnest(string_to_array(${alias}.filter_value, ',')) AS filter_val
-             CROSS JOIN unnest(ARRAY[:checkVals${joinIndex}]::text[]) AS selected_val
-             WHERE LOWER(TRIM(REGEXP_REPLACE(filter_val, '\\s+', ' ', 'g'))) LIKE '%' || LOWER(TRIM(REGEXP_REPLACE(selected_val, '\\s+', ' ', 'g'))) || '%'
-           )
-        `;
-
-        replacements[`checkVals${joinIndex}`] = values;
-        joinIndex++;
-      }
-
-      if (fieldDef.field_type === 'range') {
-        const [min, max] = String(rawValue).split(',').map(v => parseFloat(v) || 0);
-        const alias = `pf_range${joinIndex}`;
-
-        joinClauses += `
-          JOIN product_filters ${alias}
-            ON ${alias}.product_id = p.id
-           AND ${alias}.filter_field_id = ${fieldId}
-        `;
-
-        whereClauses += `
-          AND CAST(regexp_replace(${alias}.filter_value, '[^0-9\\.]', '', 'g') AS FLOAT)
-              BETWEEN :min${joinIndex} AND :max${joinIndex}
-        `;
-
-        replacements[`min${joinIndex}`] = min;
-        replacements[`max${joinIndex}`] = max;
-        joinIndex++;
-      }
     }
 
     const sql = `
@@ -551,6 +497,8 @@ module.exports.getWidthRange = async (req, res, next) => {
     }
 
     for (const fieldName of Object.keys(req.query)) {
+      if (META_QUERY_KEYS.has(fieldName)) continue;
+
       const rawVal = req.query[fieldName];
       const field = filterMap[fieldName];
       if (!field || !rawVal || fieldName === 'Display Width') continue;
@@ -570,24 +518,18 @@ module.exports.getWidthRange = async (req, res, next) => {
         `;
         rangeIdx++;
       } else {
-        const values = Array.isArray(rawVal)
-          ? rawVal.map(v => v.trim())
-          : String(rawVal).split(',').map((v) => v.trim());
+        const values = parseCheckboxFilterValues(rawVal);
+        if (!values.length) continue;
 
-        replacements[`vals${checkIdx}`] = values;
-
-        joins += `
-          JOIN product_filters pf_check${checkIdx}
-            ON pf_check${checkIdx}.product_id = p.id
-           AND pf_check${checkIdx}.filter_field_id = ${field.id}
-           AND EXISTS (
-             SELECT 1
-             FROM unnest(string_to_array(pf_check${checkIdx}.filter_value, ',')) AS filter_val
-             CROSS JOIN unnest(ARRAY[:vals${checkIdx}]::text[]) AS selected_val
-             WHERE LOWER(TRIM(REGEXP_REPLACE(filter_val, '\\s+', ' ', 'g'))) LIKE '%' || LOWER(TRIM(REGEXP_REPLACE(selected_val, '\\s+', ' ', 'g'))) || '%'
-           )
-        `;
-        checkIdx++;
+        const appended = appendCheckboxFilterJoins(
+          joins,
+          replacements,
+          field.id,
+          values,
+          checkIdx
+        );
+        joins = appended.joinClauses;
+        checkIdx = appended.joinIndex;
       }
     }
 
@@ -671,6 +613,8 @@ module.exports.getHeightRange = async (req, res, next) => {
     }
 
     for (const fieldName of Object.keys(req.query)) {
+      if (META_QUERY_KEYS.has(fieldName)) continue;
+
       const rawVal = req.query[fieldName];
       const field = filterMap[fieldName];
       if (!field || !rawVal || fieldName === 'Display Height') continue;
@@ -690,24 +634,18 @@ module.exports.getHeightRange = async (req, res, next) => {
         `;
         rangeIdx++;
       } else {
-        const values = Array.isArray(rawVal)
-          ? rawVal.map(v => v.trim())
-          : String(rawVal).split(',').map((v) => v.trim());
+        const values = parseCheckboxFilterValues(rawVal);
+        if (!values.length) continue;
 
-        replacements[`vals${checkIdx}`] = values;
-
-        joins += `
-          JOIN product_filters pf_check${checkIdx}
-            ON pf_check${checkIdx}.product_id = p.id
-           AND pf_check${checkIdx}.filter_field_id = ${field.id}
-           AND EXISTS (
-             SELECT 1
-             FROM unnest(string_to_array(pf_check${checkIdx}.filter_value, ',')) AS filter_val
-             CROSS JOIN unnest(ARRAY[:vals${checkIdx}]::text[]) AS selected_val
-             WHERE LOWER(TRIM(REGEXP_REPLACE(filter_val, '\\s+', ' ', 'g'))) LIKE '%' || LOWER(TRIM(REGEXP_REPLACE(selected_val, '\\s+', ' ', 'g'))) || '%'
-           )
-        `;
-        checkIdx++;
+        const appended = appendCheckboxFilterJoins(
+          joins,
+          replacements,
+          field.id,
+          values,
+          checkIdx
+        );
+        joins = appended.joinClauses;
+        checkIdx = appended.joinIndex;
       }
     }
 

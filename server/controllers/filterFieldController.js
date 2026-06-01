@@ -2,6 +2,8 @@ const createHttpError = require('http-errors')
 const { sequelize, FilterField } = require('../models');
 const { QueryTypes } = require('sequelize');
 const chalk = require('chalk');
+const { DISTINCT_FILTER_VALUE_SQL } = require('../utils/filterQuery');
+const { normalizeFilterResultsSortOrder } = require('../utils/filterFieldOrder');
 
 module.exports.getAllFilterFields = async (req, res, next) => {
   try {
@@ -39,14 +41,7 @@ module.exports.getAllFilterFields = async (req, res, next) => {
           ${categoryJoin}
           WHERE 1=1
         )
-        SELECT DISTINCT cleaned.val
-        FROM product_filters pf
-        CROSS JOIN LATERAL unnest(string_to_array(pf.filter_value, ',')) AS raw_val(val)
-        CROSS JOIN LATERAL (SELECT trim(raw_val.val) AS val) AS cleaned
-        JOIN base_products bp ON bp.id = pf.product_id
-        WHERE pf.filter_field_id = :fieldId
-          AND cleaned.val <> ''
-        ORDER BY cleaned.val;
+        ${DISTINCT_FILTER_VALUE_SQL}
       `;
 
       const fieldRepl = { ...replacements, fieldId: field.id };
@@ -68,6 +63,8 @@ module.exports.getAllFilterFields = async (req, res, next) => {
         });
       }
     }
+
+    normalizeFilterResultsSortOrder(results);
 
     console.log(chalk.green(`getAllFilterFields found ${results.length} fields with values`));
     return res.status(200).send(results);
