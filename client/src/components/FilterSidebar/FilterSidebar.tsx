@@ -94,6 +94,58 @@ function buildParams(
   }
   return filtersToQueryParams(safe);
 }
+
+const DEFAULT_OPEN_FILTERS = new Set([
+  'Product Price',
+  'Product Type',
+  'Backlit',
+  'Display Width',
+  'Display Height',
+]);
+
+function getFilterSelectedCount(
+  fieldName: string,
+  fieldType: string,
+  selectedFilters: { [key: string]: string[] | undefined }
+): number {
+  const vals = sanitizeFilters(selectedFilters)[fieldName];
+  if (!vals?.length) return 0;
+  return fieldType === 'range' ? 1 : vals.length;
+}
+
+interface FilterAccordionSectionProps {
+  fieldName: string;
+  isOpen: boolean;
+  onToggle: (fieldName: string) => void;
+  selectedCount: number;
+  children: React.ReactNode;
+}
+
+const FilterAccordionSection: React.FC<FilterAccordionSectionProps> = ({
+  fieldName,
+  isOpen,
+  onToggle,
+  selectedCount,
+  children,
+}) => (
+  <div className={styles['filter-section']}>
+    <button
+      type="button"
+      className={styles['accordion-header']}
+      onClick={() => onToggle(fieldName)}
+      aria-expanded={isOpen}
+    >
+      <h4 className={styles['accordion-title']}>
+        {fieldName}
+        {selectedCount > 0 ? ` (${selectedCount})` : ''}
+      </h4>
+      <span className={styles['accordion-chevron']} aria-hidden="true">
+        {isOpen ? '\u25BE' : '\u25B8'}
+      </span>
+    </button>
+    {isOpen && <div className={styles['accordion-body']}>{children}</div>}
+  </div>
+);
 // --------------------------------
 // Helper: extract the digits right before ".htm" at the end of the path
 // const getCategoryIdFromPath = (): string => {
@@ -112,6 +164,9 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
   loading = false
 }) => {
   const [filterFields, setFilterFields] = useState<FilterField[]>([]);
+  const [openSections, setOpenSections] = useState<Set<string>>(
+    () => new Set(DEFAULT_OPEN_FILTERS)
+  );
   const [isLoadingFilters, setIsLoadingFilters] = useState(false);
   const [unitSelections, setUnitSelections] = useState<{ [k: string]: 'ft' | 'in' }>(
     { 'Display Width': 'in', 'Display Height': 'in' }
@@ -207,6 +262,18 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
   function handleCheckboxChange(field: string, value: string) {
     onFilterChange({ field, value });
   }
+
+  const toggleSection = (fieldName: string) => {
+    setOpenSections((prev) => {
+      const next = new Set(prev);
+      if (next.has(fieldName)) {
+        next.delete(fieldName);
+      } else {
+        next.add(fieldName);
+      }
+      return next;
+    });
+  };
 
   // Debounced handler for range changes
   const handleRangeSliderChange = useCallback((fieldName: string, sliderValue: number | number[]) => {
@@ -578,8 +645,13 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
 
         if (ft === 'checkbox') {
           return (
-            <div key={ff.id} className={styles['filter-section']}>
-              <h4>{fn}</h4>
+            <FilterAccordionSection
+              key={ff.id}
+              fieldName={fn}
+              isOpen={openSections.has(fn)}
+              onToggle={toggleSection}
+              selectedCount={getFilterSelectedCount(fn, ft, selectedFilters)}
+            >
               <ul className={styles['filter-list']}>
                 {(ff.allowed_values as string[]).map((val, i) => (
                   <li key={i} className={styles['filter-item']}>
@@ -596,7 +668,7 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
                   </li>
                 ))}
               </ul>
-            </div>
+            </FilterAccordionSection>
           );
         }
 
@@ -616,9 +688,15 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
           if (fn === 'Product Price') {
             if (!priceBreakpoints || priceBreakpoints.length === 0) {
               return (
-                <div key={ff.id} className={styles['filter-section']}>
-                  <h4>{fn}</h4>
-                </div>
+                <FilterAccordionSection
+                  key={ff.id}
+                  fieldName={fn}
+                  isOpen={openSections.has(fn)}
+                  onToggle={toggleSection}
+                  selectedCount={getFilterSelectedCount(fn, ft, selectedFilters)}
+                >
+                  {null}
+                </FilterAccordionSection>
               );
             }
 
@@ -631,12 +709,17 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
             // Don't show loading if the range collapsed due to filters (railMin === railMax is ok after initialization)
             if (railMax === 0 && !initializedFromFilterFields.current) {
               return (
-                <div key={ff.id} className={styles['filter-section']}>
-                  <h4>{fn}</h4>
+                <FilterAccordionSection
+                  key={ff.id}
+                  fieldName={fn}
+                  isOpen={openSections.has(fn)}
+                  onToggle={toggleSection}
+                  selectedCount={getFilterSelectedCount(fn, ft, selectedFilters)}
+                >
                   <div style={{ padding: '10px', color: '#666', fontSize: '14px' }}>
                     Loading price range...
                   </div>
-                </div>
+                </FilterAccordionSection>
               );
             }
 
@@ -667,9 +750,13 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
             if (loIdx > hiIdx) { loIdx = 0; hiIdx = safeRailBps.length - 1; }
 
             return (
-              <div key={ff.id} className={styles['filter-section']}>
-                <h4>{fn}</h4>
-
+              <FilterAccordionSection
+                key={ff.id}
+                fieldName={fn}
+                isOpen={openSections.has(fn)}
+                onToggle={toggleSection}
+                selectedCount={getFilterSelectedCount(fn, ft, selectedFilters)}
+              >
                 <div className={styles['range-slider-container']}>
                   <ReactSlider
                     className={styles['range-slider']}
@@ -733,7 +820,7 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
                     </div>
                   )}
                 </div>
-              </div>
+              </FilterAccordionSection>
             );
           }
 
@@ -767,8 +854,13 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
             const hi = clamp(toUi(selMaxIn), uiMin, uiMax);
 
             return (
-              <div key={ff.id} className={styles['filter-section']}>
-                <h4>{fn}</h4>
+              <FilterAccordionSection
+                key={ff.id}
+                fieldName={fn}
+                isOpen={openSections.has(fn)}
+                onToggle={toggleSection}
+                selectedCount={getFilterSelectedCount(fn, ft, selectedFilters)}
+              >
                 <div className={styles['unit-switcher']}>
                   <span>Now showing {unit === 'ft' ? 'feet' : 'inches'}</span>&nbsp;
                   <button type="button" onClick={() => handleUnitSwitch(fn)}>
@@ -858,7 +950,7 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
                     Only products at width {unit === 'ft' ? `${uiMin} ft` : `${railMinIn} in`} match other filters.
                   </div>
                 )}
-              </div>
+              </FilterAccordionSection>
             );
           }
 
@@ -892,8 +984,13 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
             const hi = clamp(toUi(selMaxIn), minUi, maxUi);
 
             return (
-              <div key={ff.id} className={styles['filter-section']}>
-                <h4>{fn}</h4>
+              <FilterAccordionSection
+                key={ff.id}
+                fieldName={fn}
+                isOpen={openSections.has(fn)}
+                onToggle={toggleSection}
+                selectedCount={getFilterSelectedCount(fn, ft, selectedFilters)}
+              >
                 <div className={styles['unit-switcher']}>
                   <span>Now showing</span> {unit === 'ft' ? 'feet' : 'inches'}&nbsp; 
                   <button type="button" onClick={() => handleUnitSwitch(fn)}>
@@ -983,7 +1080,7 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
                     Only products at height {unit === 'ft' ? `${minUi} ft` : `${railMinIn} in`} match other filters.
                   </div>
                 )}
-              </div>
+              </FilterAccordionSection>
             );
           }
 

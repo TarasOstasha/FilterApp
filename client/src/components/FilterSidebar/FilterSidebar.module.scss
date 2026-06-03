@@ -29,6 +29,46 @@
   .filter-section {
     margin-bottom: 20px; /* Space between filter sections */
   }
+
+  .accordion-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    padding: 6px 8px;
+    margin: 0 0 8px;
+    border: none;
+    border-radius: 4px;
+    background: none;
+    cursor: pointer;
+    text-align: left;
+    font: inherit;
+    color: inherit;
+    transition: background-color 0.15s ease;
+
+    &:hover {
+      background-color: #eee;
+    }
+  }
+
+  .accordion-title {
+    margin: 0;
+    font-size: inherit;
+    font-weight: inherit;
+    flex: 1;
+  }
+
+  .accordion-chevron {
+    flex-shrink: 0;
+    margin-left: 8px;
+    font-size: 12px;
+    line-height: 1;
+    opacity: 0.7;
+  }
+
+  .accordion-body {
+    padding-top: 0;
+  }
     
   .filter-list {
     //padding-left: 20px;
