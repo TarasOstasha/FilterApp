@@ -9,6 +9,7 @@
     "test": "mocha",
     "test:watch": "mocha --watch",
     "test:api": "mocha --spec \"qa-tests/api/**/*.test.js\"",
+    "test:api:multi": "mocha --spec \"qa-tests/api/multiFilter.test.js\"",
     "test:compare-excel-db": "node qa-tests/scripts/compareExcelDb.js",
     "coverage": "nyc mocha"
   },

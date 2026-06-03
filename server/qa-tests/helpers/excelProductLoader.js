@@ -1,18 +1,30 @@
 const path = require('path');
 const XLSX = require('xlsx');
 
-/** Fields verified in load summary (requirement 5). */
-const VERIFY_FIELDS = [
+/** Checkbox fields: comma-split atomic tokens (matches productFiltersCsvProcessor). */
+const CHECKBOX_FIELDS = [
   'Product_Type',
   'Backlit',
   'Booth_Size',
-  'Display_Width',
-  'Display_Height',
-  'Product_Price',
+  'Print_Type',
+  'Product_Details',
+  'Frame_Hardware',
+  'Display_Shape',
+  'Other_Accessories',
+  'Hanging_Sign_Shapes',
+  'Turntable_Type',
+  'Motor_Capacity',
+  'Flooring_Type',
+  'Print_Facility',
+  'Features',
+  'Outdoor_Type',
+  'Product_Line',
 ];
 
-/** Checkbox fields normalized like productFiltersCsvProcessor (split on comma). */
-const CHECKBOX_FIELDS = ['Product_Type', 'Backlit', 'Booth_Size'];
+const RANGE_AND_PRICE_FIELDS = ['Display_Width', 'Display_Height', 'Product_Price'];
+
+/** Columns loaded from Excel and reported in load summary. */
+const VERIFY_FIELDS = [...CHECKBOX_FIELDS, ...RANGE_AND_PRICE_FIELDS];
 
 /** Header cell text (row 1) → canonical field. */
 const EXCEL_COLUMN_ALIASES = {
@@ -24,6 +36,45 @@ const EXCEL_COLUMN_ALIASES = {
   Booth_Size: 'Booth_Size',
   booth_size: 'Booth_Size',
   'Booth Size': 'Booth_Size',
+  Print_Type: 'Print_Type',
+  print_type: 'Print_Type',
+  'Print Type': 'Print_Type',
+  Product_Details: 'Product_Details',
+  product_details: 'Product_Details',
+  'Product Details': 'Product_Details',
+  Frame_Hardware: 'Frame_Hardware',
+  frame_hardware: 'Frame_Hardware',
+  'Frame Hardware': 'Frame_Hardware',
+  Display_Shape: 'Display_Shape',
+  display_shape: 'Display_Shape',
+  'Display Shape': 'Display_Shape',
+  Other_Accessories: 'Other_Accessories',
+  other_accessories: 'Other_Accessories',
+  'Other / Accessories': 'Other_Accessories',
+  'Other Accessories': 'Other_Accessories',
+  Hanging_Sign_Shapes: 'Hanging_Sign_Shapes',
+  hanging_sign_shapes: 'Hanging_Sign_Shapes',
+  'Hanging Sign Shapes': 'Hanging_Sign_Shapes',
+  Turntable_Type: 'Turntable_Type',
+  turntable_type: 'Turntable_Type',
+  'Turntable Type': 'Turntable_Type',
+  Motor_Capacity: 'Motor_Capacity',
+  motor_capacity: 'Motor_Capacity',
+  'Motor Capacity': 'Motor_Capacity',
+  Flooring_Type: 'Flooring_Type',
+  flooring_type: 'Flooring_Type',
+  'Flooring Type': 'Flooring_Type',
+  Print_Facility: 'Print_Facility',
+  print_facility: 'Print_Facility',
+  'Print Facility': 'Print_Facility',
+  Features: 'Features',
+  features: 'Features',
+  Outdoor_Type: 'Outdoor_Type',
+  outdoor_type: 'Outdoor_Type',
+  'Outdoor Type': 'Outdoor_Type',
+  Product_Line: 'Product_Line',
+  product_line: 'Product_Line',
+  'Product Line': 'Product_Line',
   Display_Width: 'Display_Width',
   display_width: 'Display_Width',
   'Display Width': 'Display_Width',
@@ -227,16 +278,9 @@ function loadExcelProducts(filePath = resolveExcelPath()) {
     totalRows += 1;
 
     if (!byCode.has(productCode)) {
-      byCode.set(productCode, {
-        product_code: productCode,
-        product_name: null,
-        Product_Type: null,
-        Backlit: null,
-        Booth_Size: null,
-        Display_Width: null,
-        Display_Height: null,
-        Product_Price: null,
-      });
+      const product = { product_code: productCode, product_name: null };
+      for (const field of VERIFY_FIELDS) product[field] = null;
+      byCode.set(productCode, product);
     }
 
     const product = byCode.get(productCode);
@@ -377,6 +421,7 @@ function formatLoadSummaryText(summary) {
 module.exports = {
   VERIFY_FIELDS,
   CHECKBOX_FIELDS,
+  RANGE_AND_PRICE_FIELDS,
   DEFAULT_EXCEL_PATH,
   resolveExcelPath,
   loadExcelProducts,
