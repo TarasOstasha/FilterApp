@@ -96,27 +96,44 @@ module.exports.login = async (req, res, next) => {
 };
 
 module.exports.changePassword = async (req, res, next) => {
-  const { username, oldPassword, newPassword } = req.body;
+  const { username: bodyUsername, oldPassword, newPassword } = req.body;
+  const username = req.user?.username || bodyUsername;
+
+  if (!username) {
+    return next(createError(400, 'Username is required'));
+  }
+
+  if (!oldPassword || !newPassword) {
+    return next(createError(400, 'Old password and new password are required'));
+  }
+
+  if (typeof oldPassword !== 'string' || typeof newPassword !== 'string') {
+    return next(createError(400, 'Invalid password format'));
+  }
+
+  if (newPassword.length < 6 || newPassword.length > 20) {
+    return next(createError(400, 'New password must be between 6 and 20 characters'));
+  }
+
+  if (oldPassword === newPassword) {
+    return next(createError(400, 'New password must be different from the old password'));
+  }
 
   try {
-    // 1) Find user by username
     const admin = await AdminUser.findOne({ where: { username } });
 
     if (!admin) {
       return next(createError(404, 'Admin user not found'));
     }
 
-    // 2) Validate old password
     const validPassword = await bcrypt.compare(oldPassword, admin.password);
     if (!validPassword) {
       return next(createError(401, 'Incorrect old password'));
     }
 
-    // 3) Hash new password
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(newPassword, salt);
 
-    // 4) Update password in database
     await AdminUser.update(
       { password: hashedPassword },
       { where: { username } }

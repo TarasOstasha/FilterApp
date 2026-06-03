@@ -1,27 +1,92 @@
 /* Admin.module.scss */
 .admin-panel {
-    padding: 2rem;
-    text-align: center;
-    text-align: right;
-    h2 {
-      margin-bottom: 1.5rem;
-    }
-  
-    .logout-button {
-      padding: 0.75rem 1.5rem;
-      background-color: #d9534f;
-      color: white;
-      border: none;
-      border-radius: 4px;
-      cursor: pointer;
-  
-      &:hover {
-        background-color: #c9302c;
-      }
+  padding: 2rem;
+  text-align: right;
+  min-width: 320px;
+
+  h2 {
+    margin-bottom: 1.5rem;
+  }
+
+  .logout-button {
+    padding: 0.75rem 1.5rem;
+    background-color: #d9534f;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+
+    &:hover {
+      background-color: #c9302c;
     }
   }
-  .admin-wrapper {
-    display: flex;
-    align-items: center;
-    justify-content: center;
+}
+
+.admin-wrapper {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 2rem;
+  flex-wrap: wrap;
+}
+
+.change-password-section {
+  margin-top: 1.5rem;
+  padding: 1.25rem;
+  background-color: #f8f9fa;
+  border: 1px solid #dee2e6;
+  border-radius: 8px;
+  text-align: left;
+
+  h3 {
+    margin: 0 0 0.5rem;
+    color: #343a40;
+    font-size: 1.1rem;
   }
+}
+
+.logged-in-as {
+  margin: 0 0 1rem;
+  font-size: 0.9rem;
+  color: #6c757d;
+}
+
+.change-password-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+
+  input {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+    font-size: 14px;
+    outline: none;
+    box-sizing: border-box;
+
+    &:focus {
+      border-color: #80bdff;
+    }
+  }
+}
+
+.submit-button {
+  padding: 10px;
+  background-color: #28a745;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 14px;
+  cursor: pointer;
+
+  &:hover {
+    background-color: #218838;
+  }
+}
+
+.error-message {
+  color: #dc3545;
+  font-size: 12px;
+  margin-top: 4px;
+}

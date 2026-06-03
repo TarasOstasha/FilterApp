@@ -191,3 +191,43 @@ export const loginUser = async (values: { username: string; password: string }):
         return undefined;
     }
 };
+
+export const changePassword = async (values: {
+    oldPassword: string;
+    newPassword: string;
+    username?: string;
+}): Promise<AxiosResponse<{ message: string }> | undefined> => {
+    const token = localStorage.getItem('authToken');
+
+    if (!token && !values.username) {
+        toast.error('Username is required to change your password');
+        return undefined;
+    }
+
+    try {
+        const headers = token ? { Authorization: `Bearer ${token}` } : undefined;
+
+        return await axiosInstance.post(
+            '/admin/change-password',
+            {
+                oldPassword: values.oldPassword,
+                newPassword: values.newPassword,
+                ...(values.username ? { username: values.username } : {}),
+            },
+            headers ? { headers } : undefined
+        );
+    } catch (error) {
+        console.error('Error changing password:', error);
+        const err = error as AxiosError<{ error?: string }>;
+        const message = err.response?.data?.error;
+
+        if (err.response?.status === 401) {
+            toast.error(message || 'Incorrect current password');
+        } else if (err.response?.status === 400) {
+            toast.error(message || 'Invalid password request');
+        } else {
+            toast.error('An error occurred while changing your password');
+        }
+        return undefined;
+    }
+};
