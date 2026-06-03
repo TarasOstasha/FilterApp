@@ -5,20 +5,29 @@
   "main": "index.js",
   "scripts": {
     "start": "node .",
-    "dev": "nodemon ."
+    "dev": "nodemon .",
+    "test": "mocha",
+    "test:watch": "mocha --watch",
+    "test:api": "mocha --spec \"qa-tests/api/**/*.test.js\"",
+    "test:compare-excel-db": "node qa-tests/scripts/compareExcelDb.js",
+    "coverage": "nyc mocha"
   },
   "author": "tony joss",
   "license": "ISC",
   "devDependencies": {
+    "chai": "^4.3.10",
+    "dotenv": "^17.4.2",
+    "mocha": "^11.7.6",
     "nodemon": "^3.1.7",
-    "sequelize-cli": "^6.6.2"
+    "nyc": "^18.0.0",
+    "sequelize-cli": "^6.6.2",
+    "supertest": "^7.2.2"
   },
   "dependencies": {
     "bcrypt": "^5.1.1",
     "chalk": "^4.1.2",
     "cors": "^2.8.5",
     "csv-parser": "^3.0.0",
-    "dotenv": "^16.4.5",
     "express": "^4.21.1",
     "fs": "^0.0.1-security",
     "http-errors": "^2.0.0",
@@ -31,5 +40,35 @@
     "sequelize": "^6.37.6",
     "xlsx": "^0.18.5",
     "yup": "^1.4.0"
+  },
+  "nyc": {
+    "all": true,
+    "include": [
+      "*.js",
+      "config/**/*.js",
+      "controllers/**/*.js",
+      "middleware/**/*.js",
+      "models/**/*.js",
+      "routes/**/*.js",
+      "services/**/*.js",
+      "utils/**/*.js"
+    ],
+    "exclude": [
+      "qa-tests/**",
+      "node_modules/**",
+      "coverage/**",
+      ".nyc_output/**",
+      "backup/**",
+      "migrations/**",
+      "tests/**",
+      "**/*.http"
+    ],
+    "reporter": [
+      "text",
+      "html",
+      "lcov"
+    ],
+    "report-dir": "coverage",
+    "temp-dir": ".nyc_output"
   }
 }

@@ -1,0 +1,11 @@
+{
+  "require": ["qa-tests/setup.js"],
+  "timeout": 120000,
+  "recursive": true,
+  "spec": [
+    "qa-tests/api/**/*.test.js",
+    "qa-tests/integration/**/*.test.js"
+  ],
+  "allow-empty": true,
+  "exit": true
+}
