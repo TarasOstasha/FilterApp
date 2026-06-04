@@ -4,6 +4,7 @@ const { QueryTypes } = require('sequelize');
 const chalk = require('chalk');
 const { DISTINCT_FILTER_VALUE_SQL } = require('../utils/filterQuery');
 const { normalizeFilterResultsSortOrder } = require('../utils/filterFieldOrder');
+const { VISIBLE_PRODUCT_SQL_AND } = require('../utils/productVisibility');
 
 module.exports.getAllFilterFields = async (req, res, next) => {
   try {
@@ -40,6 +41,7 @@ module.exports.getAllFilterFields = async (req, res, next) => {
           FROM products p
           ${categoryJoin}
           WHERE 1=1
+          ${VISIBLE_PRODUCT_SQL_AND}
         )
         ${DISTINCT_FILTER_VALUE_SQL}
       `;

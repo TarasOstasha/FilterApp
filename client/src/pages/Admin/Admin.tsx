@@ -7,6 +7,7 @@ import styles from './Admin.module.scss';
 import logo from './Logo-Master.png';
 import { changePassword } from '../../api';
 import { CHANGE_PASSWORD_VALIDATION_SCHEMA } from '../../utils/validatedSchemas';
+import { useState } from 'react';
 
 function getUsernameFromToken(): string {
     const token = localStorage.getItem('authToken');
@@ -23,6 +24,7 @@ function getUsernameFromToken(): string {
 const Admin: React.FC = () => {
     const navigate = useNavigate();
     const username = getUsernameFromToken();
+    const [changePasswordWindow, setChangePasswordWindow] = useState(false);
 
     const handleLogout = () => {
         localStorage.removeItem('authToken');
@@ -46,6 +48,10 @@ const Admin: React.FC = () => {
         }
     };
 
+    const openChangePassWindow = () => {
+        setChangePasswordWindow(prev => !prev);
+    };
+
     return (
         <div className={styles['admin-wrapper']}>
             <div>
@@ -57,67 +63,72 @@ const Admin: React.FC = () => {
                 <button onClick={handleLogout} className={styles['logout-button']}>
                     Logout
                 </button>
+                <button onClick={openChangePassWindow} className={styles['change-password-button']}>
+                    Change Password
+                </button>
+                {changePasswordWindow && (
+                    <section className={styles['change-password-section']}>
+                        <h3>Change Password</h3>
+                        {username && (
+                            <p className={styles['logged-in-as']}>Logged in as <strong>{username}</strong></p>
+                        )}
+                        <Formik
+                            initialValues={{
+                                oldPassword: '',
+                                newPassword: '',
+                                confirmPassword: '',
+                            }}
+                            validationSchema={CHANGE_PASSWORD_VALIDATION_SCHEMA}
+                            onSubmit={handleChangePassword}
+                        >
+                            <Form className={styles['change-password-form']}>
+                                <div>
+                                    <Field
+                                        placeholder="Current password"
+                                        type="password"
+                                        name="oldPassword"
+                                        autoComplete="current-password"
+                                    />
+                                    <ErrorMessage
+                                        name="oldPassword"
+                                        component="div"
+                                        className={styles['error-message']}
+                                    />
+                                </div>
+                                <div>
+                                    <Field
+                                        placeholder="New password"
+                                        type="password"
+                                        name="newPassword"
+                                        autoComplete="new-password"
+                                    />
+                                    <ErrorMessage
+                                        name="newPassword"
+                                        component="div"
+                                        className={styles['error-message']}
+                                    />
+                                </div>
+                                <div>
+                                    <Field
+                                        placeholder="Confirm new password"
+                                        type="password"
+                                        name="confirmPassword"
+                                        autoComplete="new-password"
+                                    />
+                                    <ErrorMessage
+                                        name="confirmPassword"
+                                        component="div"
+                                        className={styles['error-message']}
+                                    />
+                                </div>
+                                <button type="submit" className={styles['submit-button']}>
+                                    Update Password
+                                </button>
+                            </Form>
+                        </Formik>
+                    </section>
+                )}
 
-                <section className={styles['change-password-section']}>
-                    <h3>Change Password</h3>
-                    {username && (
-                        <p className={styles['logged-in-as']}>Logged in as <strong>{username}</strong></p>
-                    )}
-                    <Formik
-                        initialValues={{
-                            oldPassword: '',
-                            newPassword: '',
-                            confirmPassword: '',
-                        }}
-                        validationSchema={CHANGE_PASSWORD_VALIDATION_SCHEMA}
-                        onSubmit={handleChangePassword}
-                    >
-                        <Form className={styles['change-password-form']}>
-                            <div>
-                                <Field
-                                    placeholder="Current password"
-                                    type="password"
-                                    name="oldPassword"
-                                    autoComplete="current-password"
-                                />
-                                <ErrorMessage
-                                    name="oldPassword"
-                                    component="div"
-                                    className={styles['error-message']}
-                                />
-                            </div>
-                            <div>
-                                <Field
-                                    placeholder="New password"
-                                    type="password"
-                                    name="newPassword"
-                                    autoComplete="new-password"
-                                />
-                                <ErrorMessage
-                                    name="newPassword"
-                                    component="div"
-                                    className={styles['error-message']}
-                                />
-                            </div>
-                            <div>
-                                <Field
-                                    placeholder="Confirm new password"
-                                    type="password"
-                                    name="confirmPassword"
-                                    autoComplete="new-password"
-                                />
-                                <ErrorMessage
-                                    name="confirmPassword"
-                                    component="div"
-                                    className={styles['error-message']}
-                                />
-                            </div>
-                            <button type="submit" className={styles['submit-button']}>
-                                Update Password
-                            </button>
-                        </Form>
-                    </Formik>
-                </section>
             </div>
         </div>
     );

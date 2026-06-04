@@ -57,6 +57,11 @@ module.exports = (sequelize) => {
         allowNull: true,
         defaultValue: null,
       },
+      hide_product: {
+        type: DataTypes.STRING(1),
+        allowNull: true,
+        defaultValue: null,
+      },
     },
     {
       sequelize,

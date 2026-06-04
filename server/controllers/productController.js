@@ -9,12 +9,14 @@ const {
   appendCheckboxFilterJoins,
   buildFilterJoins,
 } = require('../utils/filterQuery');
+const { visibleProductWhere, visibleProductSql, VISIBLE_PRODUCT_SQL_AND } = require('../utils/productVisibility');
 
 
 module.exports.getAllProducts = async (req, res, next) => {
   const { limit, offset } = req.pagination
   try {
     const foundProducts = await Product.findAll({
+      where: visibleProductWhere(),
       limit,
       offset,
       order: [['product_price', 'ASC']], // or your preferred default sort
@@ -58,25 +60,29 @@ module.exports.getMegaFilteredProductItems = async (req, res, next) => {
       ],
     }));
 
-    // 4) Construct the final "where" object
-    // If there are no words, we can omit the condition entirely.
-    const where = andConditions.length
-      ? { [Op.and]: andConditions }
-      : {};
-
-    // 5) Execute the query (scoped to category when catId is provided)
-    const productWhere = { ...where };
-
+    // 4) Execute the query (scoped to category when catId is provided)
+    const productWhereClauses = [];
+    if (andConditions.length) {
+      productWhereClauses.push({ [Op.and]: andConditions });
+    }
     if (catId) {
       const safeCatId = parseInt(catId, 10);
       if (Number.isFinite(safeCatId)) {
-        productWhere.id = {
-          [Op.in]: sequelize.literal(
-            `(SELECT product_id FROM product_categories WHERE category_id = ${safeCatId})`
-          ),
-        };
+        productWhereClauses.push({
+          id: {
+            [Op.in]: sequelize.literal(
+              `(SELECT product_id FROM product_categories WHERE category_id = ${safeCatId})`
+            ),
+          },
+        });
       }
     }
+    productWhereClauses.push(visibleProductWhere());
+
+    const productWhere =
+      productWhereClauses.length === 1
+        ? productWhereClauses[0]
+        : { [Op.and]: productWhereClauses };
 
     const foundProducts = await Product.findAll({
       where: productWhere,
@@ -194,13 +200,18 @@ module.exports.getPriceRange = async (req, res, next) => {
     // console.log(joins);
     // console.log(chalk.yellow('Replacements:'), replacements);
 
+    const visibilityCondition = `WHERE ${visibleProductSql('p')}`;
+    const filteredProductsWhere = productPriceCondition
+      ? `${productPriceCondition} AND ${visibleProductSql('p')}`
+      : visibilityCondition;
+
     const [filteredRow] = await sequelize.query(
       `
       WITH filtered_products AS (
         SELECT DISTINCT p.id, p.product_price
         FROM products p
         ${joins}
-        ${productPriceCondition}
+        ${filteredProductsWhere}
       )
       SELECT 
         MIN(product_price)::numeric AS min, 
@@ -214,7 +225,7 @@ module.exports.getPriceRange = async (req, res, next) => {
     );
 
     const [globalRow] = await sequelize.query(
-      `SELECT MIN(product_price)::numeric AS globalmin, MAX(product_price)::numeric AS globalmax FROM products;`,
+      `SELECT MIN(product_price)::numeric AS globalmin, MAX(product_price)::numeric AS globalmax FROM products p WHERE ${visibleProductSql('p')};`,
       { type: QueryTypes.SELECT }
     );
 
@@ -306,10 +317,12 @@ module.exports.getProducts = async (req, res, next) => {
         ${joinClauses}
         WHERE 1=1
         ${whereClauses}
+        ${VISIBLE_PRODUCT_SQL_AND}
       )
       SELECT p.*
       FROM products p
       INNER JOIN filtered_product_ids fpi ON fpi.id = p.id
+      WHERE ${visibleProductSql('p')}
       ORDER BY p.${sortField} ${sortDir}, p.id ASC
       LIMIT :limit OFFSET :offset
     `;
@@ -320,6 +333,7 @@ module.exports.getProducts = async (req, res, next) => {
       ${joinClauses}
       WHERE 1=1
       ${whereClauses}
+      ${VISIBLE_PRODUCT_SQL_AND}
     `;
 
     replacements.limit = limit;
@@ -542,6 +556,7 @@ module.exports.getWidthRange = async (req, res, next) => {
         SELECT DISTINCT p.id
         FROM products p
         ${joins}
+        WHERE ${visibleProductSql('p')}
       )
       SELECT 
         MIN(CAST(regexp_replace(pf.filter_value, '[^0-9\\.]', '', 'g') AS double precision)) AS min,
@@ -556,10 +571,12 @@ module.exports.getWidthRange = async (req, res, next) => {
     const [result] = await sequelize.query(
       `
       SELECT
-        MIN(CAST(regexp_replace(filter_value, '[^0-9\\.]+', '', 'g') AS double precision)) AS min,
-        MAX(CAST(regexp_replace(filter_value, '[^0-9\\.]+', '', 'g') AS double precision)) AS max
-      FROM product_filters
-      WHERE filter_field_id = :widthFieldId
+        MIN(CAST(regexp_replace(pf.filter_value, '[^0-9\\.]+', '', 'g') AS double precision)) AS min,
+        MAX(CAST(regexp_replace(pf.filter_value, '[^0-9\\.]+', '', 'g') AS double precision)) AS max
+      FROM product_filters pf
+      JOIN products p ON p.id = pf.product_id
+      WHERE pf.filter_field_id = :widthFieldId
+        AND ${visibleProductSql('p')}
       `,
       {
         replacements: { widthFieldId: widthField.id },
@@ -658,6 +675,7 @@ module.exports.getHeightRange = async (req, res, next) => {
         SELECT DISTINCT p.id
         FROM products p
         ${joins}
+        WHERE ${visibleProductSql('p')}
       )
       SELECT 
         MIN(CAST(regexp_replace(pf.filter_value, '[^0-9\\.]', '', 'g') AS double precision)) AS min,
@@ -671,10 +689,12 @@ module.exports.getHeightRange = async (req, res, next) => {
     const [result] = await sequelize.query(
       `
       SELECT
-        MIN(CAST(regexp_replace(filter_value, '[^0-9\\.]+', '', 'g') AS double precision)) AS min,
-        MAX(CAST(regexp_replace(filter_value, '[^0-9\\.]+', '', 'g') AS double precision)) AS max
-      FROM product_filters
-      WHERE filter_field_id = :heightFieldId
+        MIN(CAST(regexp_replace(pf.filter_value, '[^0-9\\.]+', '', 'g') AS double precision)) AS min,
+        MAX(CAST(regexp_replace(pf.filter_value, '[^0-9\\.]+', '', 'g') AS double precision)) AS max
+      FROM product_filters pf
+      JOIN products p ON p.id = pf.product_id
+      WHERE pf.filter_field_id = :heightFieldId
+        AND ${visibleProductSql('p')}
       `,
       {
         replacements: { heightFieldId: heightField.id },

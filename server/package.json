@@ -11,6 +11,7 @@
     "test:api": "mocha --spec \"qa-tests/api/**/*.test.js\"",
     "test:api:multi": "mocha --spec \"qa-tests/api/multiFilter.test.js\"",
     "test:compare-excel-db": "node qa-tests/scripts/compareExcelDb.js",
+    "export:db-only-products": "node qa-tests/scripts/exportDbOnlyProducts.js",
     "coverage": "nyc mocha"
   },
   "author": "tony joss",

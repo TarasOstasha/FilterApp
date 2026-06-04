@@ -25,6 +25,39 @@ async function main() {
   const loaded = loadExcelProducts(resolveExcelPath());
   const excelAtomic = collectUniqueAtomicValues(loaded.products);
 
+  const excelCodes = new Set(
+    loaded.products.map((p) => String(p.product_code ?? '').trim()).filter(Boolean)
+  );
+
+  const dbCodeRows = await sequelize.query(
+    `
+    SELECT DISTINCT TRIM(product_code) AS product_code
+    FROM products
+    WHERE product_code IS NOT NULL AND TRIM(product_code) <> ''
+    ORDER BY product_code
+    `,
+    { type: QueryTypes.SELECT }
+  );
+  const dbCodes = new Set(dbCodeRows.map((r) => String(r.product_code).trim()));
+
+  console.log('\n=== Product catalog (product_code) ===\n');
+  console.log(`Excel: ${loaded.filePath}`);
+  console.log(`DB: ${config.database}@${config.host}\n`);
+  console.log(`Excel unique product_codes: ${excelCodes.size}`);
+  console.log(`DB unique product_codes: ${dbCodes.size}`);
+
+  const codesInBoth = [...excelCodes].filter((c) => dbCodes.has(c)).length;
+  const onlyExcelCodes = [...excelCodes].filter((c) => !dbCodes.has(c)).sort();
+  const onlyDbCodes = [...dbCodes].filter((c) => !excelCodes.has(c)).sort();
+
+  console.log(`In both: ${codesInBoth}`);
+  console.log(
+    `Excel only product_codes (${onlyExcelCodes.length}): ${onlyExcelCodes.slice(0, 20).join(', ')}${onlyExcelCodes.length > 20 ? ' …' : ''}`
+  );
+  console.log(
+    `DB only product_codes (${onlyDbCodes.length}): ${onlyDbCodes.slice(0, 20).join(', ')}${onlyDbCodes.length > 20 ? ' …' : ''}`
+  );
+
   const apiNames = Object.values(CHECKBOX_API_FIELD_NAMES);
   const dbFieldRows = await sequelize.query(
     `SELECT id, field_name, field_type FROM filter_fields WHERE field_name IN (:names) ORDER BY field_name`,
@@ -136,6 +169,11 @@ async function main() {
   }
 
   console.log('=== Summary ===');
+  console.log(`Excel unique product_codes: ${excelCodes.size}`);
+  console.log(`DB unique product_codes: ${dbCodes.size}`);
+  console.log(`Product codes in both: ${codesInBoth}`);
+  console.log(`Excel-only product_codes: ${onlyExcelCodes.length}`);
+  console.log(`DB-only product_codes: ${onlyDbCodes.length}`);
   console.log(`Fields compared: ${CHECKBOX_FIELDS.length}`);
   console.log(`Fields skipped (empty Excel): ${skippedFields.length}`);
   if (skippedFields.length) {

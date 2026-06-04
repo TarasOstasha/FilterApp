@@ -7,6 +7,7 @@ const {
   buildFilterJoins,
 } = require('../utils/filterQuery');
 const { normalizeFilterResultsSortOrder } = require('../utils/filterFieldOrder');
+const { VISIBLE_PRODUCT_SQL_AND } = require('../utils/productVisibility');
 
 module.exports.getDynamicFilters = async (req, res, next) => {
   try {
@@ -70,6 +71,7 @@ module.exports.getDynamicFilters = async (req, res, next) => {
             ${joinClauses}
             WHERE 1=1
             ${whereClauses}
+            ${VISIBLE_PRODUCT_SQL_AND}
           )
           SELECT 
             MIN(product_price) as min_price,
@@ -118,6 +120,7 @@ module.exports.getDynamicFilters = async (req, res, next) => {
           ${joinClauses}
           WHERE 1=1
           ${whereClauses}
+          ${VISIBLE_PRODUCT_SQL_AND}
         )
         ${DISTINCT_FILTER_VALUE_SQL}
       `;

@@ -11,6 +11,7 @@ const PRODUCT_FIELDS = [
   'product_img_link',
   'product_price',
   'most_popular',
+  'hide_product',
   'category_ids',
 ];
 
@@ -49,6 +50,7 @@ const fetchProductExportRows = async () => {
       p.product_img_link,
       p.product_price,
       p.most_popular,
+      COALESCE(p.hide_product, '') AS hide_product,
       COALESCE(STRING_AGG(pc.category_id::text, ',' ORDER BY pc.category_id), '') AS category_ids
     FROM products p
     LEFT JOIN product_categories pc ON p.id = pc.product_id
@@ -59,7 +61,8 @@ const fetchProductExportRows = async () => {
       p.product_link,
       p.product_img_link,
       p.product_price,
-      p.most_popular
+      p.most_popular,
+      p.hide_product
     ORDER BY p.product_code, p.id;
   `);
 

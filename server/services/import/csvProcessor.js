@@ -23,6 +23,13 @@ const getCategoryIdsFromRows = (rows) => {
   return parseCategoryIds(rows[0].category_ids);
 };
 
+const normalizeHideProduct = (raw) => {
+  const value = String(raw ?? '').trim().toUpperCase();
+  if (!value) return null;
+  if (value === 'Y') return 'Y';
+  return { invalid: true, value: String(raw ?? '').trim() };
+};
+
 const validateCategoryIds = (categoryIds, validCategoryIds) => {
   if (categoryIds.length === 0) {
     return { valid: false, reason: 'Missing category_ids' };
@@ -69,8 +76,19 @@ const processProductCsvFile = (csvFilePath) => {
               product_img_link,
               product_price,
               most_popular,
+              hide_product: rawHideProduct,
               category_ids: rawCategoryIds,
             } = rows[0]; // take first for product insert
+
+            const hideProduct = normalizeHideProduct(rawHideProduct);
+            if (hideProduct?.invalid) {
+              errorRows.push({
+                product_code,
+                hide_product: hideProduct.value,
+                reason: 'Invalid hide_product (use Y or leave blank)',
+              });
+              continue;
+            }
 
             const price = parseFloat(product_price);
             if (!Number.isFinite(price) || price <= 0) {
@@ -95,16 +113,25 @@ const processProductCsvFile = (csvFilePath) => {
 
             const normalizedImgLink = normalizeProductImgLink(product_img_link);
             const productResult = await pool.query(
-              `INSERT INTO products (product_code, product_name, product_link, product_img_link, product_price, most_popular)
-               VALUES ($1, $2, $3, $4, $5, $6)
+              `INSERT INTO products (product_code, product_name, product_link, product_img_link, product_price, most_popular, hide_product)
+               VALUES ($1, $2, $3, $4, $5, $6, $7)
                ON CONFLICT (product_code) DO UPDATE 
                SET product_name = COALESCE(EXCLUDED.product_name, products.product_name), 
                    product_link = COALESCE(EXCLUDED.product_link, products.product_link), 
                    product_img_link = COALESCE(EXCLUDED.product_img_link, products.product_img_link), 
                    product_price = COALESCE(EXCLUDED.product_price, products.product_price),
-                   most_popular = COALESCE(EXCLUDED.most_popular, products.most_popular)
+                   most_popular = COALESCE(EXCLUDED.most_popular, products.most_popular),
+                   hide_product = EXCLUDED.hide_product
                RETURNING id;`,
-              [product_code, product_name, product_link, normalizedImgLink, price, most_popular ? parseFloat(most_popular) : null]
+              [
+                product_code,
+                product_name,
+                product_link,
+                normalizedImgLink,
+                price,
+                most_popular ? parseFloat(most_popular) : null,
+                hideProduct,
+              ]
             );
 
             const productId = productResult.rows[0].id;
