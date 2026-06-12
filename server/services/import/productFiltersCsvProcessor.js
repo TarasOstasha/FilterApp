@@ -63,16 +63,23 @@ const parseProductId = (row) => {
 };
 
 const collectFilterValuesForRow = (row, product_id, idToValueCol, filterFieldMap) => {
-  const inserts = [];
+  /** @type {Map<number, { values: string[] }>} */
+  const touchedFields = new Map();
   const validationErrors = [];
   const rowErrors = [];
 
   for (const { idCol, valueCol, idNumber } of idToValueCol) {
-    const filter_field_id = parseInt(row[idCol], 10);
-    if (!filter_field_id || Number.isNaN(filter_field_id)) continue;
+    let filter_field_id = parseInt(row[idCol], 10);
+    if (!filter_field_id || Number.isNaN(filter_field_id)) {
+      filter_field_id = idNumber;
+    }
 
     const rawValue = String(row[valueCol] ?? '').trim();
-    if (!rawValue) continue;
+
+    if (!rawValue) {
+      touchedFields.set(filter_field_id, { values: [] });
+      continue;
+    }
 
     let values = [];
     if (filter_field_id === 1) {
@@ -94,6 +101,7 @@ const collectFilterValuesForRow = (row, product_id, idToValueCol, filterFieldMap
       continue;
     }
 
+    const acceptedValues = [];
     const seenValues = new Set();
     for (const val of values) {
       if (seenValues.has(val)) continue;
@@ -116,11 +124,13 @@ const collectFilterValuesForRow = (row, product_id, idToValueCol, filterFieldMap
         }
       }
 
-      inserts.push({ filter_field_id, filter_value: val });
+      acceptedValues.push(val);
     }
+
+    touchedFields.set(filter_field_id, { values: acceptedValues });
   }
 
-  return { inserts, validationErrors, rowErrors };
+  return { touchedFields, validationErrors, rowErrors };
 };
 
 const batchInsertProductFilters = async (client, product_id, inserts) => {
@@ -142,21 +152,47 @@ const batchInsertProductFilters = async (client, product_id, inserts) => {
   }
 };
 
-const importFiltersForProduct = async (product_id, inserts) => {
-  const client = await pool.connect();
+/**
+ * Apply all product filter changes in a single DB transaction.
+ * @param {Map<number, Map<number, { values: string[] }>>} filtersByProduct
+ * @param {import('pg').Pool} [poolInstance]
+ */
+const importAllProductFiltersInTransaction = async (filtersByProduct, poolInstance = pool) => {
+  const client = await poolInstance.connect();
+  const successRows = [];
+  let inserted = 0;
+
   try {
     await client.query('BEGIN');
-    await client.query('DELETE FROM product_filters WHERE product_id = $1', [product_id]);
 
-    if (inserts.length > 0) {
-      await batchInsertProductFilters(client, product_id, inserts);
+    for (const [product_id, touchedFields] of filtersByProduct.entries()) {
+      for (const [filter_field_id, { values }] of touchedFields.entries()) {
+        await client.query(
+          'DELETE FROM product_filters WHERE product_id = $1 AND filter_field_id = $2',
+          [product_id, filter_field_id]
+        );
+
+        if (values.length > 0) {
+          const inserts = values.map((filter_value) => ({ filter_field_id, filter_value }));
+          await batchInsertProductFilters(client, product_id, inserts);
+          inserted += inserts.length;
+
+          for (const filter_value of values) {
+            successRows.push({ product_id, filter_field_id, filter_value });
+          }
+        }
+      }
     }
 
     await client.query('COMMIT');
-    return { inserted: inserts.length };
+    return { inserted, successRows };
   } catch (err) {
     await client.query('ROLLBACK');
-    throw err;
+    throw {
+      importError: true,
+      message: `Product filters import rolled back: ${err.message || String(err)}`,
+      cause: err,
+    };
   } finally {
     client.release();
   }
@@ -215,7 +251,11 @@ const processProductFiltersCsvFile = (csvFilePath) => {
               if (idToValueCol.length === 0) {
                 console.error(chalk.red('No filter_field_id_* columns detected. Is this the new pivot CSV?'));
               } else {
-                console.log(chalk.blue(`Detected ${idToValueCol.length} filter fields from header.`));
+                console.log(
+                  chalk.blue(
+                    `Detected ${idToValueCol.length} filter field column(s) in file — only these fields will be updated per product.`
+                  )
+                );
               }
               headersParsed = true;
             })
@@ -229,6 +269,7 @@ const processProductFiltersCsvFile = (csvFilePath) => {
           return;
         }
 
+        /** @type {Map<number, Map<number, { values: string[] }>>} */
         const filtersByProduct = new Map();
         const errorRows = [];
         const validationErrors = [];
@@ -240,7 +281,7 @@ const processProductFiltersCsvFile = (csvFilePath) => {
             continue;
           }
 
-          const { product_id, productIdKey, productIdRaw, keys } = parseProductId(row);
+          const { product_id, productIdRaw } = parseProductId(row);
 
           if (!product_id) {
             const product_code = String(row.product_code ?? '').trim();
@@ -257,12 +298,8 @@ const processProductFiltersCsvFile = (csvFilePath) => {
             continue;
           }
 
-          const { inserts, validationErrors: rowValidation, rowErrors } = collectFilterValuesForRow(
-            row,
-            product_id,
-            idToValueCol,
-            filterFieldMap
-          );
+          const { touchedFields, validationErrors: rowValidation, rowErrors } =
+            collectFilterValuesForRow(row, product_id, idToValueCol, filterFieldMap);
 
           if (rowValidation.length > 0) {
             validationErrors.push(...rowValidation);
@@ -272,17 +309,12 @@ const processProductFiltersCsvFile = (csvFilePath) => {
           }
 
           if (!filtersByProduct.has(product_id)) {
-            filtersByProduct.set(product_id, []);
+            filtersByProduct.set(product_id, new Map());
           }
 
-          const existing = filtersByProduct.get(product_id);
-          const dedupe = new Set(existing.map((e) => `${e.filter_field_id}|${e.filter_value}`));
-          for (const entry of inserts) {
-            const key = `${entry.filter_field_id}|${entry.filter_value}`;
-            if (!dedupe.has(key)) {
-              dedupe.add(key);
-              existing.push(entry);
-            }
+          const fieldMap = filtersByProduct.get(product_id);
+          for (const [filter_field_id, entry] of touchedFields.entries()) {
+            fieldMap.set(filter_field_id, entry);
           }
         }
 
@@ -298,48 +330,42 @@ const processProductFiltersCsvFile = (csvFilePath) => {
           return;
         }
 
-        const successRows = [];
-        const productIds = Array.from(filtersByProduct.keys());
-        console.log(chalk.blue(`Importing product_filters for ${productIds.length} product(s)...`));
-
-        for (let i = 0; i < productIds.length; i++) {
-          const product_id = productIds[i];
-          const inserts = filtersByProduct.get(product_id) || [];
-
-          try {
-            await importFiltersForProduct(product_id, inserts);
-            for (const entry of inserts) {
-              successRows.push({
-                product_id,
-                filter_field_id: entry.filter_field_id,
-                filter_value: entry.filter_value,
-              });
-            }
-            if ((i + 1) % 100 === 0 || i === productIds.length - 1) {
-              console.log(chalk.gray(`Processed ${i + 1}/${productIds.length} products`));
-            }
-          } catch (err) {
-            const reason = err.message || String(err);
-            errorRows.push({ product_id, reason: `Failed to import filters: ${reason}` });
-            console.error(chalk.red(`Failed product ${product_id}: ${reason}`));
-          }
+        if (errorRows.length > 0) {
+          const errorMsg = `Import stopped: ${errorRows.length} row(s) failed validation.`;
+          console.error(chalk.red(errorMsg));
+          reject({
+            validationError: true,
+            message: errorMsg,
+            details: errorRows,
+            errorRows,
+          });
+          return;
         }
 
-        const ok = successRows.length;
-        const bad = errorRows.length;
+        const productIds = Array.from(filtersByProduct.keys());
+        console.log(
+          chalk.blue(
+            `Importing product_filters for ${productIds.length} product(s) in a single transaction...`
+          )
+        );
+
+        const { successRows } = await importAllProductFiltersInTransaction(filtersByProduct);
+
         if (blankRowsSkipped > 0) {
           console.log(
             chalk.gray(`Skipped ${blankRowsSkipped} blank row(s) at end of file (no product_id/product_code).`)
           );
         }
-        if (bad === 0) {
-          console.log(chalk.green(`CSV processed successfully. Inserted ${ok} product_filters.`));
-        } else {
-          console.log(chalk.yellow(`CSV finished with ${bad} errors. Successful inserts: ${ok}.`));
-        }
 
-        resolve({ successRows, errorRows, blankRowsSkipped });
+        console.log(
+          chalk.green(`CSV processed successfully. Inserted ${successRows.length} product_filters.`)
+        );
+
+        resolve({ successRows, errorRows: [], blankRowsSkipped });
       } catch (err) {
+        if (err.importError) {
+          console.error(chalk.red(err.message));
+        }
         reject(err);
       }
     })();
@@ -347,3 +373,5 @@ const processProductFiltersCsvFile = (csvFilePath) => {
 };
 
 module.exports = processProductFiltersCsvFile;
+module.exports.importAllProductFiltersInTransaction = importAllProductFiltersInTransaction;
+module.exports.collectFilterValuesForRow = collectFilterValuesForRow;

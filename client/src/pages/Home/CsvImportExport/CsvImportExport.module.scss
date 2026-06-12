@@ -305,3 +305,131 @@ code {
   cursor: not-allowed;
   pointer-events: none; 
 }
+
+.confirmOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(15, 23, 42, 0.55);
+  backdrop-filter: blur(2px);
+}
+
+.confirmDialog {
+  width: min(100%, 480px);
+  text-align: left;
+  background: #ffffff;
+  border-radius: 16px;
+  box-shadow: 0 24px 48px rgba(15, 23, 42, 0.25);
+  overflow: hidden;
+  animation: confirmPop 0.2s ease-out;
+}
+
+@keyframes confirmPop {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.confirmHeader {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 22px 22px 0;
+}
+
+.confirmIcon {
+  flex-shrink: 0;
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+  background: #fef3c7;
+  color: #b45309;
+  font-size: 22px;
+  font-weight: 700;
+}
+
+.confirmTitle {
+  margin: 0 0 6px;
+  font-size: 18px;
+  font-weight: 700;
+  color: #111827;
+}
+
+.confirmSubtitle {
+  margin: 0;
+  font-size: 14px;
+  color: #6b7280;
+  line-height: 1.5;
+}
+
+.confirmBody {
+  padding: 16px 22px 0;
+}
+
+.confirmList {
+  margin: 0;
+  padding: 0 0 0 18px;
+  color: #374151;
+  font-size: 14px;
+  line-height: 1.6;
+
+  li {
+    margin-bottom: 8px;
+
+    &:last-child {
+      margin-bottom: 0;
+    }
+  }
+}
+
+.confirmFileName {
+  margin-top: 14px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: #f8fafc;
+  border: 1px solid #e5e7eb;
+  font-size: 13px;
+  color: #475569;
+
+  strong {
+    color: #0f172a;
+  }
+}
+
+.confirmActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 20px 22px 22px;
+}
+
+.confirmCancelBtn {
+  margin: 0 !important;
+  background: #f3f4f6 !important;
+  color: #374151 !important;
+
+  &:hover {
+    background: #e5e7eb !important;
+  }
+}
+
+.confirmProceedBtn {
+  margin: 0 !important;
+  background: #d97706 !important;
+
+  &:hover {
+    background: #b45309 !important;
+  }
+}

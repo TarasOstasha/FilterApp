@@ -149,6 +149,13 @@ module.exports.importProductFilters = async (req, res, next) => {
           status: 'validation_failed'
         });
       }
+
+      if (err.importError) {
+        return res.status(500).json({
+          message: err.message,
+          status: 'import_rolled_back',
+        });
+      }
       
       next(createHttpError(500, 'Error processing file'));
     }

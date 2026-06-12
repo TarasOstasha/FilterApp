@@ -62,6 +62,7 @@ const CsvImportExport: React.FC = () => {
     const [isUploading, setIsUploading] = useState(false);
     const [isExporting, setIsExporting] = useState(false);
     const [importErrorRows, setImportErrorRows] = useState<ImportErrorRow[] | null>(null);
+    const [showFiltersConfirm, setShowFiltersConfirm] = useState(false);
 
     const invalid = !!file && !isAllowedFileName(file.name);
     const errorLock = invalid && !showRules;
@@ -105,53 +106,14 @@ const CsvImportExport: React.FC = () => {
     //     return 'unknown';
     // };
 
-    const handleFileUpload = async () => {
-        console.log("Upload button clicked", { file });
-        
-        if (!file) {
-            toast.error('Please select a file!');
-            return;
-        }
-
-        const fileName = file.name.toLowerCase();
-        const uploadType = getUploadTypeFromName(fileName);
-        console.log("File information:", { fileName, uploadType, size: file.size });
-        
-        if (uploadType === 'unknown') {
-            toast.error('Unsupported file name.');
-            setShowRules(true);
-            return;
-        }
-
-        // Check row count before uploading
-        try {
-            toast.info('Validating file...', { autoClose: 2000 });
-            const rowCount = await countCSVRows(file);
-            
-            if (rowCount > 10000) {
-                toast.error(
-                    <div>
-                        <p><strong>File too large!</strong></p>
-                        <p>Your file contains <strong>{rowCount.toLocaleString()}</strong> rows.</p>
-                        <p>Maximum allowed: <strong>10,000</strong> rows.</p>
-                        <p>Please split your file into smaller chunks and upload them separately.</p>
-                    </div>,
-                    { autoClose: 10000 }
-                );
-                return;
-            }
-        } catch (error) {
-            toast.error('Failed to validate file. Please try again.');
-            return;
-        }
-
+    const performFileUpload = async (uploadFile: File, uploadType: string) => {
         const formData = new FormData();
-        formData.append('file', file);
-        
+        formData.append('file', uploadFile);
+
         setIsUploading(true);
         setImportErrorRows(null);
         toast.info('Uploading and processing file... Please wait.', { autoClose: false, toastId: 'upload-progress' });
-        
+
         try {
             console.log("Attempting to upload file", { uploadType });
             const response = await uploadCSV(uploadType, formData);
@@ -172,7 +134,7 @@ const CsvImportExport: React.FC = () => {
             } else {
                 setImportErrorRows(null);
             }
-            
+
             if (uploadType === 'product-remove') {
                 const deleted = response.data.result?.deleted || 0;
                 if (skippedRows.length === 0) {
@@ -183,7 +145,7 @@ const CsvImportExport: React.FC = () => {
             } else {
                 toast.info(`Valid rows were imported at ${uploadTime}`);
             }
-            
+
             setFile(null);
             const fileInput = document.getElementById('csv-file-input') as HTMLInputElement;
             if (fileInput) fileInput.value = '';
@@ -214,6 +176,60 @@ const CsvImportExport: React.FC = () => {
         } finally {
             setIsUploading(false);
         }
+    };
+
+    const handleFileUpload = async () => {
+        console.log("Upload button clicked", { file });
+
+        if (!file) {
+            toast.error('Please select a file!');
+            return;
+        }
+
+        const fileName = file.name.toLowerCase();
+        const uploadType = getUploadTypeFromName(fileName);
+        console.log("File information:", { fileName, uploadType, size: file.size });
+
+        if (uploadType === 'unknown') {
+            toast.error('Unsupported file name.');
+            setShowRules(true);
+            return;
+        }
+
+        try {
+            toast.info('Validating file...', { autoClose: 2000 });
+            const rowCount = await countCSVRows(file);
+
+            if (rowCount > 10000) {
+                toast.error(
+                    <div>
+                        <p><strong>File too large!</strong></p>
+                        <p>Your file contains <strong>{rowCount.toLocaleString()}</strong> rows.</p>
+                        <p>Maximum allowed: <strong>10,000</strong> rows.</p>
+                        <p>Please split your file into smaller chunks and upload them separately.</p>
+                    </div>,
+                    { autoClose: 10000 }
+                );
+                return;
+            }
+        } catch (error) {
+            toast.error('Failed to validate file. Please try again.');
+            return;
+        }
+
+        if (uploadType === 'product-filter') {
+            setShowFiltersConfirm(true);
+            return;
+        }
+
+        await performFileUpload(file, uploadType);
+    };
+
+    const handleConfirmFiltersUpload = async () => {
+        if (!file) return;
+        setShowFiltersConfirm(false);
+        const uploadType = getUploadTypeFromName(file.name.toLowerCase());
+        await performFileUpload(file, uploadType);
     };
 
     const handleExport = async (type: 'products' | 'categories' | 'product_categories' | 'filter_fields' | 'product_filters') => {
@@ -358,6 +374,69 @@ const CsvImportExport: React.FC = () => {
                         open={showRules}
                         onClose={() => setShowRules(false)}
                     />
+                </div>
+            )}
+            {showFiltersConfirm && file && (
+                <div
+                    className={styles.confirmOverlay}
+                    role="dialog"
+                    aria-modal="true"
+                    aria-labelledby="filters-import-confirm-title"
+                    onClick={() => setShowFiltersConfirm(false)}
+                >
+                    <div
+                        className={styles.confirmDialog}
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <div className={styles.confirmHeader}>
+                            <div className={styles.confirmIcon} aria-hidden="true">!</div>
+                            <div>
+                                <h3 id="filters-import-confirm-title" className={styles.confirmTitle}>
+                                    Confirm product filters import
+                                </h3>
+                                <p className={styles.confirmSubtitle}>
+                                    Please review how this upload will affect your data.
+                                </p>
+                            </div>
+                        </div>
+                        <div className={styles.confirmBody}>
+                            <ul className={styles.confirmList}>
+                                <li>
+                                    <strong>Columns in your file</strong> will overwrite existing filter
+                                    values for those products.
+                                </li>
+                                <li>
+                                    <strong>Columns not included</strong> in the file will not be changed —
+                                    existing values stay as they are.
+                                </li>
+                                <li>
+                                    <strong>Empty cells</strong> in an included column will clear that
+                                    filter field for the product.
+                                </li>
+                            </ul>
+                            <div className={styles.confirmFileName}>
+                                File: <strong>{file.name}</strong>
+                            </div>
+                        </div>
+                        <div className={styles.confirmActions}>
+                            <button
+                                type="button"
+                                className={styles.confirmCancelBtn}
+                                onClick={() => setShowFiltersConfirm(false)}
+                                disabled={isUploading}
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                type="button"
+                                className={styles.confirmProceedBtn}
+                                onClick={handleConfirmFiltersUpload}
+                                disabled={isUploading}
+                            >
+                                Yes, import filters
+                            </button>
+                        </div>
+                    </div>
                 </div>
             )}
         </div>
