@@ -9,7 +9,13 @@ const router = require('./routes');
 const app = express();
 
 const corsOptions = {
-  origin: '*', // on the production, replace with 'https://www.xyzdisplays.com'
+  // origin: '*', // on the production, replace with 'https://www.xyzdisplays.com'
+  origin: [
+    'https://xyzdisplays.com',
+    'https://www.xyzdisplays.com',
+    'https://filter.xyzdisplays.com',
+    'http://localhost:3000', // keep for local development
+  ],
 };
 
 app.use(express.json());
