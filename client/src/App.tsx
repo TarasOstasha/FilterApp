@@ -5,6 +5,7 @@ import './styles/App.scss';
 import CsvImportExport from './pages/Home/CsvImportExport/CsvImportExport';
 import Login from './pages/Login/Login';
 import ProtectedRoute from './components/ProtectedRoute/ProtectedRoute';
+import FilterPageLayout from './components/ExternalChrome/FilterPageLayout';
 
 
 const App: React.FC = () => {
@@ -22,10 +23,16 @@ const App: React.FC = () => {
               </ProtectedRoute>
             }
           />
-          <Route path="*" element={<Home />} />
+          <Route
+            path="*"
+            element={
+              <FilterPageLayout>
+                <Home />
+              </FilterPageLayout>
+            }
+          />
         </Routes>
       </Router>
-      {/* <Home /> */}
     </div>
   );
 };

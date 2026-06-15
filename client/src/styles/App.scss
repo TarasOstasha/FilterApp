@@ -28,17 +28,27 @@
   --bs-body-font-weight: 400;
 }
 
-/* Enforce consistent typography and smoothing globally */
-html, body, * {
+/* Enforce consistent typography and smoothing inside the filter app only */
+html,
+body {
+  margin: 0;
+  padding: 0;
+  background-color: #fff;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+.filter-app-root {
+  background-color: #fff;
+  padding: 50px 0;
+}
+
+.filter-app-root,
+.filter-app-root * {
   font-family: var(--bs-body-font-family) !important;
   font-size: var(--bs-body-font-size);
   line-height: var(--bs-body-line-height);
   font-weight: var(--bs-body-font-weight);
   color: var(--bs-body-color);
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  text-rendering: optimizeLegibility;
-  margin: 0;
-  padding: 0;
-  background-color: #fff;
 }

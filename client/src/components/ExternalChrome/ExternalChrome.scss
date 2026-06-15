@@ -1,0 +1,65 @@
+.external-header-wrapper,
+.external-footer-wrapper {
+  /* Bootstrap reboot targets bare ul/li; reinforce vnav rules inside chrome */
+  .vnav {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+
+  .vnav--level1 {
+    position: relative;
+    display: inline-table;
+  }
+
+  .vnav--level1 > .vnav__item {
+    display: inline-block;
+    vertical-align: middle;
+  }
+
+  .vnav__item {
+    position: relative;
+  }
+
+  .vnav__link {
+    display: block;
+    text-decoration: none;
+  }
+
+  .vnav__subnav {
+    display: none;
+    position: absolute;
+    z-index: 1000;
+  }
+
+  .vnav__item:hover > .vnav__subnav {
+    display: block;
+  }
+
+  .vnav--horizontal .vnav__subnav {
+    left: 0;
+    top: 100%;
+  }
+
+  .vnav--horizontal .vnav--level3,
+  .vnav--horizontal .vnav--level4 {
+    left: 100%;
+    top: 0;
+  }
+}
+
+.external-header-wrapper {
+  .vol-logo__link {
+    display: inline-block;
+    width: 100%;
+    background-size: 0 !important;
+  }
+
+  .vol-logo__link .logo__img {
+    display: block;
+    width: auto;
+    max-width: 55%;
+    height: auto;
+    max-height: none;
+  }
+}

@@ -47,9 +47,5 @@ test-upload.js
 *.csv
 env-production.txt
 
-coverage/
-.nyc_output/
-.env.test
-
-
-server/QA-tests/fixtures/*.xlsx
+# Volusion chrome extraction scratch file
+client/src/external/volusion-page.html
