@@ -4,7 +4,7 @@ import { AxiosResponse } from 'axios';
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import styles from './CsvImportExport.module.scss';
-import { exportData, uploadCSV } from '../../../api/index';
+import { exportData, uploadCSV, fetchProductByCode, updateProductByCode, deleteProductByCode, AdminProduct, AdminProductPayload } from '../../../api/index';
 import Admin from '../../Admin/Admin';
 import AllowedFilenamesNote, { isAllowedFileName, getUploadTypeFromName } from './AllowedFiles';
 import {
@@ -63,6 +63,14 @@ const CsvImportExport: React.FC = () => {
     const [isExporting, setIsExporting] = useState(false);
     const [importErrorRows, setImportErrorRows] = useState<ImportErrorRow[] | null>(null);
     const [showFiltersConfirm, setShowFiltersConfirm] = useState(false);
+    const [productCode, setProductCode] = useState('');
+    const [showEditConfirm, setShowEditConfirm] = useState(false);
+    const [showRemoveConfirm, setShowRemoveConfirm] = useState(false);
+    const [showEditModal, setShowEditModal] = useState(false);
+    const [editForm, setEditForm] = useState<AdminProductPayload | null>(null);
+    const [isProductLoading, setIsProductLoading] = useState(false);
+    const [isProductSaving, setIsProductSaving] = useState(false);
+    const [isProductRemoving, setIsProductRemoving] = useState(false);
 
     const invalid = !!file && !isAllowedFileName(file.name);
     const errorLock = invalid && !showRules;
@@ -270,6 +278,107 @@ const CsvImportExport: React.FC = () => {
         }
     };
 
+    const getTrimmedProductCode = () => productCode.trim();
+
+    const getApiErrorMessage = (error: unknown, fallback: string) => {
+        if (axios.isAxiosError(error) && error.response?.data) {
+            const data = error.response.data as { message?: string; error?: string };
+            return data.message || data.error || fallback;
+        }
+        if (error instanceof Error) {
+            return error.message;
+        }
+        return fallback;
+    };
+
+    const handleEditProduct = () => {
+        if (!getTrimmedProductCode()) {
+            toast.error('Please enter a product code.');
+            return;
+        }
+        setShowEditConfirm(true);
+    };
+
+    const handleRemoveProduct = () => {
+        if (!getTrimmedProductCode()) {
+            toast.error('Please enter a product code.');
+            return;
+        }
+        setShowRemoveConfirm(true);
+    };
+
+    const closeEditModal = () => {
+        setShowEditModal(false);
+        setEditForm(null);
+    };
+
+    const productToForm = (product: AdminProduct): AdminProductPayload => ({
+        product_name: product.product_name,
+        product_link: product.product_link,
+        product_img_link: product.product_img_link,
+        product_price: product.product_price,
+        most_popular: product.most_popular ?? '',
+        hide_product: product.hide_product || '',
+        category_ids: product.category_ids || '',
+    });
+
+    const handleConfirmEdit = async () => {
+        const code = getTrimmedProductCode();
+        setShowEditConfirm(false);
+        setIsProductLoading(true);
+
+        try {
+            const response = await fetchProductByCode(code);
+            if (!response?.data?.product) {
+                toast.error('Product not found.');
+                return;
+            }
+            setEditForm(productToForm(response.data.product));
+            setShowEditModal(true);
+        } catch (error) {
+            toast.error(getApiErrorMessage(error, 'Failed to load product.'));
+        } finally {
+            setIsProductLoading(false);
+        }
+    };
+
+    const handleSaveProduct = async () => {
+        if (!editForm) return;
+
+        const code = getTrimmedProductCode();
+        setIsProductSaving(true);
+
+        try {
+            await updateProductByCode(code, editForm);
+            toast.success(`Product "${code}" updated successfully.`);
+            closeEditModal();
+        } catch (error) {
+            toast.error(getApiErrorMessage(error, 'Failed to update product.'));
+        } finally {
+            setIsProductSaving(false);
+        }
+    };
+
+    const handleConfirmRemove = async () => {
+        const code = getTrimmedProductCode();
+        setShowRemoveConfirm(false);
+        setIsProductRemoving(true);
+
+        try {
+            await deleteProductByCode(code);
+            toast.success(`Product "${code}" removed successfully.`);
+            setProductCode('');
+        } catch (error) {
+            toast.error(getApiErrorMessage(error, 'Failed to remove product.'));
+        } finally {
+            setIsProductRemoving(false);
+        }
+    };
+
+    const updateEditField = (field: keyof AdminProductPayload, value: string) => {
+        setEditForm((prev) => (prev ? { ...prev, [field]: value } : prev));
+    };
+
     return (
         <div className={styles['csv-import-export']}>
 
@@ -434,6 +543,242 @@ const CsvImportExport: React.FC = () => {
                                 disabled={isUploading}
                             >
                                 Yes, import filters
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+            <h2>Edit / Remove Single Product</h2>
+            <div className={styles['edit-remove-product']}>
+                <label htmlFor="product-code-input" className={styles.productCodeLabel}>
+                    Product code
+                </label>
+                <input
+                    id="product-code-input"
+                    type="text"
+                    placeholder="Enter product code"
+                    value={productCode}
+                    onChange={(e) => setProductCode(e.target.value)}
+                    disabled={isProductLoading || isProductSaving || isProductRemoving}
+                    className={styles.productCodeInput}
+                />
+                <div className={styles.productActionButtons}>
+                    <button
+                        type="button"
+                        onClick={handleEditProduct}
+                        disabled={!getTrimmedProductCode() || isProductLoading || isProductSaving || isProductRemoving}
+                        className={styles.editProductBtn}
+                    >
+                        {isProductLoading ? 'Loading...' : 'Edit Product'}
+                    </button>
+                    <button
+                        type="button"
+                        onClick={handleRemoveProduct}
+                        disabled={!getTrimmedProductCode() || isProductLoading || isProductSaving || isProductRemoving}
+                        className={styles.removeProductBtn}
+                    >
+                        {isProductRemoving ? 'Removing...' : 'Remove Product'}
+                    </button>
+                </div>
+            </div>
+            {showEditConfirm && (
+                <div
+                    className={styles.confirmOverlay}
+                    role="dialog"
+                    aria-modal="true"
+                    aria-labelledby="edit-product-confirm-title"
+                    onClick={() => setShowEditConfirm(false)}
+                >
+                    <div className={styles.confirmDialog} onClick={(e) => e.stopPropagation()}>
+                        <div className={styles.confirmHeader}>
+                            <div className={styles.confirmIcon} aria-hidden="true">!</div>
+                            <div>
+                                <h3 id="edit-product-confirm-title" className={styles.confirmTitle}>
+                                    Confirm product edit
+                                </h3>
+                                <p className={styles.confirmSubtitle}>
+                                    Load product <strong>{getTrimmedProductCode()}</strong> for editing?
+                                </p>
+                            </div>
+                        </div>
+                        <div className={styles.confirmBody}>
+                            <p className={styles.confirmMessage}>
+                                You will be able to update product details, categories, and visibility.
+                            </p>
+                        </div>
+                        <div className={styles.confirmActions}>
+                            <button
+                                type="button"
+                                className={styles.confirmCancelBtn}
+                                onClick={() => setShowEditConfirm(false)}
+                                disabled={isProductLoading}
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                type="button"
+                                className={styles.confirmProceedBtn}
+                                onClick={handleConfirmEdit}
+                                disabled={isProductLoading}
+                            >
+                                {isProductLoading ? 'Loading...' : 'Yes, load product'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+            {showRemoveConfirm && (
+                <div
+                    className={styles.confirmOverlay}
+                    role="dialog"
+                    aria-modal="true"
+                    aria-labelledby="remove-product-confirm-title"
+                    onClick={() => !isProductRemoving && setShowRemoveConfirm(false)}
+                >
+                    <div className={styles.confirmDialog} onClick={(e) => e.stopPropagation()}>
+                        <div className={styles.confirmHeader}>
+                            <div className={`${styles.confirmIcon} ${styles.confirmIconDanger}`} aria-hidden="true">!</div>
+                            <div>
+                                <h3 id="remove-product-confirm-title" className={styles.confirmTitle}>
+                                    Confirm product removal
+                                </h3>
+                                <p className={styles.confirmSubtitle}>
+                                    Permanently remove product <strong>{getTrimmedProductCode()}</strong>?
+                                </p>
+                            </div>
+                        </div>
+                        <div className={styles.confirmBody}>
+                            <p className={styles.confirmMessage}>
+                                This action cannot be undone. Related categories and filters will also be removed.
+                            </p>
+                        </div>
+                        <div className={styles.confirmActions}>
+                            <button
+                                type="button"
+                                className={styles.confirmCancelBtn}
+                                onClick={() => setShowRemoveConfirm(false)}
+                                disabled={isProductRemoving}
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                type="button"
+                                className={styles.confirmDangerBtn}
+                                onClick={handleConfirmRemove}
+                                disabled={isProductRemoving}
+                            >
+                                {isProductRemoving ? 'Removing...' : 'Yes, remove product'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+            {showEditModal && editForm && (
+                <div
+                    className={styles.confirmOverlay}
+                    role="dialog"
+                    aria-modal="true"
+                    aria-labelledby="edit-product-modal-title"
+                    onClick={() => !isProductSaving && closeEditModal()}
+                >
+                    <div
+                        className={`${styles.confirmDialog} ${styles.editProductDialog}`}
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <div className={styles.confirmHeader}>
+                            <div>
+                                <h3 id="edit-product-modal-title" className={styles.confirmTitle}>
+                                    Edit product
+                                </h3>
+                                <p className={styles.confirmSubtitle}>
+                                    Product code: <strong>{getTrimmedProductCode()}</strong>
+                                </p>
+                            </div>
+                        </div>
+                        <div className={styles.editProductForm}>
+                            <label>
+                                Product name
+                                <input
+                                    type="text"
+                                    value={editForm.product_name}
+                                    onChange={(e) => updateEditField('product_name', e.target.value)}
+                                    disabled={isProductSaving}
+                                />
+                            </label>
+                            <label>
+                                Product link
+                                <input
+                                    type="text"
+                                    value={editForm.product_link}
+                                    onChange={(e) => updateEditField('product_link', e.target.value)}
+                                    disabled={isProductSaving}
+                                />
+                            </label>
+                            <label>
+                                Image link
+                                <input
+                                    type="text"
+                                    value={editForm.product_img_link}
+                                    onChange={(e) => updateEditField('product_img_link', e.target.value)}
+                                    disabled={isProductSaving}
+                                />
+                            </label>
+                            <label>
+                                Price
+                                <input
+                                    type="number"
+                                    min="0"
+                                    step="0.01"
+                                    value={editForm.product_price}
+                                    onChange={(e) => updateEditField('product_price', e.target.value)}
+                                    disabled={isProductSaving}
+                                />
+                            </label>
+                            <label>
+                                Most popular
+                                <input
+                                    type="number"
+                                    step="0.01"
+                                    value={editForm.most_popular ?? ''}
+                                    onChange={(e) => updateEditField('most_popular', e.target.value)}
+                                    disabled={isProductSaving}
+                                />
+                            </label>
+                            <label>
+                                Hide product (Y or blank)
+                                <input
+                                    type="text"
+                                    value={editForm.hide_product ?? ''}
+                                    onChange={(e) => updateEditField('hide_product', e.target.value)}
+                                    disabled={isProductSaving}
+                                />
+                            </label>
+                            <label>
+                                Category IDs (comma-separated)
+                                <input
+                                    type="text"
+                                    value={editForm.category_ids}
+                                    onChange={(e) => updateEditField('category_ids', e.target.value)}
+                                    disabled={isProductSaving}
+                                />
+                            </label>
+                        </div>
+                        <div className={styles.confirmActions}>
+                            <button
+                                type="button"
+                                className={styles.confirmCancelBtn}
+                                onClick={closeEditModal}
+                                disabled={isProductSaving}
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                type="button"
+                                className={styles.confirmProceedBtn}
+                                onClick={handleSaveProduct}
+                                disabled={isProductSaving}
+                            >
+                                {isProductSaving ? 'Saving...' : 'Save changes'}
                             </button>
                         </div>
                     </div>

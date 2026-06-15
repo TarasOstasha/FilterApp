@@ -433,3 +433,119 @@ code {
     background: #b45309 !important;
   }
 }
+
+.confirmDangerBtn {
+  margin: 0 !important;
+  background: #dc2626 !important;
+
+  &:hover {
+    background: #b91c1c !important;
+  }
+}
+
+.confirmIconDanger {
+  background: #fee2e2 !important;
+  color: #dc2626 !important;
+}
+
+.confirmMessage {
+  margin: 0;
+  font-size: 14px;
+  color: #374151;
+  line-height: 1.6;
+}
+
+.edit-remove-product {
+  margin: 0 auto 2rem;
+  max-width: 520px;
+  padding: 20px;
+  text-align: left;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 16px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06);
+}
+
+.productCodeLabel {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #374151;
+}
+
+.productCodeInput {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 10px 12px;
+  margin-bottom: 14px !important;
+  border: 2px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 15px;
+  background: #fff;
+
+  &:focus {
+    outline: none;
+    border-color: #2563eb;
+  }
+}
+
+.productActionButtons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.editProductBtn {
+  margin: 0 !important;
+  background: #2563eb !important;
+
+  &:hover {
+    background: #1d4ed8 !important;
+  }
+}
+
+.removeProductBtn {
+  margin: 0 !important;
+  background: #dc2626 !important;
+
+  &:hover {
+    background: #b91c1c !important;
+  }
+}
+
+.editProductDialog {
+  width: min(100%, 560px);
+}
+
+.editProductForm {
+  padding: 0 22px 8px;
+  display: grid;
+  gap: 12px;
+
+  label {
+    display: grid;
+    gap: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    color: #374151;
+  }
+
+  input {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 10px 12px;
+    margin: 0 !important;
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 400;
+    color: #111827;
+    background: #fff;
+
+    &:focus {
+      outline: none;
+      border-color: #2563eb;
+    }
+  }
+}

@@ -3,6 +3,7 @@ module.exports.filterFieldController = require('./filterFieldController');
 module.exports.productCategoryController = require('./productCategoryController');
 module.exports.productFilterController = require('./productFilterController');
 module.exports.productController = require('./productController');
+module.exports.productAdminController = require('./productAdminController');
 module.exports.importController = require('./importController');
 module.exports.exportController = require('./exportController');
 module.exports.authController = require('./authController');

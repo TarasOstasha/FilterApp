@@ -1,6 +1,6 @@
 const { Router } = require('express');
 const { paginate } = require('../middleware');
-const { productController } = require('../controllers');
+const { productController, productAdminController } = require('../controllers');
 
 // app.get('/products', paginate.paginateProducts, productController.getAllProducts);
 
@@ -25,6 +25,12 @@ productRouter
   
 productRouter
     .route('/height-range')
-    .get(productController.getHeightRange);    
+    .get(productController.getHeightRange);
+
+productRouter
+    .route('/by-code/:productCode')
+    .get(productAdminController.getByCode)
+    .put(productAdminController.updateByCode)
+    .delete(productAdminController.deleteByCode);
 
 module.exports = productRouter;

@@ -192,6 +192,76 @@ export const loginUser = async (values: { username: string; password: string }):
     }
 };
 
+export interface AdminProduct {
+    id: number;
+    product_code: string;
+    product_name: string;
+    product_link: string;
+    product_img_link: string;
+    product_price: string | number;
+    most_popular: string | number | null;
+    hide_product: string;
+    category_ids: string;
+}
+
+export interface AdminProductPayload {
+    product_name: string;
+    product_link: string;
+    product_img_link: string;
+    product_price: string | number;
+    most_popular?: string | number | null;
+    hide_product?: string;
+    category_ids: string;
+}
+
+const getAuthHeaders = () => {
+    const token = localStorage.getItem('authToken');
+    return token ? { Authorization: `Bearer ${token}` } : undefined;
+};
+
+export const fetchProductByCode = async (
+    productCode: string
+): Promise<AxiosResponse<{ product: AdminProduct }> | undefined> => {
+    try {
+        const encoded = encodeURIComponent(productCode.trim());
+        return await axiosInstance.get(`/products/by-code/${encoded}`, {
+            headers: getAuthHeaders(),
+        });
+    } catch (error) {
+        console.error('Error fetching product:', error);
+        throw error;
+    }
+};
+
+export const updateProductByCode = async (
+    productCode: string,
+    payload: AdminProductPayload
+): Promise<AxiosResponse<{ message: string; product: AdminProduct }> | undefined> => {
+    try {
+        const encoded = encodeURIComponent(productCode.trim());
+        return await axiosInstance.put(`/products/by-code/${encoded}`, payload, {
+            headers: getAuthHeaders(),
+        });
+    } catch (error) {
+        console.error('Error updating product:', error);
+        throw error;
+    }
+};
+
+export const deleteProductByCode = async (
+    productCode: string
+): Promise<AxiosResponse<{ message: string; result: { id: number; product_code: string } }> | undefined> => {
+    try {
+        const encoded = encodeURIComponent(productCode.trim());
+        return await axiosInstance.delete(`/products/by-code/${encoded}`, {
+            headers: getAuthHeaders(),
+        });
+    } catch (error) {
+        console.error('Error deleting product:', error);
+        throw error;
+    }
+};
+
 export const changePassword = async (values: {
     oldPassword: string;
     newPassword: string;
