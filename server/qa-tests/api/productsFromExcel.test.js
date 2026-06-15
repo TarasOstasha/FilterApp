@@ -5,6 +5,7 @@ const {
   buildLoadSummary,
   formatLoadSummaryText,
   resolveExcelPath,
+  getExcludedTestFields,
   CHECKBOX_FIELDS,
 } = require('../helpers/excelProductLoader');
 const {
@@ -25,9 +26,13 @@ const {
   buildPriceRangeBuckets,
   excelProductPriceIsTierColumn,
 } = require('../helpers/sampleValueSelector');
+const { bootstrapApiProductVisibility } = require('../helpers/apiTestBootstrap');
 
 const CHECKBOX_TEST_FIELDS = CHECKBOX_FIELDS;
-const RANGE_TEST_FIELDS = ['Display_Width', 'Display_Height'];
+const excludedFields = getExcludedTestFields();
+const RANGE_TEST_FIELDS = ['Display_Width', 'Display_Height'].filter(
+  (field) => !excludedFields.has(field)
+);
 
 const excelPath = resolveExcelPath();
 const loaded = loadExcelProducts(excelPath);
@@ -58,14 +63,26 @@ for (const field of CHECKBOX_TEST_FIELDS) {
   }
 }
 
-const widthSamples = selectRepresentativeNumericValues(
-  uniqueReasonableDimensionValues(excelProducts, 'Display_Width')
-);
-const heightSamples = selectRepresentativeNumericValues(
-  uniqueReasonableDimensionValues(excelProducts, 'Display_Height')
-);
-const priceBuckets = buildPriceRangeBuckets(excelProducts);
-const skipPriceTests = excelProductPriceIsTierColumn(loaded);
+const widthSamples = excludedFields.has('Display_Width')
+  ? []
+  : selectRepresentativeNumericValues(
+      uniqueReasonableDimensionValues(excelProducts, 'Display_Width')
+    );
+const heightSamples = excludedFields.has('Display_Height')
+  ? []
+  : selectRepresentativeNumericValues(
+      uniqueReasonableDimensionValues(excelProducts, 'Display_Height')
+    );
+const priceBuckets = excludedFields.has('Product_Price')
+  ? []
+  : buildPriceRangeBuckets(excelProducts);
+const skipPriceTests =
+  excludedFields.has('Product_Price') || excelProductPriceIsTierColumn(loaded);
+
+if (excludedFields.size) {
+  // eslint-disable-next-line no-console
+  console.log(`\nExcluded from API tests (QA_EXCLUDE_TEST_FIELDS): ${[...excludedFields].join(', ')}`);
+}
 
 // eslint-disable-next-line no-console
 console.log('\n=== Range / price samples for tests ===');
@@ -74,7 +91,10 @@ console.log(`Display_Width (${widthSamples.length}): ${widthSamples.join(', ')}`
 // eslint-disable-next-line no-console
 console.log(`Display_Height (${heightSamples.length}): ${heightSamples.join(', ')}`);
 // eslint-disable-next-line no-console
-if (skipPriceTests) {
+if (excludedFields.has('Product_Price')) {
+  // eslint-disable-next-line no-console
+  console.log('Product_Price: skipped — excluded via QA_EXCLUDE_TEST_FIELDS');
+} else if (skipPriceTests) {
   // eslint-disable-next-line no-console
   console.log(
     'Product_Price: skipped — Excel column holds price tiers (500, 1000, …), not products.product_price'
@@ -92,7 +112,8 @@ describe('GET /api/products — checkbox filters validated against Excel', funct
   /** @type {import('supertest').SuperTest<Test>} */
   let agent;
 
-  before(function () {
+  before(async function () {
+    await bootstrapApiProductVisibility();
     agent = getTestAgent();
     expect(excelProducts.length, 'Excel must contain at least one product').to.be.above(0);
 
@@ -188,7 +209,8 @@ describe('GET /api/products — Display Width / Height (range filters)', functio
 
   let agent;
 
-  before(function () {
+  before(async function () {
+    await bootstrapApiProductVisibility();
     agent = getTestAgent();
     if (!widthSamples.length && !heightSamples.length) this.skip();
   });
@@ -226,7 +248,8 @@ describe('GET /api/products — Product Price (product_price BETWEEN)', function
 
   let agent;
 
-  before(function () {
+  before(async function () {
+    await bootstrapApiProductVisibility();
     agent = getTestAgent();
     if (skipPriceTests) {
       // eslint-disable-next-line no-console

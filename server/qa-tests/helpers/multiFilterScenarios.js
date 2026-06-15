@@ -8,15 +8,23 @@ const {
  * @param {object[]} excelProducts
  * @param {Record<string, string[]>} uniqueAtomicByField
  * @param {number} [maxScenarios]
+ * @param {Set<string>} [excludedFields]
  */
-function buildMultiFilterScenarios(excelProducts, uniqueAtomicByField, maxScenarios = 28) {
+function buildMultiFilterScenarios(
+  excelProducts,
+  uniqueAtomicByField,
+  maxScenarios = 28,
+  excludedFields = new Set()
+) {
   const productTypes = (uniqueAtomicByField.Product_Type || []).slice(0, 4);
   const backlits = uniqueAtomicByField.Backlit || [];
   const boothSizes = (uniqueAtomicByField.Booth_Size || []).slice(0, 3);
-  const widths = selectRepresentativeNumericValues(
-    uniqueReasonableDimensionValues(excelProducts, 'Display_Width'),
-    3
-  );
+  const widths = excludedFields.has('Display_Width')
+    ? []
+    : selectRepresentativeNumericValues(
+        uniqueReasonableDimensionValues(excelProducts, 'Display_Width'),
+        3
+      );
 
   /** @type {Array<{ label: string, specs: object, kind: 'and'|'api-and-same-field'|'or-excel' }>} */
   const scenarios = [];

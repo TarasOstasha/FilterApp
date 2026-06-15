@@ -4,6 +4,7 @@ const {
   loadExcelProducts,
   buildLoadSummary,
   resolveExcelPath,
+  getExcludedTestFields,
 } = require('../helpers/excelProductLoader');
 const {
   buildApiQueryForFilter,
@@ -16,6 +17,7 @@ const {
   runFilterScenario,
 } = require('../helpers/filterTestUtils');
 const { buildMultiFilterScenarios } = require('../helpers/multiFilterScenarios');
+const { bootstrapApiProductVisibility } = require('../helpers/apiTestBootstrap');
 
 const excelPath = resolveExcelPath();
 const loaded = loadExcelProducts(excelPath);
@@ -24,7 +26,13 @@ const { products: excelProducts } = loaded;
 const { uniqueAtomicByField } = summary;
 const excelByCode = new Map(excelProducts.map((p) => [p.product_code, p]));
 
-const scenarios = buildMultiFilterScenarios(excelProducts, uniqueAtomicByField, 28);
+const excludedFields = getExcludedTestFields();
+const scenarios = buildMultiFilterScenarios(
+  excelProducts,
+  uniqueAtomicByField,
+  28,
+  excludedFields
+);
 
 // eslint-disable-next-line no-console
 console.log(`\n=== Multi-filter test scenarios (${scenarios.length}) ===`);
@@ -38,7 +46,8 @@ describe('GET /api/products — multi-filter validation', function () {
 
   let agent;
 
-  before(function () {
+  before(async function () {
+    await bootstrapApiProductVisibility();
     agent = getTestAgent();
     expect(scenarios.length, 'need at least one multi-filter scenario').to.be.above(0);
   });

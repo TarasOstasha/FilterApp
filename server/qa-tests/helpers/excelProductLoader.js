@@ -103,6 +103,30 @@ const DEFAULT_EXCEL_PATH = path.resolve(
 const MIN_TRACKED_COLUMNS_FOR_FLAT_SHEET = 3;
 
 /**
+ * Fields to skip in API tests (comma-separated env: QA_EXCLUDE_TEST_FIELDS).
+ * @returns {Set<string>}
+ */
+function getExcludedTestFields() {
+  const raw = process.env.QA_EXCLUDE_TEST_FIELDS?.trim();
+  if (!raw) return new Set();
+  return new Set(
+    raw
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean)
+  );
+}
+
+/**
+ * @param {string} field
+ * @param {Set<string>} [excluded]
+ * @returns {boolean}
+ */
+function isFieldExcludedFromTests(field, excluded = getExcludedTestFields()) {
+  return excluded.has(field);
+}
+
+/**
  * @returns {string}
  */
 function resolveExcelPath() {
@@ -423,6 +447,8 @@ module.exports = {
   CHECKBOX_FIELDS,
   RANGE_AND_PRICE_FIELDS,
   DEFAULT_EXCEL_PATH,
+  getExcludedTestFields,
+  isFieldExcludedFromTests,
   resolveExcelPath,
   loadExcelProducts,
   splitCheckboxTokens,

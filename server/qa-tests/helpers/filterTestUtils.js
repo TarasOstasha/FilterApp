@@ -3,6 +3,32 @@ const { productHasCheckboxToken } = require('./excelProductLoader');
 
 const MAX_REASONABLE_DIMENSION_INCHES = 500;
 
+/** @type {Set<string>} product_codes with hide_product=Y — excluded from API expectations */
+let hiddenProductCodes = new Set();
+
+/**
+ * @param {Iterable<string>} codes
+ */
+function setHiddenProductCodes(codes) {
+  hiddenProductCodes = new Set(
+    [...codes].map((c) => String(c).trim()).filter(Boolean)
+  );
+}
+
+function getHiddenProductCodes() {
+  return hiddenProductCodes;
+}
+
+/**
+ * API omits hide_product=Y; expected sets must match visible catalog only.
+ * @param {Set<string>} codes
+ * @returns {Set<string>}
+ */
+function visibleProductCodesOnly(codes) {
+  if (!hiddenProductCodes.size) return codes;
+  return new Set([...codes].filter((c) => !hiddenProductCodes.has(c)));
+}
+
 /**
  * Maps canonical Excel/test field names to live API query parameter names
  * (from filter_fields.field_name / client filterParams.ts).
@@ -203,7 +229,7 @@ function expectedProductCodesForCheckbox(excelProducts, field, filterValue) {
   for (const row of excelProducts) {
     if (productHasCheckboxToken(row, field, target)) codes.add(row.product_code);
   }
-  return codes;
+  return visibleProductCodesOnly(codes);
 }
 
 /**
@@ -219,7 +245,7 @@ function expectedProductCodesForDimensionRange(excelProducts, field, min, max) {
     if (!Number.isFinite(n) || n > MAX_REASONABLE_DIMENSION_INCHES) continue;
     if (n >= min && n <= max) codes.add(row.product_code);
   }
-  return codes;
+  return visibleProductCodesOnly(codes);
 }
 
 /**
@@ -232,7 +258,7 @@ function expectedProductCodesForPriceRange(excelProducts, min, max) {
     if (!Number.isFinite(price)) continue;
     if (price >= min && price <= max) codes.add(row.product_code);
   }
-  return codes;
+  return visibleProductCodesOnly(codes);
 }
 
 /**
@@ -283,7 +309,7 @@ function expectedProductCodesForMultiFilter(excelProducts, filterSpecs) {
     codes = new Set([...codes].filter((c) => fieldCodes.has(c)));
   }
 
-  return codes;
+  return visibleProductCodesOnly(codes);
 }
 
 /**
@@ -435,6 +461,9 @@ async function runFilterScenario(agent, opts) {
 module.exports = {
   API_FIELD_MAP,
   CHECKBOX_API_FIELD_NAMES,
+  setHiddenProductCodes,
+  getHiddenProductCodes,
+  visibleProductCodesOnly,
   normalizeCheckboxValue,
   normalizeNumericValue,
   buildRangeQueryParam,

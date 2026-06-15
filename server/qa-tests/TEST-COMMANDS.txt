@@ -1,0 +1,177 @@
+FILTER-APP — QA test commands reference
+======================================
+
+Run all commands from the server/ directory:
+
+  cd server
+  npm run <command>
+
+
+PREREQUISITES
+-------------
+
+1. Copy .env.test.example to .env.test and configure your test database.
+2. ALLOW_TEST_DATABASE=true is required (safety check in qa-tests/setup.js).
+3. DB_NAME should be a dedicated test DB (default rule: name must contain "_test").
+4. API tests hit the live Express app via Supertest and need PostgreSQL data loaded
+   (products, product_filters, filter_fields) matching your fixture.
+
+Main fixture (flat export from local DB):
+  qa-tests/fixtures/product_filters_flat.xlsx
+
+Optional catalog snapshot (not used directly by API tests today):
+  qa-tests/fixtures/products.xml
+
+API tests exclude products where hide_product = 'Y' (same as GET /api/products).
+
+
+GENERAL / LEGACY COMMANDS
+-------------------------
+
+npm test
+  Runs Mocha with default .mocharc.json (all qa-tests/api + integration tests).
+
+npm run test:watch
+  Mocha in watch mode.
+
+npm run test:api
+  All API test files under qa-tests/api/**/*.test.js
+  Uses default Excel: services/export/data/product_filters.xlsx
+  (unless QA_PRODUCTS_EXCEL_PATH is set in .env.test)
+
+npm run test:api:multi
+  Only multiFilter.test.js (legacy pivot Excel, not flat profile).
+
+npm run test:integration
+  Integration tests only (qa-tests/integration/**/*.test.js).
+  Example: product_filters.csv import transaction tests (mock DB).
+
+npm run coverage
+  Mocha with NYC code coverage report.
+
+
+FLAT FIXTURE COMMANDS (recommended)
+-----------------------------------
+
+These use qa-tests/runApiTests.js with a profile from qa-tests/config/*.env
+and the flat fixture product_filters_flat.xlsx (unless profile says otherwise).
+
+npm run test:api:flat
+  Profile: flat-checkbox.env
+  File:   productsFromExcel.test.js (checkbox filters only)
+  What:   Validates GET /api/products for each checkbox atomic token vs Excel.
+          Skips Display_Width, Display_Height, Product_Price.
+  Fixture: product_filters_flat.xlsx (~22,856 products)
+
+npm run test:api:multi:flat
+  Profile: flat-checkbox.env
+  File:   multiFilter.test.js
+  What:   ~26 multi-checkbox scenarios (AND combos: Product Type + Backlit,
+          Booth Size, etc.). No price, width, or height.
+
+npm run test:api:price:flat
+  Profile: flat-price.env
+  File:   productPrice.test.js
+  What:   Product Price range filters using products.product_price from DB
+          (NOT the Excel Product_Price column, which holds filter tiers).
+          Tests 5 price buckets + representative point ranges.
+
+npm run test:api:multi-price:flat
+  Profile: flat-multi-price.env
+  File:   multiFilterPrice.test.js
+  What:   Checkbox multi-filter combos + Product Price range together.
+          ~24 scenarios; empty combos are skipped.
+
+npm run test:api:dimensions:flat
+  Profile: flat-dimensions.env
+  File:   dimensionRange.test.js
+  What:   Display Width and Display Height range filters only.
+          Point ranges (e.g. 48,48) and span ranges (e.g. 48-96).
+          20 scenarios (10 per field). Excludes Product_Price only.
+
+npm run test:api:full:flat
+  Profile: flat-full.env
+  File:   fullFilter.test.js
+  What:   Full integration — checkboxes + width + height + price in one query.
+          Up to 40 scenario templates; scenarios with zero matching products
+          show as "pending" (skipped via this.skip()). Passing = API matches
+          Excel filters + DB prices for that combo.
+
+
+DIAGNOSTIC / DATA TOOLS (not Mocha tests)
+-----------------------------------------
+
+npm run test:compare-excel-db
+  Script: qa-tests/scripts/compareExcelDb.js
+  What:   Compares Excel atomic checkbox tokens vs product_filters in DB.
+          Reports product_code mismatches, token diffs, and count mismatches.
+          Does NOT use hide_product or test the API. Always exits 0 (report only).
+
+npm run export:db-only-products
+  Script: qa-tests/scripts/exportDbOnlyProducts.js
+  What:   Exports product_codes that exist in DB but not in the Excel fixture.
+          Output: qa-tests/output/db-only-product-codes.csv
+
+
+PROFILE CONFIG FILES (qa-tests/config/)
+---------------------------------------
+
+flat-checkbox.env
+  QA_PRODUCTS_EXCEL_PATH=qa-tests/fixtures/product_filters_flat.xlsx
+  QA_EXCLUDE_TEST_FIELDS=Display_Width,Display_Height,Product_Price
+
+flat-price.env
+  QA_TEST_TIMEOUT_MS=180000
+
+flat-multi-price.env
+  Flat Excel + exclude width/height/price from productsFromExcel (price from DB)
+
+flat-dimensions.env
+  Flat Excel + QA_EXCLUDE_TEST_FIELDS=Product_Price only
+
+flat-full.env
+  Flat Excel, all filter types enabled, 300s timeout
+
+
+OPTIONAL .env.test VARIABLES
+----------------------------
+
+QA_PRODUCTS_EXCEL_PATH     Path to Excel fixture (overrides default pivot file)
+QA_PRODUCTS_EXCEL_SHEET    Sheet name if workbook has multiple sheets
+QA_EXCLUDE_TEST_FIELDS     Comma-separated fields to skip in productsFromExcel tests
+                           e.g. Display_Width,Display_Height,Product_Price
+QA_MAX_UNIQUE_VALUES_PER_FILTER   Cap checkbox values tested per field (default: all)
+QA_TEST_TIMEOUT_MS         Per-test timeout in milliseconds
+QA_DB_ONLY_EXPORT_PATH     Custom path for export:db-only-products output
+
+
+TEST FILES MAP (qa-tests/api/)
+------------------------------
+
+productsFromExcel.test.js   Checkbox (+ legacy width/height/price in default run)
+multiFilter.test.js         Multi-checkbox AND scenarios
+productPrice.test.js        Product Price only (DB catalog)
+multiFilterPrice.test.js    Multi-checkbox + price
+dimensionRange.test.js      Display Width / Height only
+fullFilter.test.js          Everything combined
+
+
+MOCHA RESULT LEGEND
+-------------------
+
+passing   Test ran and all assertions passed.
+failing   Test ran and an assertion failed (investigate API vs Excel/DB drift).
+pending   Test was skipped (this.skip()) — usually "no products match this filter
+          combo" in fullFilter tests. Not a failure; exit code is still 0.
+
+
+SUGGESTED VALIDATION ORDER
+--------------------------
+
+1. npm run test:compare-excel-db     — confirm DB matches flat Excel
+2. npm run test:api:flat             — checkbox filters
+3. npm run test:api:dimensions:flat  — width / height
+4. npm run test:api:price:flat       — product price
+5. npm run test:api:multi:flat       — multi-checkbox
+6. npm run test:api:multi-price:flat  — multi-checkbox + price
+7. npm run test:api:full:flat        — full integration
