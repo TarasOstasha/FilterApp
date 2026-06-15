@@ -339,40 +339,47 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
     })();
   }, []);
 
-  // ----- INITIALIZE RANGES FROM FILTER FIELDS ON FIRST LOAD -----
+  // ----- INITIALIZE RANGES FROM API ON FIRST LOAD (no filters) -----
   useEffect(() => {
-    console.log(filterFields.length, 'filterFields.length');
-    // Only initialize once when filter fields first load
     if (filterFields.length === 0 || initializedFromFilterFields.current) return;
 
-    const priceField = filterFields.find(f => f.field_name === 'Product Price');
-    if (priceField && Array.isArray(priceField.allowed_values) && priceField.allowed_values.length > 0) {
-      const values = priceField.allowed_values.map((x: any) => parseFloat(x) || 0);
-      setPriceMin(values[0]);
-      setPriceMax(values[values.length - 1]);
-      setPriceBreakpoints(values);
-      console.log('Initialized price from filterFields:', values[0], '-', values[values.length - 1]);
+    const safeFilters = sanitizeFilters(selectedFilters);
+    if (Object.keys(safeFilters).length > 0) {
+      initializedFromFilterFields.current = true;
+      return;
     }
 
-    const widthField = filterFields.find(f => f.field_name === 'Display Width');
-    if (widthField && Array.isArray(widthField.allowed_values) && widthField.allowed_values.length > 0) {
-      const values = widthField.allowed_values.map((x: any) => parseFloat(x) || 0);
-      setWidthMin(values[0]);
-      setWidthMax(values[values.length - 1]);
-      console.log('Initialized width from filterFields:', values[0], '-', values[values.length - 1]);
-    }
-
-    const heightField = filterFields.find(f => f.field_name === 'Display Height');
-    if (heightField && Array.isArray(heightField.allowed_values) && heightField.allowed_values.length > 0) {
-      const values = heightField.allowed_values.map((x: any) => parseFloat(x) || 0);
-      setHeightMin(values[0]);
-      setHeightMax(values[values.length - 1]);
-      console.log('Initialized height from filterFields:', values[0], '-', values[values.length - 1]);
-    }
-
-    // Mark as initialized to prevent future overwrites
     initializedFromFilterFields.current = true;
-  }, [filterFields]);
+
+    (async () => {
+      try {
+        const catId = getCategoryIdFromPath();
+        const [pr, wr, hr] = await Promise.all([
+          fetchPriceRange(undefined, catId),
+          fetchWidthRange({}, catId),
+          fetchHeightRange({}, catId),
+        ]);
+
+        if (pr?.data) {
+          setPriceMin(pr.data.min);
+          setPriceMax(pr.data.max);
+          if (pr.data.breakpoints?.length) {
+            setPriceBreakpoints(pr.data.breakpoints);
+          }
+        }
+        if (wr?.data) {
+          setWidthMin(wr.data.min ?? wr.data.globalMin ?? 0);
+          setWidthMax(wr.data.max ?? wr.data.globalMax ?? 0);
+        }
+        if (hr?.data) {
+          setHeightMin(hr.data.min ?? hr.data.globalMin ?? 0);
+          setHeightMax(hr.data.max ?? hr.data.globalMax ?? 0);
+        }
+      } catch (err) {
+        console.error('Error initializing filter ranges:', err);
+      }
+    })();
+  }, [filterFields, selectedFilters]);
 
   // ----- LIVE FILTERED WIDTH RANGE -----
   useDebouncedEffect(
@@ -577,8 +584,7 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
       }
 
       // Price range (driven by non-price filters)
-      // Only fetch if we've initialized OR if there are actual filters applied
-      if (initializedFromFilterFields.current || nonPrice.length > 0) {
+      if (noFiltersAtAll || initializedFromFilterFields.current || nonPrice.length > 0) {
         const priceParams = nonPrice.length > 0
           ? filtersToQueryParams(
               Object.fromEntries(nonPrice.map((k) => [k, normalized[k]]))
