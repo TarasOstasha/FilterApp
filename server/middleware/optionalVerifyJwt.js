@@ -11,7 +11,7 @@ module.exports = (req, res, next) => {
 
   try {
     req.user = jwt.verify(token, process.env.JWT_SECRET);
-  } catch {
+  } catch (error) {
     console.warn('JWT verification failed:', error.message);
     // Invalid token on login-page change-password: fall back to username in body
   }

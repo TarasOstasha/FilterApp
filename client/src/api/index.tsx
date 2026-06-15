@@ -262,14 +262,24 @@ export const deleteProductByCode = async (
     }
 };
 
+function getUsernameFromAuthToken(token: string): string {
+    try {
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        return typeof payload.username === 'string' ? payload.username : '';
+    } catch {
+        return '';
+    }
+}
+
 export const changePassword = async (values: {
     oldPassword: string;
     newPassword: string;
     username?: string;
 }): Promise<AxiosResponse<{ message: string }> | undefined> => {
     const token = localStorage.getItem('authToken');
+    const username = values.username || (token ? getUsernameFromAuthToken(token) : '');
 
-    if (!token && !values.username) {
+    if (!username) {
         toast.error('Username is required to change your password');
         return undefined;
     }
@@ -282,7 +292,7 @@ export const changePassword = async (values: {
             {
                 oldPassword: values.oldPassword,
                 newPassword: values.newPassword,
-                ...(values.username ? { username: values.username } : {}),
+                username,
             },
             headers ? { headers } : undefined
         );
