@@ -344,61 +344,61 @@ const Home: React.FC = () => {
     <>
       <CategoryTester onCategoryChange={handleCategoryChange} OnFilterSideBarReload={handleClearFilters} />
       <div className="container">
-      <div className="row">
-        <div className="col-md-3">
-          <button className={styles.clearFiltersButton} onClick={handleClearFilters}>
-            Clear Filters
-          </button>
-          <FilterSidebar
-            onFilterChange={handleFilterChange}
-            selectedFilters={selectedFilters}
-            loading={loading}
-          />
-        </div>
-        <div className="col-md-9">
-          <div className="controls d-flex justify-content-between">
-            <SortDropdown
-              handleSortChange={handleSortChange}
-              currentSort={sortBy}
-            />
-            <ItemsPerPageDropdown
-              itemsPerPage={itemsPerPage}
-              handleItemsPerPageChange={handleItemsPerPageChange}
+        <div className="row">
+          <div className="col-md-3">
+            <button className={styles.clearFiltersButton} onClick={handleClearFilters}>
+              Clear Filters
+            </button>
+            <FilterSidebar
+              onFilterChange={handleFilterChange}
+              selectedFilters={selectedFilters}
+              loading={loading}
             />
           </div>
+          <div className="col-md-9">
+            <div className="controls d-flex justify-content-between">
+              <SortDropdown
+                handleSortChange={handleSortChange}
+                currentSort={sortBy}
+              />
+              <ItemsPerPageDropdown
+                itemsPerPage={itemsPerPage}
+                handleItemsPerPageChange={handleItemsPerPageChange}
+              />
+            </div>
 
-          <br />
+            <br />
 
-          {/* Fade this whole region during transitions */}
-          <div className={`${styles.pageTransition} ${!isTransitioning ? styles.show : ''}`}>
-            <MegaFilter
-              sortBy={sortBy}
-              filters={selectedFilters}
-              loading={loading}
-              categoryId={getCategoryIdFromPath()}
-              onSearchResultIdsChange={setMegaSearchResultIds}
-            />
+            {/* Fade this whole region during transitions */}
+            <div className={`${styles.pageTransition} ${!isTransitioning ? styles.show : ''}`}>
+              <MegaFilter
+                sortBy={sortBy}
+                filters={selectedFilters}
+                loading={loading}
+                categoryId={getCategoryIdFromPath()}
+                onSearchResultIdsChange={setMegaSearchResultIds}
+              />
 
-            <ProductList
-              products={products}
-              filters={selectedFilters}
-              loading={loading}
-              excludeProductIds={megaSearchResultIds}
-            />
+              <ProductList
+                products={products}
+                filters={selectedFilters}
+                loading={loading}
+                excludeProductIds={megaSearchResultIds}
+              />
 
-            <PaginationControls
-              currentPage={currentPage}
-              totalPages={totalPages}
-              onPageChange={handlePageChange}
-              visibleProducts={products.length}
-              totalProducts={totalProducts}
-              onLoadMore={handleLoadMore}
-              isLoadingMore={isLoadingMore}
-              hasUsedLoadMore={hasUsedLoadMore}
-            />
+              <PaginationControls
+                currentPage={currentPage}
+                totalPages={totalPages}
+                onPageChange={handlePageChange}
+                visibleProducts={products.length}
+                totalProducts={totalProducts}
+                onLoadMore={handleLoadMore}
+                isLoadingMore={isLoadingMore}
+                hasUsedLoadMore={hasUsedLoadMore}
+              />
+            </div>
           </div>
         </div>
-      </div>
       </div>
     </>
   );

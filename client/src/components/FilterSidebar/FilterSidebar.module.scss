@@ -55,8 +55,9 @@
     margin: 0;
     // font-size: inherit;
     font-size: 1.1rem;
-    font-weight: inherit;
+    // font-weight: inherit;
     flex: 1;
+    font-weight: bold;
   }
 
   .accordion-chevron {
@@ -77,7 +78,7 @@
     padding: 0;
     font-family: $font-family-base;
     font-size: 14px;
-
+    padding-left: 15px;
   }
   
   .filter-item {
