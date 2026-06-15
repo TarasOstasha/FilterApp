@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import ExternalHeader from './ExternalHeader';
 import ExternalFooter from './ExternalFooter';
 import VolusionStylesLoader from './VolusionStylesLoader';
+import { VolusionChromeProvider } from './VolusionChromeContext';
 import './ExternalChrome.scss';
 
 interface FilterPageLayoutProps {
@@ -14,13 +15,17 @@ const FilterPageLayout: React.FC<FilterPageLayoutProps> = ({ children }) => {
   const catId = searchParams.get('catId');
   const showSiteChrome = !catId;
 
+  if (!showSiteChrome) {
+    return <div className="filter-app-root">{children}</div>;
+  }
+
   return (
-    <>
-      {showSiteChrome && <VolusionStylesLoader />}
-      {showSiteChrome && <ExternalHeader />}
+    <VolusionChromeProvider>
+      <VolusionStylesLoader />
+      <ExternalHeader />
       <div className="filter-app-root">{children}</div>
-      {showSiteChrome && <ExternalFooter />}
-    </>
+      <ExternalFooter />
+    </VolusionChromeProvider>
   );
 };
 
