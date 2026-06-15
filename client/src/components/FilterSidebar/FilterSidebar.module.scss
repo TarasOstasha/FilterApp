@@ -88,10 +88,13 @@
 .sidebar-checkbox-label {
   display: flex;
   align-items: center;
+  gap: 8px;
+  cursor: pointer;
 }
 
 .sidebar-checkbox-input {
-  margin-right: 8px; /* Space between checkbox and label */
+  flex-shrink: 0;
+  margin: 0;
   cursor: pointer;
 }
 

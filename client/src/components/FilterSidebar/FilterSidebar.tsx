@@ -655,7 +655,7 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
               <ul className={styles['filter-list']}>
                 {(ff.allowed_values as string[]).map((val, i) => (
                   <li key={i} className={styles['filter-item']}>
-                    <label>
+                    <label className={styles['sidebar-checkbox-label']}>
                       <input
                         type="checkbox"
                         value={val}

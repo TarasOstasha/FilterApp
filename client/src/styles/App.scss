@@ -42,6 +42,12 @@ body {
 .filter-app-root {
   background-color: #fff;
   padding: 50px 0;
+
+  /* Volusion CSS (standalone header) ships global Bootstrap reboot rules that zero checkbox margins */
+  input[type='checkbox'],
+  input[type='radio'] {
+    margin-top: 0;
+  }
 }
 
 .filter-app-root,
