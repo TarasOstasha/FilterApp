@@ -1,13 +1,12 @@
 import React, { useEffect } from 'react';
+import { VOLUSION_BASE } from '../../external/volusionAssets';
 import { useVolusionChrome } from './VolusionChromeContext';
-
-const VOLUSION_BASE = 'https://hxyrr-gdtbo.volusion.store';
 
 const VOLUSION_STYLESHEETS = [
   'https://fonts.googleapis.com/icon?family=Material+Icons',
   `${VOLUSION_BASE}/a/c/default.css`,
-  `${VOLUSION_BASE}/v/vspfiles/templates/charmed2test/css/template.css`,
-  `${VOLUSION_BASE}/v/vspfiles/templates/charmed2test/css/style-editor.css`,
+  `${VOLUSION_BASE}/v/vspfiles/templates/Charmed2025/css/template.css`,
+  `${VOLUSION_BASE}/v/vspfiles/templates/Charmed2025/css/style-editor.css`,
   `${VOLUSION_BASE}/a/c/vnav.css`,
 ] as const;
 

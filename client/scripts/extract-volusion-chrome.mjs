@@ -5,7 +5,7 @@ import { fileURLToPath } from 'url';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const htmlPath = path.join(__dirname, '../src/external/volusion-page.html');
 const outDir = path.join(__dirname, '../src/external');
-const BASE = 'https://hxyrr-gdtbo.volusion.store';
+const BASE = 'https://www.xyzdisplays.com';
 
 const html = fs.readFileSync(htmlPath, 'utf8');
 const headerMatch = html.match(/<header class="header"[\s\S]*?<\/header>/);
@@ -30,7 +30,7 @@ function stripNonRenderableTags(html) {
     .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, '');
 }
 
-const LOGO_SRC = `${BASE}/v/vspfiles/templates/charmed2test/images/template/header_bg_new.svg`;
+const LOGO_SRC = `${BASE}/v/vspfiles/templates/Charmed2025/images/template/header_bg_new.svg`;
 
 function injectLogoImage(html) {
   if (html.includes('logo__img')) {

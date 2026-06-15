@@ -1,7 +1,7 @@
-export const VOLUSION_BASE = 'https://hxyrr-gdtbo.volusion.store';
+export const VOLUSION_BASE = 'https://www.xyzdisplays.com';
 
 export const VOLUSION_LOGO_SRC =
-  `${VOLUSION_BASE}/v/vspfiles/templates/charmed2test/images/template/header_bg_new.svg`;
+  `${VOLUSION_BASE}/v/vspfiles/templates/Charmed2025/images/template/header_bg_new.svg`;
 
 const CF_EMAIL_PLACEHOLDER = /\[email(?:&#160;|\s)protected\]/gi;
 
