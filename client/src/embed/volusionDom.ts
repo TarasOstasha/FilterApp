@@ -14,7 +14,10 @@ export function getVolusionEmbedCategoryId(): string {
 
 export function mountSidebarRoot(): HTMLElement | null {
   const existing = document.getElementById(SIDEBAR_ROOT_ID);
-  if (existing) return existing;
+  if (existing) {
+    document.documentElement.classList.add('xyz-filter-sidebar-active');
+    return existing;
+  }
 
   const sidebar = document.querySelector('.sidebar.left-nav');
   if (!sidebar) return null;
@@ -26,6 +29,7 @@ export function mountSidebarRoot(): HTMLElement | null {
   const root = document.createElement('div');
   root.id = SIDEBAR_ROOT_ID;
   sidebar.insertAdjacentElement('afterend', root);
+  document.documentElement.classList.add('xyz-filter-sidebar-active');
   return root;
 }
 

@@ -35,6 +35,11 @@
   }
 }
 
+// Volusion left-nav decoration — only when our filter sidebar is mounted
+html.xyz-filter-sidebar-active nav#display_menu_2::before {
+  height: 35%;
+}
+
 #xyz-filter-products-root:not(.xyz-embed-products-visible) {
   display: none;
 }
