@@ -709,7 +709,22 @@ const CsvImportExport: React.FC = () => {
                     </div>
                 </div>
             )}
-            <h2>Edit / Remove Single Product</h2>
+            <h2 className={styles.sectionTitle}>
+                Edit / Remove Single Product
+                <span className={styles.infoIconWrapper}>
+                    <span
+                        className={styles.infoIcon}
+                        tabIndex={0}
+                        aria-describedby="edit-remove-product-info"
+                    >
+                        ?
+                    </span>
+                    <span id="edit-remove-product-info" className={styles.infoTooltip} role="tooltip">
+                        Enter a product code to load it for editing (details, categories, and
+                        visibility) or to remove it from the catalog without uploading a CSV.
+                    </span>
+                </span>
+            </h2>
             <div className={styles['edit-remove-product']}>
                 <label htmlFor="product-code-input" className={styles.productCodeLabel}>
                     Product code
@@ -945,7 +960,22 @@ const CsvImportExport: React.FC = () => {
                     </div>
                 </div>
             )}
-            <h2>Product Filter Edit Single Product</h2>
+            <h2 className={styles.sectionTitle}>
+                Product Filter Edit Single Product
+                <span className={styles.infoIconWrapper}>
+                    <span
+                        className={styles.infoIcon}
+                        tabIndex={0}
+                        aria-describedby="product-filter-edit-info"
+                    >
+                        ?
+                    </span>
+                    <span id="product-filter-edit-info" className={styles.infoTooltip} role="tooltip">
+                        Enter a product code to load its filter fields, update values from allowed
+                        options, add extra value instances, and save changes without uploading a CSV.
+                    </span>
+                </span>
+            </h2>
             <div className={styles['edit-remove-product']}>
                 <label htmlFor="product-filter-code-input" className={styles.productCodeLabel}>
                     Product code
