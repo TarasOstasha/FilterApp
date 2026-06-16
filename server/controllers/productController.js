@@ -10,6 +10,11 @@ const {
   buildFilterJoins,
 } = require('../utils/filterQuery');
 const { visibleProductWhere, visibleProductSql, VISIBLE_PRODUCT_SQL_AND } = require('../utils/productVisibility');
+const {
+  parsePriceBreakpoints,
+  snapMinToBreakpoint,
+  snapMaxToBreakpoint,
+} = require('../utils/priceBreakpoints');
 
 
 module.exports.getAllProducts = async (req, res, next) => {
@@ -109,11 +114,7 @@ module.exports.getPriceRange = async (req, res, next) => {
       raw: true,
     });
     
-    const priceBreakpoints = priceField?.allowed_values
-      ?.split(',')
-      .map((v) => parseFloat(v.trim()))
-      .filter((n) => !isNaN(n))
-      .sort((a, b) => a - b);
+    const priceBreakpoints = parsePriceBreakpoints(priceField?.allowed_values);
     const allFilterFields = await FilterField.findAll({
       attributes: ['id', 'field_name', 'field_type', 'allowed_values'],
       raw: true,
@@ -241,9 +242,12 @@ module.exports.getPriceRange = async (req, res, next) => {
     //console.log(chalk.red(filteredRow.min, '<< final min'));
     //console.log(chalk.red(filteredRow.max, '<< final max'));
 
+    const actualMin = parseFloat(filteredRow?.min) || 0;
+    const actualMax = parseFloat(filteredRow?.max) || 0;
+
     res.json({
-      min: parseFloat(filteredRow?.min) || 0,
-      max: parseFloat(filteredRow?.max) || 0,
+      min: snapMinToBreakpoint(priceBreakpoints, actualMin),
+      max: snapMaxToBreakpoint(priceBreakpoints, actualMax),
       breakpoints: priceBreakpoints || [],
     });
   } catch (err) {

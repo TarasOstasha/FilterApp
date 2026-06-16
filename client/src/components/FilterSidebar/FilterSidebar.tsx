@@ -70,6 +70,36 @@ const arraysEqual = (a: number[] = [], b: number[] = []) =>
 
 const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(v, hi));
 
+/** Largest predefined bucket <= actualMin (e.g. 54 -> 50). */
+const snapMinToBreakpoint = (breakpoints: number[], actualMin: number) => {
+  if (!breakpoints.length) return actualMin;
+  const atOrBelow = breakpoints.filter((v) => v <= actualMin);
+  return atOrBelow.length ? atOrBelow[atOrBelow.length - 1] : breakpoints[0];
+};
+
+/** Smallest predefined bucket >= actualMax (e.g. 11654 -> 20000). */
+const snapMaxToBreakpoint = (breakpoints: number[], actualMax: number) => {
+  if (!breakpoints.length) return actualMax;
+  return breakpoints.find((v) => v >= actualMax) ?? breakpoints[breakpoints.length - 1];
+};
+
+const parsePriceBreakpointsFromField = (allowedValues: unknown): number[] => {
+  if (typeof allowedValues === 'string') {
+    return allowedValues
+      .split(',')
+      .map((v) => parseFloat(v.trim()))
+      .filter((n) => !Number.isNaN(n))
+      .sort((a, b) => a - b);
+  }
+  if (Array.isArray(allowedValues)) {
+    return allowedValues
+      .map((v) => parseFloat(String(v)))
+      .filter((n) => !Number.isNaN(n))
+      .sort((a, b) => a - b);
+  }
+  return [];
+};
+
 // Non-filter query keys we should ignore when building params
 const NON_FILTER_QUERY_KEYS = new Set([
   'limit', 'offset', 'page', 'itemsPerPage', 'items',
@@ -455,9 +485,8 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
     const safeFilters = sanitizeFilters(selectedFilters);
     const noFiltersAtAll = Object.keys(safeFilters).length === 0;
 
+    const bpFirst = priceBreakpoints?.[0] ?? 0;
     const bpLast = priceBreakpoints?.[priceBreakpoints.length - 1] ?? 0;
-    const priceRailMin = noFiltersAtAll ? 0 : priceMin;
-    const priceRailMax = noFiltersAtAll ? (priceMax > 0 ? priceMax : bpLast) : priceMax;
 
     const widthRailMin  = widthMin  || globalMinWidth;
     const widthRailMax  = widthMax  || globalMaxWidth;
@@ -473,8 +502,8 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
       // This prevents accidentally removing user-selected ranges
       if (k === 'Product Price') {
         const [mn, mx] = parsePair(arr[0]);
-        // Only skip if both values are exactly equal to rails AND we have valid rails
-        if (priceRailMin !== priceRailMax && same(mn, priceRailMin) && same(mx, priceRailMax)) continue;
+        // Full allowed range means no price filter is active
+        if (bpLast > bpFirst && same(mn, bpFirst) && same(mx, bpLast)) continue;
       } else if (k === 'Display Width') {
         const [mn, mx] = parsePair(arr[0]);
         if (widthRailMin !== widthRailMax && same(mn, widthRailMin) && same(mx, widthRailMax)) continue;
@@ -613,6 +642,17 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
 
   const isLoading = isLoadingFilters || isClearingFilters || loading;
 
+  const priceSliderBreakpoints = priceBreakpoints.length
+    ? priceBreakpoints
+    : parsePriceBreakpointsFromField(
+        filterFields.find((f) => f.field_name === 'Product Price')?.allowed_values
+      );
+  const priceBpFirst = priceSliderBreakpoints[0] ?? 0;
+  const priceBpLast = priceSliderBreakpoints[priceSliderBreakpoints.length - 1] ?? 0;
+  const hasNonPriceFilters = Object.keys(sanitizeFilters(selectedFilters)).some(
+    (k) => k !== 'Product Price'
+  );
+
   return (
     <div className={styles.sidebar} style={{ width: '250px', position: 'relative' }}>
       {isLoading && (
@@ -684,7 +724,7 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
             unitSelections[fn],
             selectedFilters,
             {
-              'Product Price': [priceMin, priceMax],
+              'Product Price': [priceBpFirst, priceBpLast],
               'Display Width': [widthMin, widthMax],
               'Display Height': [heightMin, heightMax],
             }
@@ -692,7 +732,7 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
 
           // ---------- Product Price (snap to breakpoints; freeze when rail collapses) ----------
           if (fn === 'Product Price') {
-            if (!priceBreakpoints || priceBreakpoints.length === 0) {
+            if (!priceSliderBreakpoints || priceSliderBreakpoints.length === 0) {
               return (
                 <FilterAccordionSection
                   key={ff.id}
@@ -706,10 +746,15 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
               );
             }
 
-            const bpLast = priceBreakpoints[priceBreakpoints.length - 1];
             const hasRealRange = priceMax > 0 && priceMax >= priceMin;
-            const railMin = hasRealRange ? priceMin : 0;
-            const railMax = hasRealRange ? priceMax : bpLast;
+            const rawRailMin = hasNonPriceFilters
+              ? (hasRealRange ? priceMin : priceBpFirst)
+              : priceBpFirst;
+            const rawRailMax = hasNonPriceFilters
+              ? (hasRealRange ? priceMax : priceBpLast)
+              : priceBpLast;
+            const railMin = snapMinToBreakpoint(priceSliderBreakpoints, rawRailMin);
+            const railMax = snapMaxToBreakpoint(priceSliderBreakpoints, rawRailMax);
 
             // Only show loading if we truly don't have price data yet (initial load)
             // Don't show loading if the range collapsed due to filters (railMin === railMax is ok after initialization)
@@ -738,7 +783,7 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
             }
             if (effMin > effMax) { effMin = railMin; effMax = railMax; }
 
-            const railBps = priceBreakpoints.filter(v => v >= railMin && v <= railMax);
+            const railBps = priceSliderBreakpoints.filter(v => v >= railMin && v <= railMax);
             const safeRailBps = railBps.length ? railBps : [railMin, railMax];
             const isFrozen = railMin === railMax || safeRailBps.length <= 1;
 
