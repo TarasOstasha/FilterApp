@@ -49,7 +49,7 @@ async function getProductByCode(productCode) {
       COALESCE(STRING_AGG(pc.category_id::text, ',' ORDER BY pc.category_id), '') AS category_ids
     FROM products p
     LEFT JOIN product_categories pc ON p.id = pc.product_id
-    WHERE p.product_code = $1
+    WHERE UPPER(TRIM(p.product_code)) = UPPER($1)
     GROUP BY
       p.id,
       p.product_code,
@@ -75,6 +75,8 @@ async function updateProductByCode(productCode, payload) {
   if (!existing) {
     throw createHttpError(404, `Product not found: ${code}`);
   }
+
+  const canonicalCode = existing.product_code;
 
   const {
     product_name,
@@ -141,7 +143,7 @@ async function updateProductByCode(productCode, payload) {
        WHERE product_code = $1
        RETURNING id`,
       [
-        code,
+        canonicalCode,
         product_name.trim(),
         product_link.trim(),
         normalizedImgLink.trim(),
@@ -171,7 +173,7 @@ async function updateProductByCode(productCode, payload) {
     client.release();
   }
 
-  return getProductByCode(code);
+  return getProductByCode(canonicalCode);
 }
 
 async function deleteProductByCode(productCode) {
@@ -180,16 +182,12 @@ async function deleteProductByCode(productCode) {
     throw createHttpError(400, 'Product code is required');
   }
 
-  const product = await Product.findOne({
-    where: { product_code: code },
-    attributes: ['id', 'product_code'],
-  });
-
+  const product = await getProductByCode(code);
   if (!product) {
     return null;
   }
 
-  await product.destroy();
+  await Product.destroy({ where: { id: product.id } });
   return { id: product.id, product_code: product.product_code };
 }
 
