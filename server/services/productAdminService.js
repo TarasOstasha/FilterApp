@@ -191,8 +191,196 @@ async function deleteProductByCode(productCode) {
   return { id: product.id, product_code: product.product_code };
 }
 
+async function getProductFiltersByCode(productCode) {
+  const product = await getProductByCode(productCode);
+  if (!product) {
+    return null;
+  }
+
+  const fieldsResult = await pool.query(
+    `SELECT id, field_name, field_type, allowed_values, sort_order
+     FROM filter_fields
+     ORDER BY sort_order ASC, id ASC`
+  );
+
+  const productFiltersResult = await pool.query(
+    `SELECT
+      filter_field_id,
+      TRIM(filter_value) AS filter_value
+    FROM product_filters
+    WHERE product_id = $1
+      AND TRIM(filter_value) <> ''
+    ORDER BY filter_field_id, TRIM(filter_value)`,
+    [product.id]
+  );
+
+  const valuesResult = await pool.query(
+    `SELECT
+      pf.filter_field_id,
+      TRIM(pf.filter_value) AS filter_value
+    FROM product_filters pf
+    WHERE TRIM(pf.filter_value) <> ''
+    GROUP BY pf.filter_field_id, TRIM(pf.filter_value)
+    ORDER BY pf.filter_field_id, TRIM(pf.filter_value)`
+  );
+
+  const productValuesByFieldId = productFiltersResult.rows.reduce((acc, row) => {
+    if (!acc[row.filter_field_id]) {
+      acc[row.filter_field_id] = [];
+    }
+    acc[row.filter_field_id].push(row.filter_value);
+    return acc;
+  }, {});
+
+  const valuesByFieldId = valuesResult.rows.reduce((acc, row) => {
+    if (!acc[row.filter_field_id]) {
+      acc[row.filter_field_id] = [];
+    }
+    acc[row.filter_field_id].push(row.filter_value);
+    return acc;
+  }, {});
+
+  const filters = [];
+
+  for (const field of fieldsResult.rows) {
+    const configuredValues = field.allowed_values
+      ? field.allowed_values.split(',').map((v) => v.trim()).filter(Boolean)
+      : [];
+    const existingValues = valuesByFieldId[field.id] || [];
+    const allowed_values = [...new Set([...configuredValues, ...existingValues])];
+    const productValues = productValuesByFieldId[field.id] || [];
+
+    if (productValues.length === 0) {
+      filters.push({
+        filter_field_id: field.id,
+        value_index: 1,
+        field_name: field.field_name,
+        display_name: field.field_name,
+        field_type: field.field_type,
+        current_value: '',
+        allowed_values,
+      });
+      continue;
+    }
+
+    productValues.forEach((currentValue, index) => {
+      const value_index = index + 1;
+      const display_name =
+        productValues.length > 1
+          ? `${field.field_name} (${value_index})`
+          : field.field_name;
+
+      filters.push({
+        filter_field_id: field.id,
+        value_index,
+        field_name: field.field_name,
+        display_name,
+        field_type: field.field_type,
+        current_value: currentValue,
+        allowed_values,
+      });
+    });
+  }
+
+  return {
+    product_code: product.product_code,
+    filters,
+  };
+}
+
+async function updateProductFilterByCode(productCode, payload) {
+  const product = await getProductByCode(productCode);
+  if (!product) {
+    throw createHttpError(404, 'Product not found');
+  }
+
+  const filterFieldId = parseInt(payload?.filter_field_id, 10);
+  if (!Number.isInteger(filterFieldId) || filterFieldId <= 0) {
+    throw createHttpError(400, 'filter_field_id is required');
+  }
+
+  const valueIndex = parseInt(payload?.value_index, 10);
+  if (!Number.isInteger(valueIndex) || valueIndex <= 0) {
+    throw createHttpError(400, 'value_index is required');
+  }
+
+  const filterValue = String(payload?.filter_value ?? '').trim();
+
+  const fieldResult = await pool.query(
+    'SELECT id FROM filter_fields WHERE id = $1',
+    [filterFieldId]
+  );
+  if (!fieldResult.rows[0]) {
+    throw createHttpError(404, 'Filter field not found');
+  }
+
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    const existingRows = await client.query(
+      `SELECT TRIM(filter_value) AS filter_value
+       FROM product_filters
+       WHERE product_id = $1 AND filter_field_id = $2
+       ORDER BY TRIM(filter_value)`,
+      [product.id, filterFieldId]
+    );
+
+    const oldValue = existingRows.rows[valueIndex - 1]?.filter_value || '';
+
+    if (!oldValue && !filterValue) {
+      await client.query('COMMIT');
+      return getProductFiltersByCode(product.product_code);
+    }
+
+    if (!oldValue && filterValue) {
+      await client.query(
+        `INSERT INTO product_filters (product_id, filter_field_id, filter_value)
+         VALUES ($1, $2, $3)
+         ON CONFLICT (product_id, filter_field_id, filter_value) DO NOTHING`,
+        [product.id, filterFieldId, filterValue]
+      );
+    } else if (oldValue && !filterValue) {
+      await client.query(
+        `DELETE FROM product_filters
+         WHERE product_id = $1
+           AND filter_field_id = $2
+           AND TRIM(filter_value) = $3`,
+        [product.id, filterFieldId, oldValue]
+      );
+    } else if (oldValue !== filterValue) {
+      const duplicate = existingRows.rows.some(
+        (row, index) => index !== valueIndex - 1 && row.filter_value === filterValue
+      );
+      if (duplicate) {
+        throw createHttpError(400, 'That filter value already exists for this field');
+      }
+
+      await client.query(
+        `UPDATE product_filters
+         SET filter_value = $4
+         WHERE product_id = $1
+           AND filter_field_id = $2
+           AND TRIM(filter_value) = $3`,
+        [product.id, filterFieldId, oldValue, filterValue]
+      );
+    }
+
+    await client.query('COMMIT');
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
+
+  return getProductFiltersByCode(product.product_code);
+}
+
 module.exports = {
   getProductByCode,
   updateProductByCode,
   deleteProductByCode,
+  getProductFiltersByCode,
+  updateProductFilterByCode,
 };

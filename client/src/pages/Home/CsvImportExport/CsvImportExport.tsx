@@ -4,7 +4,18 @@ import { AxiosResponse } from 'axios';
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import styles from './CsvImportExport.module.scss';
-import { exportData, uploadCSV, fetchProductByCode, updateProductByCode, deleteProductByCode, AdminProduct, AdminProductPayload } from '../../../api/index';
+import {
+    exportData,
+    uploadCSV,
+    fetchProductByCode,
+    updateProductByCode,
+    deleteProductByCode,
+    fetchProductFiltersByCode,
+    updateProductFilterByCode,
+    AdminProduct,
+    AdminProductPayload,
+    AdminProductFilterField,
+} from '../../../api/index';
 import Admin from '../../Admin/Admin';
 import AllowedFilenamesNote, { isAllowedFileName, getUploadTypeFromName } from './AllowedFiles';
 import {
@@ -71,6 +82,17 @@ const CsvImportExport: React.FC = () => {
     const [isProductLoading, setIsProductLoading] = useState(false);
     const [isProductSaving, setIsProductSaving] = useState(false);
     const [isProductRemoving, setIsProductRemoving] = useState(false);
+    const [filterProductCode, setFilterProductCode] = useState('');
+    const [isFilterProductLoading, setIsFilterProductLoading] = useState(false);
+    const [isFilterProductSaving, setIsFilterProductSaving] = useState(false);
+    const [filterFields, setFilterFields] = useState<AdminProductFilterField[]>([]);
+    const [selectedFilterKey, setSelectedFilterKey] = useState('');
+    const [selectedFilterValue, setSelectedFilterValue] = useState('');
+
+    const getFilterInstanceKey = (field: AdminProductFilterField) =>
+        `${field.filter_field_id}-${field.value_index}`;
+    const getIndexedDisplayName = (fieldName: string, valueIndex: number, totalValues: number) =>
+        totalValues > 1 ? `${fieldName} (${valueIndex})` : fieldName;
 
     const invalid = !!file && !isAllowedFileName(file.name);
     const errorLock = invalid && !showRules;
@@ -377,6 +399,145 @@ const CsvImportExport: React.FC = () => {
 
     const updateEditField = (field: keyof AdminProductPayload, value: string) => {
         setEditForm((prev) => (prev ? { ...prev, [field]: value } : prev));
+    };
+
+    const getTrimmedFilterProductCode = () => filterProductCode.trim();
+
+    const handleLoadProductFilters = async () => {
+        const code = getTrimmedFilterProductCode();
+        if (!code) {
+            toast.error('Please enter a product code.');
+            return;
+        }
+
+        setIsFilterProductLoading(true);
+        try {
+            const response = await fetchProductFiltersByCode(code);
+            const filters = response?.data?.filters ?? [];
+
+            setFilterFields(filters);
+            if (filters.length > 0) {
+                const first = filters[0];
+                setSelectedFilterKey(getFilterInstanceKey(first));
+                setSelectedFilterValue(
+                    first.current_value || first.allowed_values[0] || ''
+                );
+            } else {
+                setSelectedFilterKey('');
+                setSelectedFilterValue('');
+            }
+            toast.success(`Loaded ${filters.length} filter field(s) for "${code}".`);
+        } catch (error) {
+            toast.error(getApiErrorMessage(error, 'Failed to load product filters.'));
+        } finally {
+            setIsFilterProductLoading(false);
+        }
+    };
+
+    const getSelectedFilterField = () =>
+        filterFields.find((field) => getFilterInstanceKey(field) === selectedFilterKey);
+
+    const getFilterValueOptions = (field: AdminProductFilterField | undefined) => {
+        if (!field) return [];
+        return field.allowed_values || [];
+    };
+
+    const handleFilterFieldChange = (nextKey: string) => {
+        setSelectedFilterKey(nextKey);
+        const match = filterFields.find((field) => getFilterInstanceKey(field) === nextKey);
+        setSelectedFilterValue(
+            match?.current_value || match?.allowed_values[0] || ''
+        );
+    };
+
+    const handleAddFilterValueInstance = () => {
+        const selected = getSelectedFilterField();
+        if (!selected) {
+            toast.error('Please select a filter field first.');
+            return;
+        }
+
+        setFilterFields((prev) => {
+            const sameFieldEntries = prev
+                .filter((field) => field.filter_field_id === selected.filter_field_id)
+                .sort((a, b) => a.value_index - b.value_index);
+            const nextIndex = (sameFieldEntries.at(-1)?.value_index || 0) + 1;
+
+            const updatedExisting = prev.map((field) => {
+                if (field.filter_field_id !== selected.filter_field_id) return field;
+                return {
+                    ...field,
+                    display_name: getIndexedDisplayName(
+                        field.field_name,
+                        field.value_index,
+                        sameFieldEntries.length + 1
+                    ),
+                };
+            });
+
+            const newEntry: AdminProductFilterField = {
+                ...selected,
+                value_index: nextIndex,
+                display_name: getIndexedDisplayName(
+                    selected.field_name,
+                    nextIndex,
+                    sameFieldEntries.length + 1
+                ),
+                current_value: '',
+            };
+
+            return [...updatedExisting, newEntry];
+        });
+
+        const nextIndex =
+            Math.max(
+                ...filterFields
+                    .filter((field) => field.filter_field_id === selected.filter_field_id)
+                    .map((field) => field.value_index),
+                0
+            ) + 1;
+        setSelectedFilterKey(`${selected.filter_field_id}-${nextIndex}`);
+        setSelectedFilterValue(selected.allowed_values[0] || '');
+    };
+
+    const handleSaveProductFilter = async () => {
+        const code = getTrimmedFilterProductCode();
+        if (!code) {
+            toast.error('Please enter a product code.');
+            return;
+        }
+        const selected = getSelectedFilterField();
+        if (!selected) {
+            toast.error('Please select a filter field.');
+            return;
+        }
+
+        setIsFilterProductSaving(true);
+        try {
+            const response = await updateProductFilterByCode(code, {
+                filter_field_id: selected.filter_field_id,
+                value_index: selected.value_index,
+                filter_value: selectedFilterValue,
+            });
+            const updated = response?.data?.filters ?? filterFields;
+            setFilterFields(updated);
+            const nextSelected =
+                updated.find((field) => getFilterInstanceKey(field) === selectedFilterKey) ||
+                updated.find(
+                    (field) =>
+                        field.filter_field_id === selected.filter_field_id &&
+                        field.value_index === selected.value_index
+                );
+            if (nextSelected) {
+                setSelectedFilterKey(getFilterInstanceKey(nextSelected));
+                setSelectedFilterValue(nextSelected.current_value || '');
+            }
+            toast.success('Product filter updated successfully.');
+        } catch (error) {
+            toast.error(getApiErrorMessage(error, 'Failed to update product filter.'));
+        } finally {
+            setIsFilterProductSaving(false);
+        }
     };
 
     return (
@@ -784,6 +945,84 @@ const CsvImportExport: React.FC = () => {
                     </div>
                 </div>
             )}
+            <h2>Product Filter Edit Single Product</h2>
+            <div className={styles['edit-remove-product']}>
+                <label htmlFor="product-filter-code-input" className={styles.productCodeLabel}>
+                    Product code
+                </label>
+                <input
+                    id="product-filter-code-input"
+                    type="text"
+                    placeholder="Enter product code"
+                    value={filterProductCode}
+                    onChange={(e) => setFilterProductCode(e.target.value)}
+                    disabled={isFilterProductLoading || isFilterProductSaving}
+                    className={styles.productCodeInput}
+                />
+                <div className={styles.productActionButtons}>
+                    <button
+                        type="button"
+                        onClick={handleLoadProductFilters}
+                        disabled={!getTrimmedFilterProductCode() || isFilterProductLoading || isFilterProductSaving}
+                        className={styles.editProductBtn}
+                    >
+                        {isFilterProductLoading ? 'Loading...' : 'Load Product Filters'}
+                    </button>
+                </div>
+                {filterFields.length > 0 && (
+                    <div className={styles.productFilterEditor}>
+                        <label>
+                            Filter field
+                            <select
+                                value={selectedFilterKey}
+                                onChange={(e) => handleFilterFieldChange(e.target.value)}
+                                disabled={isFilterProductSaving}
+                            >
+                                {filterFields.map((field) => (
+                                    <option
+                                        key={getFilterInstanceKey(field)}
+                                        value={getFilterInstanceKey(field)}
+                                    >
+                                        {field.display_name}
+                                    </option>
+                                ))}
+                            </select>
+                        </label>
+                        <div className={styles.productFilterExtraActions}>
+                            <button
+                                type="button"
+                                onClick={handleAddFilterValueInstance}
+                                disabled={!selectedFilterKey || isFilterProductSaving}
+                                className={styles.confirmCancelBtn}
+                            >
+                                Add New Value For This Field
+                            </button>
+                        </div>
+                        <label>
+                            Filter value
+                            <select
+                                value={selectedFilterValue}
+                                onChange={(e) => setSelectedFilterValue(e.target.value)}
+                                disabled={isFilterProductSaving}
+                            >
+                                {getFilterValueOptions(getSelectedFilterField()).map((value) => (
+                                    <option key={value} value={value}>
+                                        {value}
+                                    </option>
+                                ))}
+                            </select>
+                        </label>
+                        <button
+                            type="button"
+                            onClick={handleSaveProductFilter}
+                            disabled={!selectedFilterKey || isFilterProductSaving}
+                            className={styles.confirmProceedBtn}
+                        >
+                            {isFilterProductSaving ? 'Saving...' : 'Save Filter Value'}
+                        </button>
+                    </div>
+                )}
+            </div>
         </div>
     );
 };

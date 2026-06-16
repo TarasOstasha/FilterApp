@@ -214,6 +214,16 @@ export interface AdminProductPayload {
     category_ids: string;
 }
 
+export interface AdminProductFilterField {
+    filter_field_id: number;
+    value_index: number;
+    field_name: string;
+    display_name: string;
+    field_type: string;
+    current_value: string;
+    allowed_values: string[];
+}
+
 const getAuthHeaders = () => {
     const token = localStorage.getItem('authToken');
     return token ? { Authorization: `Bearer ${token}` } : undefined;
@@ -258,6 +268,35 @@ export const deleteProductByCode = async (
         });
     } catch (error) {
         console.error('Error deleting product:', error);
+        throw error;
+    }
+};
+
+export const fetchProductFiltersByCode = async (
+    productCode: string
+): Promise<AxiosResponse<{ product_code: string; filters: AdminProductFilterField[] }> | undefined> => {
+    try {
+        const encoded = encodeURIComponent(productCode.trim());
+        return await axiosInstance.get(`/products/by-code/${encoded}/filters`, {
+            headers: getAuthHeaders(),
+        });
+    } catch (error) {
+        console.error('Error fetching product filters:', error);
+        throw error;
+    }
+};
+
+export const updateProductFilterByCode = async (
+    productCode: string,
+    payload: { filter_field_id: number; value_index: number; filter_value: string }
+): Promise<AxiosResponse<{ message: string; product_code: string; filters: AdminProductFilterField[] }> | undefined> => {
+    try {
+        const encoded = encodeURIComponent(productCode.trim());
+        return await axiosInstance.put(`/products/by-code/${encoded}/filters`, payload, {
+            headers: getAuthHeaders(),
+        });
+    } catch (error) {
+        console.error('Error updating product filter:', error);
         throw error;
     }
 };

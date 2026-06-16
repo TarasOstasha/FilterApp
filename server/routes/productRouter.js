@@ -33,4 +33,9 @@ productRouter
     .put(productAdminController.updateByCode)
     .delete(productAdminController.deleteByCode);
 
+productRouter
+    .route('/by-code/:productCode/filters')
+    .get(productAdminController.getFiltersByCode)
+    .put(productAdminController.updateFilterByCode);
+
 module.exports = productRouter;

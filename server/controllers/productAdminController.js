@@ -3,6 +3,8 @@ const {
   getProductByCode,
   updateProductByCode,
   deleteProductByCode,
+  getProductFiltersByCode,
+  updateProductFilterByCode,
 } = require('../services/productAdminService');
 
 module.exports.getByCode = async (req, res, next) => {
@@ -41,5 +43,29 @@ module.exports.deleteByCode = async (req, res, next) => {
     });
   } catch (error) {
     next(error.status ? error : createHttpError(500, 'Error removing product'));
+  }
+};
+
+module.exports.getFiltersByCode = async (req, res, next) => {
+  try {
+    const productFilters = await getProductFiltersByCode(req.params.productCode);
+    if (!productFilters) {
+      return next(createHttpError(404, 'Product not found'));
+    }
+    res.status(200).json(productFilters);
+  } catch (error) {
+    next(error.status ? error : createHttpError(500, 'Error fetching product filters'));
+  }
+};
+
+module.exports.updateFilterByCode = async (req, res, next) => {
+  try {
+    const productFilters = await updateProductFilterByCode(req.params.productCode, req.body);
+    res.status(200).json({
+      message: 'Product filter updated successfully',
+      ...productFilters,
+    });
+  } catch (error) {
+    next(error.status ? error : createHttpError(500, 'Error updating product filter'));
   }
 };
