@@ -240,6 +240,16 @@ export interface AdminFilterFieldPayload {
     sort_order: number | string;
 }
 
+export interface AdminCategory {
+    category_id: number;
+    category_name: string;
+}
+
+export interface AdminCategoryPayload {
+    category_id?: number | string;
+    category_name: string;
+}
+
 const getAuthHeaders = () => {
     const token = localStorage.getItem('authToken');
     return token ? { Authorization: `Bearer ${token}` } : undefined;
@@ -369,6 +379,62 @@ export const deleteFilterFieldById = async (
         });
     } catch (error) {
         console.error('Error deleting filter field:', error);
+        throw error;
+    }
+};
+
+export const fetchCategoryByCategoryId = async (
+    categoryId: number | string
+): Promise<AxiosResponse<{ category: AdminCategory }> | undefined> => {
+    try {
+        const encoded = encodeURIComponent(String(categoryId).trim());
+        return await axiosInstance.get(`/category/by-category-id/${encoded}`, {
+            headers: getAuthHeaders(),
+        });
+    } catch (error) {
+        console.error('Error fetching category:', error);
+        throw error;
+    }
+};
+
+export const createCategory = async (
+    payload: AdminCategoryPayload
+): Promise<AxiosResponse<{ message: string; category: AdminCategory }> | undefined> => {
+    try {
+        return await axiosInstance.post('/category', payload, {
+            headers: getAuthHeaders(),
+        });
+    } catch (error) {
+        console.error('Error creating category:', error);
+        throw error;
+    }
+};
+
+export const updateCategoryByCategoryId = async (
+    categoryId: number | string,
+    payload: Pick<AdminCategoryPayload, 'category_name'>
+): Promise<AxiosResponse<{ message: string; category: AdminCategory }> | undefined> => {
+    try {
+        const encoded = encodeURIComponent(String(categoryId).trim());
+        return await axiosInstance.put(`/category/by-category-id/${encoded}`, payload, {
+            headers: getAuthHeaders(),
+        });
+    } catch (error) {
+        console.error('Error updating category:', error);
+        throw error;
+    }
+};
+
+export const deleteCategoryByCategoryId = async (
+    categoryId: number | string
+): Promise<AxiosResponse<{ message: string; result: { category_id: number; category_name: string } }> | undefined> => {
+    try {
+        const encoded = encodeURIComponent(String(categoryId).trim());
+        return await axiosInstance.delete(`/category/by-category-id/${encoded}`, {
+            headers: getAuthHeaders(),
+        });
+    } catch (error) {
+        console.error('Error deleting category:', error);
         throw error;
     }
 };

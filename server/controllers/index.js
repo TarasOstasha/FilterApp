@@ -1,4 +1,5 @@
 module.exports.categoryController = require('./categoryController');
+module.exports.categoryAdminController = require('./categoryAdminController');
 module.exports.filterFieldController = require('./filterFieldController');
 module.exports.filterFieldAdminController = require('./filterFieldAdminController');
 module.exports.productCategoryController = require('./productCategoryController');

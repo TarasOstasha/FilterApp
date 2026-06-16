@@ -16,10 +16,16 @@ import {
     createFilterField,
     updateFilterFieldById,
     deleteFilterFieldById,
+    fetchCategoryByCategoryId,
+    createCategory,
+    updateCategoryByCategoryId,
+    deleteCategoryByCategoryId,
     AdminProduct,
     AdminProductPayload,
     AdminProductFilterField,
     AdminFilterFieldPayload,
+    AdminCategory,
+    AdminCategoryPayload,
 } from '../../../api/index';
 import Admin from '../../Admin/Admin';
 import AllowedFilenamesNote, { isAllowedFileName, getUploadTypeFromName } from './AllowedFiles';
@@ -102,6 +108,15 @@ const CsvImportExport: React.FC = () => {
     const [isFilterFieldDefLoading, setIsFilterFieldDefLoading] = useState(false);
     const [isFilterFieldDefSaving, setIsFilterFieldDefSaving] = useState(false);
     const [isFilterFieldDefRemoving, setIsFilterFieldDefRemoving] = useState(false);
+    const [categoryDefId, setCategoryDefId] = useState('');
+    const [showCategoryDefEditConfirm, setShowCategoryDefEditConfirm] = useState(false);
+    const [showCategoryDefRemoveConfirm, setShowCategoryDefRemoveConfirm] = useState(false);
+    const [showCategoryDefModal, setShowCategoryDefModal] = useState(false);
+    const [categoryDefModalMode, setCategoryDefModalMode] = useState<'edit' | 'add'>('edit');
+    const [categoryDefForm, setCategoryDefForm] = useState<AdminCategoryPayload | null>(null);
+    const [isCategoryDefLoading, setIsCategoryDefLoading] = useState(false);
+    const [isCategoryDefSaving, setIsCategoryDefSaving] = useState(false);
+    const [isCategoryDefRemoving, setIsCategoryDefRemoving] = useState(false);
 
     const getFilterInstanceKey = (field: AdminProductFilterField) =>
         `${field.filter_field_id}-${field.value_index}`;
@@ -682,6 +697,121 @@ const CsvImportExport: React.FC = () => {
         }
     };
 
+    const getTrimmedCategoryDefId = () => categoryDefId.trim();
+
+    const emptyCategoryDefForm = (): AdminCategoryPayload => ({
+        category_id: '',
+        category_name: '',
+    });
+
+    const categoryToForm = (category: AdminCategory): AdminCategoryPayload => ({
+        category_id: category.category_id,
+        category_name: category.category_name,
+    });
+
+    const closeCategoryDefModal = () => {
+        setShowCategoryDefModal(false);
+        setCategoryDefForm(null);
+    };
+
+    const updateCategoryDefForm = (field: keyof AdminCategoryPayload, value: string | number) => {
+        setCategoryDefForm((prev) => (prev ? { ...prev, [field]: value } : prev));
+    };
+
+    const handleAddCategoryDef = () => {
+        setCategoryDefModalMode('add');
+        setCategoryDefForm(emptyCategoryDefForm());
+        setShowCategoryDefModal(true);
+    };
+
+    const handleEditCategoryDef = () => {
+        if (!getTrimmedCategoryDefId()) {
+            toast.error('Please enter a category ID.');
+            return;
+        }
+        setShowCategoryDefEditConfirm(true);
+    };
+
+    const handleRemoveCategoryDef = () => {
+        if (!getTrimmedCategoryDefId()) {
+            toast.error('Please enter a category ID.');
+            return;
+        }
+        setShowCategoryDefRemoveConfirm(true);
+    };
+
+    const handleConfirmCategoryDefEdit = async () => {
+        const categoryId = getTrimmedCategoryDefId();
+        setShowCategoryDefEditConfirm(false);
+        setIsCategoryDefLoading(true);
+
+        try {
+            const response = await fetchCategoryByCategoryId(categoryId);
+            if (!response?.data?.category) {
+                toast.error('Category not found.');
+                return;
+            }
+            setCategoryDefModalMode('edit');
+            setCategoryDefForm(categoryToForm(response.data.category));
+            setShowCategoryDefModal(true);
+        } catch (error) {
+            toast.error(getApiErrorMessage(error, 'Failed to load category.'));
+        } finally {
+            setIsCategoryDefLoading(false);
+        }
+    };
+
+    const handleSaveCategoryDef = async () => {
+        if (!categoryDefForm) return;
+
+        setIsCategoryDefSaving(true);
+        try {
+            if (categoryDefModalMode === 'add') {
+                if (!String(categoryDefForm.category_id ?? '').trim()) {
+                    toast.error('Category ID is required.');
+                    return;
+                }
+                await createCategory(categoryDefForm);
+                toast.success('Category created successfully.');
+                setCategoryDefId(String(categoryDefForm.category_id));
+            } else {
+                const categoryId = getTrimmedCategoryDefId();
+                await updateCategoryByCategoryId(categoryId, {
+                    category_name: categoryDefForm.category_name,
+                });
+                toast.success(`Category "${categoryId}" updated successfully.`);
+            }
+            closeCategoryDefModal();
+        } catch (error) {
+            toast.error(
+                getApiErrorMessage(
+                    error,
+                    categoryDefModalMode === 'add'
+                        ? 'Failed to create category.'
+                        : 'Failed to update category.'
+                )
+            );
+        } finally {
+            setIsCategoryDefSaving(false);
+        }
+    };
+
+    const handleConfirmCategoryDefRemove = async () => {
+        const categoryId = getTrimmedCategoryDefId();
+        setShowCategoryDefRemoveConfirm(false);
+        setIsCategoryDefRemoving(true);
+
+        try {
+            await deleteCategoryByCategoryId(categoryId);
+            toast.success(`Category "${categoryId}" removed successfully.`);
+            setCategoryDefId('');
+        } catch (error) {
+            toast.error(getApiErrorMessage(error, 'Failed to remove category.'));
+        } finally {
+            setIsCategoryDefRemoving(false);
+        }
+    };
+
     return (
         <div className={styles['csv-import-export']}>
 
@@ -1222,7 +1352,7 @@ const CsvImportExport: React.FC = () => {
                     step="1"
                     placeholder="Enter filter field ID"
                     value={filterFieldDefId}
-                    onChange={(e) => setFilterFieldDefId(e.target.value)}
+                    onChange={(e) => setFilterFieldDefId(e.target.value.toLowerCase())}
                     disabled={
                         isFilterFieldDefLoading ||
                         isFilterFieldDefSaving ||
@@ -1470,20 +1600,251 @@ const CsvImportExport: React.FC = () => {
             )}
 
             <h2 className={styles.sectionTitle}>
-                Edit / Add / Remove Categories Fields
+                Edit / Add / Remove Categories
                 <span className={styles.infoIconWrapper}>
                     <span
                         className={styles.infoIcon}
                         tabIndex={0}
-                        aria-describedby="product-filter-edit-info"
+                        aria-describedby="categories-admin-info"
                     >
                         ?
                     </span>
-                    <span id="product-filter-edit-info" className={styles.infoTooltip} role="tooltip">
-                        add info
+                    <span id="categories-admin-info" className={styles.infoTooltip} role="tooltip">
+                        Manage category definitions by category ID. Add new categories, edit names,
+                        or remove them without uploading a CSV.
                     </span>
                 </span>
             </h2>
+            <div className={styles['edit-remove-product']}>
+                <label htmlFor="category-id-input" className={styles.productCodeLabel}>
+                    Category ID
+                </label>
+                <input
+                    id="category-id-input"
+                    type="number"
+                    min="1"
+                    step="1"
+                    placeholder="Enter category ID"
+                    value={categoryDefId}
+                    onChange={(e) => setCategoryDefId(e.target.value)}
+                    disabled={
+                        isCategoryDefLoading ||
+                        isCategoryDefSaving ||
+                        isCategoryDefRemoving
+                    }
+                    className={styles.productCodeInput}
+                />
+                <div className={styles.productActionButtons}>
+                    <button
+                        type="button"
+                        onClick={handleEditCategoryDef}
+                        disabled={
+                            !getTrimmedCategoryDefId() ||
+                            isCategoryDefLoading ||
+                            isCategoryDefSaving ||
+                            isCategoryDefRemoving
+                        }
+                        className={styles.editProductBtn}
+                    >
+                        {isCategoryDefLoading ? 'Loading...' : 'Edit Category'}
+                    </button>
+                    <button
+                        type="button"
+                        onClick={handleAddCategoryDef}
+                        disabled={
+                            isCategoryDefLoading ||
+                            isCategoryDefSaving ||
+                            isCategoryDefRemoving
+                        }
+                        className={styles.editProductBtn}
+                    >
+                        Add Category
+                    </button>
+                    <button
+                        type="button"
+                        onClick={handleRemoveCategoryDef}
+                        disabled={
+                            !getTrimmedCategoryDefId() ||
+                            isCategoryDefLoading ||
+                            isCategoryDefSaving ||
+                            isCategoryDefRemoving
+                        }
+                        className={styles.removeProductBtn}
+                    >
+                        {isCategoryDefRemoving ? 'Removing...' : 'Remove Category'}
+                    </button>
+                </div>
+            </div>
+            {showCategoryDefEditConfirm && (
+                <div
+                    className={styles.confirmOverlay}
+                    role="dialog"
+                    aria-modal="true"
+                    aria-labelledby="edit-category-confirm-title"
+                    onClick={() => setShowCategoryDefEditConfirm(false)}
+                >
+                    <div className={styles.confirmDialog} onClick={(e) => e.stopPropagation()}>
+                        <div className={styles.confirmHeader}>
+                            <div className={styles.confirmIcon} aria-hidden="true">!</div>
+                            <div>
+                                <h3 id="edit-category-confirm-title" className={styles.confirmTitle}>
+                                    Confirm category edit
+                                </h3>
+                                <p className={styles.confirmSubtitle}>
+                                    Load category <strong>{getTrimmedCategoryDefId()}</strong> for editing?
+                                </p>
+                            </div>
+                        </div>
+                        <div className={styles.confirmBody}>
+                            <p className={styles.confirmMessage}>
+                                You will be able to update the category name.
+                            </p>
+                        </div>
+                        <div className={styles.confirmActions}>
+                            <button
+                                type="button"
+                                className={styles.confirmCancelBtn}
+                                onClick={() => setShowCategoryDefEditConfirm(false)}
+                                disabled={isCategoryDefLoading}
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                type="button"
+                                className={styles.confirmProceedBtn}
+                                onClick={handleConfirmCategoryDefEdit}
+                                disabled={isCategoryDefLoading}
+                            >
+                                {isCategoryDefLoading ? 'Loading...' : 'Yes, load category'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+            {showCategoryDefRemoveConfirm && (
+                <div
+                    className={styles.confirmOverlay}
+                    role="dialog"
+                    aria-modal="true"
+                    aria-labelledby="remove-category-confirm-title"
+                    onClick={() => !isCategoryDefRemoving && setShowCategoryDefRemoveConfirm(false)}
+                >
+                    <div className={styles.confirmDialog} onClick={(e) => e.stopPropagation()}>
+                        <div className={styles.confirmHeader}>
+                            <div className={`${styles.confirmIcon} ${styles.confirmIconDanger}`} aria-hidden="true">!</div>
+                            <div>
+                                <h3 id="remove-category-confirm-title" className={styles.confirmTitle}>
+                                    Confirm category removal
+                                </h3>
+                                <p className={styles.confirmSubtitle}>
+                                    Permanently remove category <strong>{getTrimmedCategoryDefId()}</strong>?
+                                </p>
+                            </div>
+                        </div>
+                        <div className={styles.confirmBody}>
+                            <p className={styles.confirmMessage}>
+                                This action cannot be undone. Product links to this category will also be removed.
+                            </p>
+                        </div>
+                        <div className={styles.confirmActions}>
+                            <button
+                                type="button"
+                                className={styles.confirmCancelBtn}
+                                onClick={() => setShowCategoryDefRemoveConfirm(false)}
+                                disabled={isCategoryDefRemoving}
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                type="button"
+                                className={styles.confirmDangerBtn}
+                                onClick={handleConfirmCategoryDefRemove}
+                                disabled={isCategoryDefRemoving}
+                            >
+                                {isCategoryDefRemoving ? 'Removing...' : 'Yes, remove category'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+            {showCategoryDefModal && categoryDefForm && (
+                <div
+                    className={styles.confirmOverlay}
+                    role="dialog"
+                    aria-modal="true"
+                    aria-labelledby="category-modal-title"
+                    onClick={() => !isCategoryDefSaving && closeCategoryDefModal()}
+                >
+                    <div
+                        className={`${styles.confirmDialog} ${styles.editProductDialog}`}
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <div className={styles.confirmHeader}>
+                            <div>
+                                <h3 id="category-modal-title" className={styles.confirmTitle}>
+                                    {categoryDefModalMode === 'add' ? 'Add category' : 'Edit category'}
+                                </h3>
+                                {categoryDefModalMode === 'edit' && (
+                                    <p className={styles.confirmSubtitle}>
+                                        Category ID: <strong>{getTrimmedCategoryDefId()}</strong>
+                                    </p>
+                                )}
+                            </div>
+                        </div>
+                        <div className={styles.editProductForm}>
+                            {categoryDefModalMode === 'add' && (
+                                <label>
+                                    Category ID
+                                    <input
+                                        type="number"
+                                        min="1"
+                                        step="1"
+                                        value={categoryDefForm.category_id ?? ''}
+                                        onChange={(e) => updateCategoryDefForm('category_id', e.target.value)}
+                                        disabled={isCategoryDefSaving}
+                                    />
+                                </label>
+                            )}
+                            <label>
+                                Category name
+                                <input
+                                    type="text"
+                                    value={categoryDefForm.category_name}
+                                    onChange={(e) => updateCategoryDefForm('category_name', e.target.value)}
+                                    disabled={isCategoryDefSaving}
+                                />
+                            </label>
+                        </div>
+                        <div className={styles.confirmActions}>
+                            <button
+                                type="button"
+                                className={styles.confirmCancelBtn}
+                                onClick={closeCategoryDefModal}
+                                disabled={isCategoryDefSaving}
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                type="button"
+                                className={styles.confirmProceedBtn}
+                                onClick={handleSaveCategoryDef}
+                                disabled={
+                                    isCategoryDefSaving ||
+                                    !categoryDefForm.category_name.trim() ||
+                                    (categoryDefModalMode === 'add' &&
+                                        !String(categoryDefForm.category_id ?? '').trim())
+                                }
+                            >
+                                {isCategoryDefSaving
+                                    ? 'Saving...'
+                                    : categoryDefModalMode === 'add'
+                                      ? 'Create category'
+                                      : 'Save changes'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             
         </div>
