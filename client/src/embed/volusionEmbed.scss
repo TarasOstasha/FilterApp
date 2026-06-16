@@ -16,6 +16,23 @@
   input[type='radio'] {
     margin-top: 0;
   }
+
+  // Match standalone .filter-app-root typography for accordion titles and checkbox labels
+  [class*='FilterSidebar_accordion-title'] {
+    font-size: 15.4px !important;
+    line-height: 20px !important;
+    font-family: Arial, Helvetica, 'Segoe UI', Roboto, sans-serif,
+      'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol' !important;
+    font-weight: 700 !important;
+  }
+
+  [class*='FilterSidebar_sidebar-checkbox-label'] {
+    font-size: 14px !important;
+    line-height: 20px !important;
+    font-family: Arial, Helvetica, 'Segoe UI', Roboto, sans-serif,
+      'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol' !important;
+    font-weight: 400 !important;
+  }
 }
 
 #xyz-filter-products-root:not(.xyz-embed-products-visible) {
