@@ -283,15 +283,14 @@ export function useVolusionFilterState({
     setHasUsedLoadMore(false);
     setSelectedFilters({});
     setCurrentPage(1);
+    setItemsPerPage(27);
     setSortBy('most_popular');
     setProducts([]);
     setTotalProducts(0);
-    writeUrl({
-      limit: itemsPerPage,
-      offset: 0,
-      sortBy: 'most_popular',
-      filters: {},
-    });
+    // Volusion category pages: return to the native category URL with no query params.
+    // pushState keeps the filtered URL in history so Back restores prior filter state.
+    window.history.pushState({}, '', window.location.pathname);
+    setTimeout(() => setIsTransitioning(false), 120);
   };
 
   const totalPages = Math.ceil(totalProducts / itemsPerPage);
