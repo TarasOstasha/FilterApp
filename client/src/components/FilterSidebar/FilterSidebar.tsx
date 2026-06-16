@@ -455,8 +455,9 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
     const safeFilters = sanitizeFilters(selectedFilters);
     const noFiltersAtAll = Object.keys(safeFilters).length === 0;
 
-    const priceRailMin = priceBreakpoints[0] ?? 0;
-    const priceRailMax = priceBreakpoints[priceBreakpoints.length - 1] ?? 0;
+    const bpLast = priceBreakpoints?.[priceBreakpoints.length - 1] ?? 0;
+    const priceRailMin = noFiltersAtAll ? 0 : priceMin;
+    const priceRailMax = noFiltersAtAll ? (priceMax > 0 ? priceMax : bpLast) : priceMax;
 
     const widthRailMin  = widthMin  || globalMinWidth;
     const widthRailMax  = widthMax  || globalMaxWidth;
@@ -678,21 +679,18 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
         }
 
         if (ft === 'range') {
-          const priceBpFirst = priceBreakpoints[0] ?? 0;
-          const priceBpLast = priceBreakpoints[priceBreakpoints.length - 1] ?? 0;
-
           const [curMinRaw, curMaxRaw] = parseRangeValue(
             ff,
             unitSelections[fn],
             selectedFilters,
             {
-              'Product Price': [priceBpFirst, priceBpLast],
+              'Product Price': [priceMin, priceMax],
               'Display Width': [widthMin, widthMax],
               'Display Height': [heightMin, heightMax],
             }
           );
 
-          // ---------- Product Price (fixed rail from configured breakpoints) ----------
+          // ---------- Product Price (snap to breakpoints; freeze when rail collapses) ----------
           if (fn === 'Product Price') {
             if (!priceBreakpoints || priceBreakpoints.length === 0) {
               return (
@@ -708,10 +706,13 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
               );
             }
 
-            const railMin = priceBpFirst;
-            const railMax = priceBpLast;
+            const bpLast = priceBreakpoints[priceBreakpoints.length - 1];
+            const hasRealRange = priceMax > 0 && priceMax >= priceMin;
+            const railMin = hasRealRange ? priceMin : 0;
+            const railMax = hasRealRange ? priceMax : bpLast;
 
             // Only show loading if we truly don't have price data yet (initial load)
+            // Don't show loading if the range collapsed due to filters (railMin === railMax is ok after initialization)
             if (railMax === 0 && !initializedFromFilterFields.current) {
               return (
                 <FilterAccordionSection
@@ -737,8 +738,9 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
             }
             if (effMin > effMax) { effMin = railMin; effMax = railMax; }
 
-            const safeRailBps = priceBreakpoints;
-            const isFrozen = priceMax > 0 && priceMin === priceMax;
+            const railBps = priceBreakpoints.filter(v => v >= railMin && v <= railMax);
+            const safeRailBps = railBps.length ? railBps : [railMin, railMax];
+            const isFrozen = railMin === railMax || safeRailBps.length <= 1;
 
             const clampIdx = (i: number) => Math.max(0, Math.min(i, safeRailBps.length - 1));
             const lastIdxLE = (v: number) => {
@@ -820,7 +822,7 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
 
                   {isFrozen && (
                     <div className={styles['frozenHint']}>
-                      Only products priced at ${priceMin} match other filters.
+                      Only products priced at {railMin === railMax ? `$${railMin}` : `$${safeRailBps[0]}`} match other filters.
                     </div>
                   )}
                 </div>
