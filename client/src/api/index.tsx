@@ -224,6 +224,22 @@ export interface AdminProductFilterField {
     allowed_values: string[];
 }
 
+export interface AdminFilterField {
+    id: number;
+    field_name: string;
+    field_type: string;
+    allowed_values: string;
+    sort_order: number;
+}
+
+export interface AdminFilterFieldPayload {
+    id?: number | string;
+    field_name: string;
+    field_type: string;
+    allowed_values: string;
+    sort_order: number | string;
+}
+
 const getAuthHeaders = () => {
     const token = localStorage.getItem('authToken');
     return token ? { Authorization: `Bearer ${token}` } : undefined;
@@ -297,6 +313,62 @@ export const updateProductFilterByCode = async (
         });
     } catch (error) {
         console.error('Error updating product filter:', error);
+        throw error;
+    }
+};
+
+export const fetchFilterFieldById = async (
+    id: number | string
+): Promise<AxiosResponse<{ filter_field: AdminFilterField }> | undefined> => {
+    try {
+        const encoded = encodeURIComponent(String(id).trim());
+        return await axiosInstance.get(`/filterField/by-id/${encoded}`, {
+            headers: getAuthHeaders(),
+        });
+    } catch (error) {
+        console.error('Error fetching filter field:', error);
+        throw error;
+    }
+};
+
+export const createFilterField = async (
+    payload: AdminFilterFieldPayload
+): Promise<AxiosResponse<{ message: string; filter_field: AdminFilterField }> | undefined> => {
+    try {
+        return await axiosInstance.post('/filterField', payload, {
+            headers: getAuthHeaders(),
+        });
+    } catch (error) {
+        console.error('Error creating filter field:', error);
+        throw error;
+    }
+};
+
+export const updateFilterFieldById = async (
+    id: number | string,
+    payload: Omit<AdminFilterFieldPayload, 'id'>
+): Promise<AxiosResponse<{ message: string; filter_field: AdminFilterField }> | undefined> => {
+    try {
+        const encoded = encodeURIComponent(String(id).trim());
+        return await axiosInstance.put(`/filterField/by-id/${encoded}`, payload, {
+            headers: getAuthHeaders(),
+        });
+    } catch (error) {
+        console.error('Error updating filter field:', error);
+        throw error;
+    }
+};
+
+export const deleteFilterFieldById = async (
+    id: number | string
+): Promise<AxiosResponse<{ message: string; result: { id: number; field_name: string } }> | undefined> => {
+    try {
+        const encoded = encodeURIComponent(String(id).trim());
+        return await axiosInstance.delete(`/filterField/by-id/${encoded}`, {
+            headers: getAuthHeaders(),
+        });
+    } catch (error) {
+        console.error('Error deleting filter field:', error);
         throw error;
     }
 };

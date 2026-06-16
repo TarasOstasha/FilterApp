@@ -12,9 +12,14 @@ import {
     deleteProductByCode,
     fetchProductFiltersByCode,
     updateProductFilterByCode,
+    fetchFilterFieldById,
+    createFilterField,
+    updateFilterFieldById,
+    deleteFilterFieldById,
     AdminProduct,
     AdminProductPayload,
     AdminProductFilterField,
+    AdminFilterFieldPayload,
 } from '../../../api/index';
 import Admin from '../../Admin/Admin';
 import AllowedFilenamesNote, { isAllowedFileName, getUploadTypeFromName } from './AllowedFiles';
@@ -88,6 +93,15 @@ const CsvImportExport: React.FC = () => {
     const [filterFields, setFilterFields] = useState<AdminProductFilterField[]>([]);
     const [selectedFilterKey, setSelectedFilterKey] = useState('');
     const [selectedFilterValue, setSelectedFilterValue] = useState('');
+    const [filterFieldDefId, setFilterFieldDefId] = useState('');
+    const [showFilterFieldDefEditConfirm, setShowFilterFieldDefEditConfirm] = useState(false);
+    const [showFilterFieldDefRemoveConfirm, setShowFilterFieldDefRemoveConfirm] = useState(false);
+    const [showFilterFieldDefModal, setShowFilterFieldDefModal] = useState(false);
+    const [filterFieldDefModalMode, setFilterFieldDefModalMode] = useState<'edit' | 'add'>('edit');
+    const [filterFieldDefForm, setFilterFieldDefForm] = useState<AdminFilterFieldPayload | null>(null);
+    const [isFilterFieldDefLoading, setIsFilterFieldDefLoading] = useState(false);
+    const [isFilterFieldDefSaving, setIsFilterFieldDefSaving] = useState(false);
+    const [isFilterFieldDefRemoving, setIsFilterFieldDefRemoving] = useState(false);
 
     const getFilterInstanceKey = (field: AdminProductFilterField) =>
         `${field.filter_field_id}-${field.value_index}`;
@@ -537,6 +551,134 @@ const CsvImportExport: React.FC = () => {
             toast.error(getApiErrorMessage(error, 'Failed to update product filter.'));
         } finally {
             setIsFilterProductSaving(false);
+        }
+    };
+
+    const getTrimmedFilterFieldDefId = () => filterFieldDefId.trim();
+
+    const emptyFilterFieldDefForm = (): AdminFilterFieldPayload => ({
+        id: '',
+        field_name: '',
+        field_type: 'checkbox',
+        allowed_values: '',
+        sort_order: 0,
+    });
+
+    const filterFieldToForm = (field: {
+        id: number;
+        field_name: string;
+        field_type: string;
+        allowed_values: string;
+        sort_order: number;
+    }): AdminFilterFieldPayload => ({
+        id: field.id,
+        field_name: field.field_name,
+        field_type: field.field_type,
+        allowed_values: field.allowed_values || '',
+        sort_order: field.sort_order ?? 0,
+    });
+
+    const closeFilterFieldDefModal = () => {
+        setShowFilterFieldDefModal(false);
+        setFilterFieldDefForm(null);
+    };
+
+    const updateFilterFieldDefForm = (field: keyof AdminFilterFieldPayload, value: string | number) => {
+        setFilterFieldDefForm((prev) => (prev ? { ...prev, [field]: value } : prev));
+    };
+
+    const handleAddFilterFieldDef = () => {
+        setFilterFieldDefModalMode('add');
+        setFilterFieldDefForm(emptyFilterFieldDefForm());
+        setShowFilterFieldDefModal(true);
+    };
+
+    const handleEditFilterFieldDef = () => {
+        if (!getTrimmedFilterFieldDefId()) {
+            toast.error('Please enter a filter field ID.');
+            return;
+        }
+        setShowFilterFieldDefEditConfirm(true);
+    };
+
+    const handleRemoveFilterFieldDef = () => {
+        if (!getTrimmedFilterFieldDefId()) {
+            toast.error('Please enter a filter field ID.');
+            return;
+        }
+        setShowFilterFieldDefRemoveConfirm(true);
+    };
+
+    const handleConfirmFilterFieldDefEdit = async () => {
+        const id = getTrimmedFilterFieldDefId();
+        setShowFilterFieldDefEditConfirm(false);
+        setIsFilterFieldDefLoading(true);
+
+        try {
+            const response = await fetchFilterFieldById(id);
+            if (!response?.data?.filter_field) {
+                toast.error('Filter field not found.');
+                return;
+            }
+            setFilterFieldDefModalMode('edit');
+            setFilterFieldDefForm(filterFieldToForm(response.data.filter_field));
+            setShowFilterFieldDefModal(true);
+        } catch (error) {
+            toast.error(getApiErrorMessage(error, 'Failed to load filter field.'));
+        } finally {
+            setIsFilterFieldDefLoading(false);
+        }
+    };
+
+    const handleSaveFilterFieldDef = async () => {
+        if (!filterFieldDefForm) return;
+
+        setIsFilterFieldDefSaving(true);
+        try {
+            if (filterFieldDefModalMode === 'add') {
+                await createFilterField(filterFieldDefForm);
+                toast.success('Filter field created successfully.');
+                if (filterFieldDefForm.id) {
+                    setFilterFieldDefId(String(filterFieldDefForm.id));
+                }
+            } else {
+                const id = getTrimmedFilterFieldDefId();
+                await updateFilterFieldById(id, {
+                    field_name: filterFieldDefForm.field_name,
+                    field_type: filterFieldDefForm.field_type,
+                    allowed_values: filterFieldDefForm.allowed_values,
+                    sort_order: filterFieldDefForm.sort_order,
+                });
+                toast.success(`Filter field "${id}" updated successfully.`);
+            }
+            closeFilterFieldDefModal();
+        } catch (error) {
+            toast.error(
+                getApiErrorMessage(
+                    error,
+                    filterFieldDefModalMode === 'add'
+                        ? 'Failed to create filter field.'
+                        : 'Failed to update filter field.'
+                )
+            );
+        } finally {
+            setIsFilterFieldDefSaving(false);
+        }
+    };
+
+    const handleConfirmFilterFieldDefRemove = async () => {
+        const id = getTrimmedFilterFieldDefId();
+        setShowFilterFieldDefRemoveConfirm(false);
+        setIsFilterFieldDefRemoving(true);
+
+        try {
+            await deleteFilterFieldById(id);
+            toast.success(`Filter field "${id}" removed successfully.`);
+            setFilterFieldDefId('');
+        } catch (error) {
+            toast.error(getApiErrorMessage(error, 'Failed to remove filter field.'));
+        } finally {
+            setIsFilterFieldDefRemoving(false);
         }
     };
 
@@ -1053,6 +1195,297 @@ const CsvImportExport: React.FC = () => {
                     </div>
                 )}
             </div>
+            <h2 className={styles.sectionTitle}>
+                Edit / Add / Remove Filter Fields
+                <span className={styles.infoIconWrapper}>
+                    <span
+                        className={styles.infoIcon}
+                        tabIndex={0}
+                        aria-describedby="filter-fields-admin-info"
+                    >
+                        ?
+                    </span>
+                    <span id="filter-fields-admin-info" className={styles.infoTooltip} role="tooltip">
+                        Manage filter field definitions (name, type, allowed values, sort order) by ID.
+                        Add new fields, edit existing ones, or remove them without uploading a CSV.
+                    </span>
+                </span>
+            </h2>
+            <div className={styles['edit-remove-product']}>
+                <label htmlFor="filter-field-id-input" className={styles.productCodeLabel}>
+                    Filter field ID
+                </label>
+                <input
+                    id="filter-field-id-input"
+                    type="number"
+                    min="1"
+                    step="1"
+                    placeholder="Enter filter field ID"
+                    value={filterFieldDefId}
+                    onChange={(e) => setFilterFieldDefId(e.target.value)}
+                    disabled={
+                        isFilterFieldDefLoading ||
+                        isFilterFieldDefSaving ||
+                        isFilterFieldDefRemoving
+                    }
+                    className={styles.productCodeInput}
+                />
+                <div className={styles.productActionButtons}>
+                    <button
+                        type="button"
+                        onClick={handleEditFilterFieldDef}
+                        disabled={
+                            !getTrimmedFilterFieldDefId() ||
+                            isFilterFieldDefLoading ||
+                            isFilterFieldDefSaving ||
+                            isFilterFieldDefRemoving
+                        }
+                        className={styles.editProductBtn}
+                    >
+                        {isFilterFieldDefLoading ? 'Loading...' : 'Edit Filter Field'}
+                    </button>
+                    <button
+                        type="button"
+                        onClick={handleAddFilterFieldDef}
+                        disabled={
+                            isFilterFieldDefLoading ||
+                            isFilterFieldDefSaving ||
+                            isFilterFieldDefRemoving
+                        }
+                        className={styles.editProductBtn}
+                    >
+                        Add Filter Field
+                    </button>
+                    <button
+                        type="button"
+                        onClick={handleRemoveFilterFieldDef}
+                        disabled={
+                            !getTrimmedFilterFieldDefId() ||
+                            isFilterFieldDefLoading ||
+                            isFilterFieldDefSaving ||
+                            isFilterFieldDefRemoving
+                        }
+                        className={styles.removeProductBtn}
+                    >
+                        {isFilterFieldDefRemoving ? 'Removing...' : 'Remove Filter Field'}
+                    </button>
+                </div>
+            </div>
+            {showFilterFieldDefEditConfirm && (
+                <div
+                    className={styles.confirmOverlay}
+                    role="dialog"
+                    aria-modal="true"
+                    aria-labelledby="edit-filter-field-confirm-title"
+                    onClick={() => setShowFilterFieldDefEditConfirm(false)}
+                >
+                    <div className={styles.confirmDialog} onClick={(e) => e.stopPropagation()}>
+                        <div className={styles.confirmHeader}>
+                            <div className={styles.confirmIcon} aria-hidden="true">!</div>
+                            <div>
+                                <h3 id="edit-filter-field-confirm-title" className={styles.confirmTitle}>
+                                    Confirm filter field edit
+                                </h3>
+                                <p className={styles.confirmSubtitle}>
+                                    Load filter field <strong>{getTrimmedFilterFieldDefId()}</strong> for editing?
+                                </p>
+                            </div>
+                        </div>
+                        <div className={styles.confirmBody}>
+                            <p className={styles.confirmMessage}>
+                                You will be able to update the field name, type, allowed values, and sort order.
+                            </p>
+                        </div>
+                        <div className={styles.confirmActions}>
+                            <button
+                                type="button"
+                                className={styles.confirmCancelBtn}
+                                onClick={() => setShowFilterFieldDefEditConfirm(false)}
+                                disabled={isFilterFieldDefLoading}
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                type="button"
+                                className={styles.confirmProceedBtn}
+                                onClick={handleConfirmFilterFieldDefEdit}
+                                disabled={isFilterFieldDefLoading}
+                            >
+                                {isFilterFieldDefLoading ? 'Loading...' : 'Yes, load field'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+            {showFilterFieldDefRemoveConfirm && (
+                <div
+                    className={styles.confirmOverlay}
+                    role="dialog"
+                    aria-modal="true"
+                    aria-labelledby="remove-filter-field-confirm-title"
+                    onClick={() => !isFilterFieldDefRemoving && setShowFilterFieldDefRemoveConfirm(false)}
+                >
+                    <div className={styles.confirmDialog} onClick={(e) => e.stopPropagation()}>
+                        <div className={styles.confirmHeader}>
+                            <div className={`${styles.confirmIcon} ${styles.confirmIconDanger}`} aria-hidden="true">!</div>
+                            <div>
+                                <h3 id="remove-filter-field-confirm-title" className={styles.confirmTitle}>
+                                    Confirm filter field removal
+                                </h3>
+                                <p className={styles.confirmSubtitle}>
+                                    Permanently remove filter field <strong>{getTrimmedFilterFieldDefId()}</strong>?
+                                </p>
+                            </div>
+                        </div>
+                        <div className={styles.confirmBody}>
+                            <p className={styles.confirmMessage}>
+                                This action cannot be undone. Related product filter values for this field will also be removed.
+                            </p>
+                        </div>
+                        <div className={styles.confirmActions}>
+                            <button
+                                type="button"
+                                className={styles.confirmCancelBtn}
+                                onClick={() => setShowFilterFieldDefRemoveConfirm(false)}
+                                disabled={isFilterFieldDefRemoving}
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                type="button"
+                                className={styles.confirmDangerBtn}
+                                onClick={handleConfirmFilterFieldDefRemove}
+                                disabled={isFilterFieldDefRemoving}
+                            >
+                                {isFilterFieldDefRemoving ? 'Removing...' : 'Yes, remove field'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+            {showFilterFieldDefModal && filterFieldDefForm && (
+                <div
+                    className={styles.confirmOverlay}
+                    role="dialog"
+                    aria-modal="true"
+                    aria-labelledby="filter-field-modal-title"
+                    onClick={() => !isFilterFieldDefSaving && closeFilterFieldDefModal()}
+                >
+                    <div
+                        className={`${styles.confirmDialog} ${styles.editProductDialog}`}
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <div className={styles.confirmHeader}>
+                            <div>
+                                <h3 id="filter-field-modal-title" className={styles.confirmTitle}>
+                                    {filterFieldDefModalMode === 'add' ? 'Add filter field' : 'Edit filter field'}
+                                </h3>
+                                {filterFieldDefModalMode === 'edit' && (
+                                    <p className={styles.confirmSubtitle}>
+                                        Filter field ID: <strong>{getTrimmedFilterFieldDefId()}</strong>
+                                    </p>
+                                )}
+                            </div>
+                        </div>
+                        <div className={styles.editProductForm}>
+                            {filterFieldDefModalMode === 'add' && (
+                                <label>
+                                    ID (optional)
+                                    <input
+                                        type="number"
+                                        min="1"
+                                        step="1"
+                                        value={filterFieldDefForm.id ?? ''}
+                                        onChange={(e) => updateFilterFieldDefForm('id', e.target.value)}
+                                        disabled={isFilterFieldDefSaving}
+                                        placeholder="Leave blank for auto ID"
+                                    />
+                                </label>
+                            )}
+                            <label>
+                                Field name
+                                <input
+                                    type="text"
+                                    value={filterFieldDefForm.field_name}
+                                    onChange={(e) => updateFilterFieldDefForm('field_name', e.target.value)}
+                                    disabled={isFilterFieldDefSaving}
+                                />
+                            </label>
+                            <label>
+                                Field type
+                                <select
+                                    value={filterFieldDefForm.field_type}
+                                    onChange={(e) => updateFilterFieldDefForm('field_type', e.target.value)}
+                                    disabled={isFilterFieldDefSaving}
+                                >
+                                    <option value="checkbox">checkbox</option>
+                                    <option value="range">range</option>
+                                </select>
+                            </label>
+                            <label>
+                                Allowed values (comma-separated)
+                                <input
+                                    type="text"
+                                    value={filterFieldDefForm.allowed_values}
+                                    onChange={(e) => updateFilterFieldDefForm('allowed_values', e.target.value)}
+                                    disabled={isFilterFieldDefSaving}
+                                    placeholder="e.g. 0-5000 lb,Other"
+                                />
+                            </label>
+                            <label>
+                                Sort order
+                                <input
+                                    type="number"
+                                    step="1"
+                                    value={filterFieldDefForm.sort_order}
+                                    onChange={(e) => updateFilterFieldDefForm('sort_order', e.target.value)}
+                                    disabled={isFilterFieldDefSaving}
+                                />
+                            </label>
+                        </div>
+                        <div className={styles.confirmActions}>
+                            <button
+                                type="button"
+                                className={styles.confirmCancelBtn}
+                                onClick={closeFilterFieldDefModal}
+                                disabled={isFilterFieldDefSaving}
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                type="button"
+                                className={styles.confirmProceedBtn}
+                                onClick={handleSaveFilterFieldDef}
+                                disabled={isFilterFieldDefSaving || !filterFieldDefForm.field_name.trim()}
+                            >
+                                {isFilterFieldDefSaving
+                                    ? 'Saving...'
+                                    : filterFieldDefModalMode === 'add'
+                                      ? 'Create field'
+                                      : 'Save changes'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            <h2 className={styles.sectionTitle}>
+                Edit / Add / Remove Categories Fields
+                <span className={styles.infoIconWrapper}>
+                    <span
+                        className={styles.infoIcon}
+                        tabIndex={0}
+                        aria-describedby="product-filter-edit-info"
+                    >
+                        ?
+                    </span>
+                    <span id="product-filter-edit-info" className={styles.infoTooltip} role="tooltip">
+                        add info
+                    </span>
+                </span>
+            </h2>
+
+            
         </div>
     );
 };
