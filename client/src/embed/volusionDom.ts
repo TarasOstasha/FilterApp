@@ -1,6 +1,7 @@
 export const VOLUSION_CATEGORY_RE = /-s\/\d+\.htm$/i;
 export const SIDEBAR_ROOT_ID = 'xyz-filter-sidebar-root';
 export const PRODUCTS_ROOT_ID = 'xyz-filter-products-root';
+export const PRODUCTS_VISIBLE_CLASS = 'xyz-embed-products-visible';
 export const VOLUSION_FORM_SELECTOR = 'form#MainForm.search_results_section';
 
 export function isVolusionCategoryPage(): boolean {
@@ -16,14 +17,15 @@ export function mountSidebarRoot(): HTMLElement | null {
   if (existing) return existing;
 
   const sidebar = document.querySelector('.sidebar.left-nav');
-  const ourWork = sidebar?.querySelector('.ourwork-container');
-  const ourWorkBlock = ourWork?.parentElement;
+  if (!sidebar) return null;
 
-  if (!sidebar || !ourWorkBlock) return null;
+  // Require Our Work block before mounting — confirms correct category template
+  const ourWork = sidebar.querySelector('.ourwork-container');
+  if (!ourWork) return null;
 
   const root = document.createElement('div');
   root.id = SIDEBAR_ROOT_ID;
-  ourWorkBlock.insertAdjacentElement('afterend', root);
+  sidebar.insertAdjacentElement('afterend', root);
   return root;
 }
 
@@ -50,7 +52,8 @@ export function setVolusionFormVisible(visible: boolean): void {
 export function setProductsRootVisible(visible: boolean): void {
   const root = document.getElementById(PRODUCTS_ROOT_ID);
   if (root) {
-    root.style.display = visible ? '' : 'none';
+    root.classList.toggle(PRODUCTS_VISIBLE_CLASS, visible);
+    root.style.display = visible ? 'block' : 'none';
   }
 }
 

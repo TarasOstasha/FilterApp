@@ -1,5 +1,3 @@
-import 'bootstrap/dist/css/bootstrap.min.css';
-import '../styles/App.scss';
 import './volusionEmbed.scss';
 import React from 'react';
 import ReactDOM from 'react-dom/client';

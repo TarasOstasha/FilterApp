@@ -1,9 +1,29 @@
-#xyz-filter-sidebar-root {
-  margin-top: 1rem;
+#xyz-filter-sidebar-root,
+#xyz-filter-products-root {
+  box-sizing: border-box;
+
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+  }
 }
 
-#xyz-filter-products-root {
+#xyz-filter-sidebar-root {
+  margin-top: 1rem;
+
+  input[type='checkbox'],
+  input[type='radio'] {
+    margin-top: 0;
+  }
+}
+
+#xyz-filter-products-root:not(.xyz-embed-products-visible) {
   display: none;
+}
+
+#xyz-filter-products-root.xyz-embed-products-visible {
+  display: block;
 }
 
 .xyz-embed-clear-filters {
@@ -18,6 +38,14 @@
   &:hover {
     background-color: #ddd;
   }
+}
+
+.xyz-embed-controls {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
 }
 
 .xyz-embed-page-transition {

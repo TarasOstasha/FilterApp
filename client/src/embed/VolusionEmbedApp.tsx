@@ -65,7 +65,7 @@ const VolusionEmbedApp: React.FC<VolusionEmbedAppProps> = ({
         !state.isTransitioning ? 'xyz-embed-show' : ''
       }`}
     >
-      <div className="controls d-flex justify-content-between">
+      <div className="xyz-embed-controls">
         <SortDropdown
           handleSortChange={state.handleSortChange}
           currentSort={state.sortBy}
