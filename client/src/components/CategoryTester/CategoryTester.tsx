@@ -45,6 +45,16 @@ const CategoryTester: React.FC<CategoryTesterProps> = ({ onCategoryChange, OnFil
     setIsVisible(!isVisible);
   };
 
+  const hostname = window.location.hostname;
+  const isLocal =
+    process.env.NODE_ENV === 'development' ||
+    hostname === 'localhost' ||
+    hostname === '127.0.0.1';
+
+  if (!isLocal) {
+    return null;
+  }
+
   return (
     <div className={styles.categoryTester}>
       <button 
