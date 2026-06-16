@@ -8,6 +8,7 @@ import {
     exportData,
     uploadCSV,
     fetchProductByCode,
+    createProductByCode,
     updateProductByCode,
     deleteProductByCode,
     fetchProductFiltersByCode,
@@ -78,6 +79,7 @@ const renderSkippedImportToast = (
 
 
 const CsvImportExport: React.FC = () => {
+    type ProductEditorForm = AdminProductPayload & { product_code: string };
     const [file, setFile] = useState<File | null>(null);
     const [selectedExportType, setSelectedExportType] = useState<string>('');
     const [showRules, setShowRules] = useState(false);
@@ -89,7 +91,8 @@ const CsvImportExport: React.FC = () => {
     const [showEditConfirm, setShowEditConfirm] = useState(false);
     const [showRemoveConfirm, setShowRemoveConfirm] = useState(false);
     const [showEditModal, setShowEditModal] = useState(false);
-    const [editForm, setEditForm] = useState<AdminProductPayload | null>(null);
+    const [productModalMode, setProductModalMode] = useState<'edit' | 'add'>('edit');
+    const [editForm, setEditForm] = useState<ProductEditorForm | null>(null);
     const [isProductLoading, setIsProductLoading] = useState(false);
     const [isProductSaving, setIsProductSaving] = useState(false);
     const [isProductRemoving, setIsProductRemoving] = useState(false);
@@ -363,7 +366,8 @@ const CsvImportExport: React.FC = () => {
         setEditForm(null);
     };
 
-    const productToForm = (product: AdminProduct): AdminProductPayload => ({
+    const productToForm = (product: AdminProduct): ProductEditorForm => ({
+        product_code: product.product_code,
         product_name: product.product_name,
         product_link: product.product_link,
         product_img_link: product.product_img_link,
@@ -371,6 +375,17 @@ const CsvImportExport: React.FC = () => {
         most_popular: product.most_popular ?? '',
         hide_product: product.hide_product || '',
         category_ids: product.category_ids || '',
+    });
+
+    const emptyProductForm = (initialCode = ''): ProductEditorForm => ({
+        product_code: initialCode,
+        product_name: '',
+        product_link: '',
+        product_img_link: '',
+        product_price: '',
+        most_popular: '',
+        hide_product: '',
+        category_ids: '',
     });
 
     const handleConfirmEdit = async () => {
@@ -384,6 +399,7 @@ const CsvImportExport: React.FC = () => {
                 toast.error('Product not found.');
                 return;
             }
+            setProductModalMode('edit');
             setEditForm(productToForm(response.data.product));
             setShowEditModal(true);
         } catch (error) {
@@ -396,15 +412,35 @@ const CsvImportExport: React.FC = () => {
     const handleSaveProduct = async () => {
         if (!editForm) return;
 
-        const code = getTrimmedProductCode();
+        const code =
+            productModalMode === 'add'
+                ? editForm.product_code.trim()
+                : getTrimmedProductCode();
         setIsProductSaving(true);
 
         try {
-            await updateProductByCode(code, editForm);
-            toast.success(`Product "${code}" updated successfully.`);
+            const { product_code, ...basePayload } = editForm;
+            if (productModalMode === 'add') {
+                await createProductByCode({
+                    product_code: code,
+                    ...basePayload,
+                });
+                setProductCode(code);
+                toast.success(`Product "${code}" created successfully.`);
+            } else {
+                await updateProductByCode(code, basePayload);
+                toast.success(`Product "${code}" updated successfully.`);
+            }
             closeEditModal();
         } catch (error) {
-            toast.error(getApiErrorMessage(error, 'Failed to update product.'));
+            toast.error(
+                getApiErrorMessage(
+                    error,
+                    productModalMode === 'add'
+                        ? 'Failed to create product.'
+                        : 'Failed to update product.'
+                )
+            );
         } finally {
             setIsProductSaving(false);
         }
@@ -426,8 +462,14 @@ const CsvImportExport: React.FC = () => {
         }
     };
 
-    const updateEditField = (field: keyof AdminProductPayload, value: string) => {
+    const updateEditField = (field: keyof ProductEditorForm, value: string) => {
         setEditForm((prev) => (prev ? { ...prev, [field]: value } : prev));
+    };
+
+    const handleAddProduct = () => {
+        setProductModalMode('add');
+        setEditForm(emptyProductForm(getTrimmedProductCode()));
+        setShowEditModal(true);
     };
 
     const getTrimmedFilterProductCode = () => filterProductCode.trim();
@@ -981,8 +1023,9 @@ const CsvImportExport: React.FC = () => {
                     </div>
                 </div>
             )}
+            <br></br>
             <h2 className={styles.sectionTitle}>
-                Edit / Remove Single Product
+                Edit / Add / Remove Single Product
                 <span className={styles.infoIconWrapper}>
                     <span
                         className={styles.infoIcon}
@@ -992,8 +1035,8 @@ const CsvImportExport: React.FC = () => {
                         ?
                     </span>
                     <span id="edit-remove-product-info" className={styles.infoTooltip} role="tooltip">
-                        Enter a product code to load it for editing (details, categories, and
-                        visibility) or to remove it from the catalog without uploading a CSV.
+                        Enter a product code to load and edit an existing product, add a new
+                        product, or remove one from the catalog without uploading a CSV.
                     </span>
                 </span>
             </h2>
@@ -1018,6 +1061,14 @@ const CsvImportExport: React.FC = () => {
                         className={styles.editProductBtn}
                     >
                         {isProductLoading ? 'Loading...' : 'Edit Product'}
+                    </button>
+                    <button
+                        type="button"
+                        onClick={handleAddProduct}
+                        disabled={isProductLoading || isProductSaving || isProductRemoving}
+                        className={styles.editProductBtn}
+                    >
+                        Add New Product
                     </button>
                     <button
                         type="button"
@@ -1136,14 +1187,30 @@ const CsvImportExport: React.FC = () => {
                         <div className={styles.confirmHeader}>
                             <div>
                                 <h3 id="edit-product-modal-title" className={styles.confirmTitle}>
-                                    Edit product
+                                    {productModalMode === 'add' ? 'Add product' : 'Edit product'}
                                 </h3>
                                 <p className={styles.confirmSubtitle}>
-                                    Product code: <strong>{getTrimmedProductCode()}</strong>
+                                    Product code:{' '}
+                                    <strong>
+                                        {productModalMode === 'add'
+                                            ? editForm.product_code
+                                            : getTrimmedProductCode()}
+                                    </strong>
                                 </p>
                             </div>
                         </div>
                         <div className={styles.editProductForm}>
+                            {productModalMode === 'add' && (
+                                <label>
+                                    Product code
+                                    <input
+                                        type="text"
+                                        value={editForm.product_code}
+                                        onChange={(e) => updateEditField('product_code', e.target.value)}
+                                        disabled={isProductSaving}
+                                    />
+                                </label>
+                            )}
                             <label>
                                 Product name
                                 <input
@@ -1224,14 +1291,22 @@ const CsvImportExport: React.FC = () => {
                                 type="button"
                                 className={styles.confirmProceedBtn}
                                 onClick={handleSaveProduct}
-                                disabled={isProductSaving}
+                                disabled={
+                                    isProductSaving ||
+                                    (productModalMode === 'add' && !editForm.product_code.trim())
+                                }
                             >
-                                {isProductSaving ? 'Saving...' : 'Save changes'}
+                                {isProductSaving
+                                    ? 'Saving...'
+                                    : productModalMode === 'add'
+                                      ? 'Create product'
+                                      : 'Save changes'}
                             </button>
                         </div>
                     </div>
                 </div>
             )}
+            
             <h2 className={styles.sectionTitle}>
                 Product Filter Edit Single Product
                 <span className={styles.infoIconWrapper}>
@@ -1325,6 +1400,7 @@ const CsvImportExport: React.FC = () => {
                     </div>
                 )}
             </div>
+
             <h2 className={styles.sectionTitle}>
                 Edit / Add / Remove Filter Fields
                 <span className={styles.infoIconWrapper}>

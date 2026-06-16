@@ -214,6 +214,10 @@ export interface AdminProductPayload {
     category_ids: string;
 }
 
+export interface AdminProductCreatePayload extends AdminProductPayload {
+    product_code: string;
+}
+
 export interface AdminProductFilterField {
     filter_field_id: number;
     value_index: number;
@@ -280,6 +284,19 @@ export const updateProductByCode = async (
         });
     } catch (error) {
         console.error('Error updating product:', error);
+        throw error;
+    }
+};
+
+export const createProductByCode = async (
+    payload: AdminProductCreatePayload
+): Promise<AxiosResponse<{ message: string; product: AdminProduct }> | undefined> => {
+    try {
+        return await axiosInstance.post('/products/by-code', payload, {
+            headers: getAuthHeaders(),
+        });
+    } catch (error) {
+        console.error('Error creating product:', error);
         throw error;
     }
 };

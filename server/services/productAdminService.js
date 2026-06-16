@@ -65,6 +65,110 @@ async function getProductByCode(productCode) {
   return result.rows[0] || null;
 }
 
+async function createProduct(payload) {
+  const code = String(payload?.product_code || '').trim();
+  if (!code) {
+    throw createHttpError(400, 'product_code is required');
+  }
+
+  const existing = await getProductByCode(code);
+  if (existing) {
+    throw createHttpError(409, `Product already exists: ${code}`);
+  }
+
+  const {
+    product_name,
+    product_link,
+    product_img_link,
+    product_price,
+    most_popular,
+    hide_product: rawHideProduct,
+    category_ids: rawCategoryIds,
+  } = payload;
+
+  if (!product_name?.trim()) {
+    throw createHttpError(400, 'product_name is required');
+  }
+  if (!product_link?.trim()) {
+    throw createHttpError(400, 'product_link is required');
+  }
+  if (!product_img_link?.trim()) {
+    throw createHttpError(400, 'product_img_link is required');
+  }
+
+  const hideProduct = normalizeHideProduct(rawHideProduct);
+  if (hideProduct?.invalid) {
+    throw createHttpError(400, 'Invalid hide_product (use Y or leave blank)');
+  }
+
+  const price = parseFloat(product_price);
+  if (!Number.isFinite(price) || price <= 0) {
+    throw createHttpError(400, 'Invalid product_price');
+  }
+
+  const categoryIds = parseCategoryIds(rawCategoryIds);
+  const validCategoryIds = await getValidCategoryIds();
+
+  if (categoryIds.length === 0) {
+    throw createHttpError(400, 'Missing category_ids');
+  }
+
+  const missingIds = categoryIds.filter((id) => !validCategoryIds.has(id));
+  if (missingIds.length > 0) {
+    throw createHttpError(400, `Category ID does not exist: ${missingIds.join(', ')}`);
+  }
+
+  const normalizedImgLink = normalizeProductImgLink(product_img_link);
+  const mostPopularValue =
+    most_popular === '' || most_popular == null ? null : parseFloat(most_popular);
+
+  if (mostPopularValue != null && !Number.isFinite(mostPopularValue)) {
+    throw createHttpError(400, 'Invalid most_popular');
+  }
+
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    const productResult = await client.query(
+      `INSERT INTO products
+         (product_code, product_name, product_link, product_img_link, product_price, most_popular, hide_product)
+       VALUES
+         ($1, $2, $3, $4, $5, $6, $7)
+       RETURNING id`,
+      [
+        code,
+        product_name.trim(),
+        product_link.trim(),
+        normalizedImgLink.trim(),
+        price,
+        mostPopularValue,
+        hideProduct,
+      ]
+    );
+
+    const productId = productResult.rows[0].id;
+
+    for (const categoryId of categoryIds) {
+      await client.query(
+        `INSERT INTO product_categories (product_id, category_id)
+         VALUES ($1, $2)
+         ON CONFLICT (product_id, category_id) DO NOTHING`,
+        [productId, categoryId]
+      );
+    }
+
+    await client.query('COMMIT');
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
+
+  return getProductByCode(code);
+}
+
 async function updateProductByCode(productCode, payload) {
   const code = String(productCode || '').trim();
   if (!code) {
@@ -379,6 +483,7 @@ async function updateProductFilterByCode(productCode, payload) {
 
 module.exports = {
   getProductByCode,
+  createProduct,
   updateProductByCode,
   deleteProductByCode,
   getProductFiltersByCode,

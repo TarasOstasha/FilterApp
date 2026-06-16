@@ -34,6 +34,10 @@ productRouter
     .delete(productAdminController.deleteByCode);
 
 productRouter
+    .route('/by-code')
+    .post(productAdminController.create);
+
+productRouter
     .route('/by-code/:productCode/filters')
     .get(productAdminController.getFiltersByCode)
     .put(productAdminController.updateFilterByCode);

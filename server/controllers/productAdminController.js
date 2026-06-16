@@ -1,6 +1,7 @@
 const createHttpError = require('http-errors');
 const {
   getProductByCode,
+  createProduct,
   updateProductByCode,
   deleteProductByCode,
   getProductFiltersByCode,
@@ -16,6 +17,18 @@ module.exports.getByCode = async (req, res, next) => {
     res.status(200).json({ product });
   } catch (error) {
     next(error.status ? error : createHttpError(500, 'Error fetching product'));
+  }
+};
+
+module.exports.create = async (req, res, next) => {
+  try {
+    const product = await createProduct(req.body);
+    res.status(201).json({
+      message: 'Product created successfully',
+      product,
+    });
+  } catch (error) {
+    next(error.status ? error : createHttpError(500, 'Error creating product'));
   }
 };
 
