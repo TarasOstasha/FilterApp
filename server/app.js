@@ -14,6 +14,7 @@ const corsOptions = {
     'https://xyzdisplays.com',
     'https://www.xyzdisplays.com',
     'https://filter.xyzdisplays.com',
+    'https://hxyrr-gdtbo.volusion.store',
     'http://localhost:3000', // keep for local development
   ],
 };

@@ -16,6 +16,7 @@ import {
   normalizeFilterFieldsOrder,
   SidebarFilterField,
 } from '../../utils/filterParams';
+import { FilterRangeRails } from '../../utils/hasActiveFilters';
 
 type FilterField = SidebarFilterField & { allowed_values: any };
 
@@ -24,6 +25,8 @@ interface FilterSidebarProps {
   selectedFilters: { [key: string]: string[] | undefined }; // allow undefined safely
   isClearingFilters?: boolean;
   loading?: boolean;
+  categoryId?: string;
+  onRangeRailsChange?: (rails: FilterRangeRails) => void;
 }
 
 function parseRangeValue(
@@ -191,8 +194,11 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
   onFilterChange,
   selectedFilters,
   isClearingFilters = false,
-  loading = false
+  loading = false,
+  categoryId: categoryIdProp,
+  onRangeRailsChange,
 }) => {
+  const resolveCategoryId = () => categoryIdProp ?? getCategoryIdFromPath();
   const [filterFields, setFilterFields] = useState<FilterField[]>([]);
   const [openSections, setOpenSections] = useState<Set<string>>(
     () => new Set(DEFAULT_OPEN_FILTERS)
@@ -241,6 +247,28 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
     heightMax?: number;
   }>({});
 
+  useEffect(() => {
+    if (!onRangeRailsChange) return;
+    onRangeRailsChange({
+      price: {
+        min: priceMin,
+        max: priceMax,
+        breakpoints: priceBreakpoints.length ? priceBreakpoints : undefined,
+      },
+      width: { min: widthMin, max: widthMax },
+      height: { min: heightMin, max: heightMax },
+    });
+  }, [
+    onRangeRailsChange,
+    priceMin,
+    priceMax,
+    priceBreakpoints,
+    widthMin,
+    widthMax,
+    heightMin,
+    heightMax,
+  ]);
+
   // Reset width/height to category-specific values when all filters are cleared
   useEffect(() => {
     const safeFilters = sanitizeFilters(selectedFilters);
@@ -258,7 +286,7 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
       // Fetch category-specific ranges when filters are cleared
       (async () => {
         try {
-          const catId = getCategoryIdFromPath();
+          const catId = resolveCategoryId();
           
           // Fetch category-specific width range
           const resWidth = await fetchWidthRange({}, catId);
@@ -383,7 +411,7 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
 
     (async () => {
       try {
-        const catId = getCategoryIdFromPath();
+        const catId = resolveCategoryId();
         const [pr, wr, hr] = await Promise.all([
           fetchPriceRange(undefined, catId),
           fetchWidthRange({}, catId),
@@ -427,7 +455,7 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
       (async () => {
         try {
           const params = buildParams(selectedFilters, 'Display Width');
-          const catId = getCategoryIdFromPath();
+          const catId = resolveCategoryId();
           const res = await fetchWidthRange(params, catId);
           const mn = res?.data?.min ?? 0;
           const mx = res?.data?.max ?? 0;
@@ -458,7 +486,7 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
       (async () => {
         try {
           const params = buildParams(selectedFilters, 'Display Height');
-          const catId = getCategoryIdFromPath();
+          const catId = resolveCategoryId();
           const res = await fetchHeightRange(params, catId);
           const mn = res?.data?.min ?? 0;
           const mx = res?.data?.max ?? 0;
@@ -524,7 +552,7 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
       const onlyHasPriceFilter = keys.length === 1 && keys[0] === 'Product Price' && nonPrice.length === 0;
       
       if (keys.length === 0 || onlyHasPriceFilter) {
-        const catId = getCategoryIdFromPath();
+        const catId = resolveCategoryId();
         fetchFilterSidebarData(catId)
           .then((r) => {
             const next = normalizeFilterFieldsOrder((r?.data ?? []) as FilterField[]);
@@ -557,7 +585,7 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
         const params = filtersToQueryParams(
           Object.fromEntries(nonPrice.map((k) => [k, normalized[k]]))
         );
-        const catId = getCategoryIdFromPath();
+        const catId = resolveCategoryId();
         fetchDynamicFilters(params, catId)
           .then((r) => {
             setIsLoadingFilters(false);
@@ -595,7 +623,7 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
             setIsLoadingFilters(false);
             console.warn('Dynamic filters fetch failed:', err);
             // Fallback to static data, but don't clear existing state if that fails too
-            const catId = getCategoryIdFromPath();
+            const catId = resolveCategoryId();
             fetchFilterSidebarData(catId)
               .then((r) => {
                 const fallbackData = normalizeFilterFieldsOrder(
@@ -620,7 +648,7 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
             )
           : undefined;
 
-        const catId = getCategoryIdFromPath();
+        const catId = resolveCategoryId();
         fetchPriceRange(priceParams, catId)
           .then((pr) => {
             if (pr?.data) {

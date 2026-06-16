@@ -1,0 +1,33 @@
+#xyz-filter-sidebar-root {
+  margin-top: 1rem;
+}
+
+#xyz-filter-products-root {
+  display: none;
+}
+
+.xyz-embed-clear-filters {
+  margin: 1rem 0;
+  width: 100%;
+  padding: 10px;
+  background-color: #eee;
+  border: 1px solid #ccc;
+  cursor: pointer;
+  font-weight: bold;
+
+  &:hover {
+    background-color: #ddd;
+  }
+}
+
+.xyz-embed-page-transition {
+  opacity: 0;
+  transform: translateY(8px);
+  transition: opacity 0.18s ease, transform 0.18s ease;
+  will-change: opacity, transform;
+
+  &.xyz-embed-show {
+    opacity: 1;
+    transform: none;
+  }
+}

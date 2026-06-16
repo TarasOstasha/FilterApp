@@ -30,6 +30,9 @@
   "scripts": {
     "start": "cross-env HOST=localhost react-scripts start",
     "build": "react-scripts build",
+    "build:embed": "cross-env BUILD_EMBED=true GENERATE_SOURCEMAP=false REACT_APP_API_URL=https://filter.xyzdisplays.com/api craco build",
+    "build:all": "npm run build && npm run build:embed",
+    "start:embed": "cross-env BUILD_EMBED=true REACT_APP_API_URL=http://localhost:5000/api craco start",
     "test": "react-scripts test",
     "eject": "react-scripts eject"
   },
@@ -52,6 +55,7 @@
     ]
   },
   "devDependencies": {
+    "@craco/craco": "^7.1.0",
     "@types/lodash": "^4.17.12",
     "@types/throttle-debounce": "^5.0.2"
   }
