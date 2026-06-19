@@ -97,6 +97,16 @@ npm run test:api:full:flat
           show as "pending" (skipped via this.skip()). Passing = API matches
           Excel filters + DB prices for that combo.
 
+npm run test:api:category:flat
+  Profile: flat-category.env
+  File:   categoryProducts.test.js
+  What:   Validates GET /api/products?catId=X returns every visible product
+          whose category_ids in products_check_category.xlsx includes X.
+          Tests all unique category_ids (~914) unless capped or filtered.
+  Fixture: products_check_category.xlsx (product_code, category_ids)
+  Focused: QA_CATEGORY_IDS_TO_TEST=161 npm run test:api:category:flat
+  Cap:     QA_MAX_CATEGORIES_TO_TEST=25 npm run test:api:category:flat
+
 
 DIAGNOSTIC / DATA TOOLS (not Mocha tests)
 -----------------------------------------
@@ -132,6 +142,10 @@ flat-dimensions.env
 flat-full.env
   Flat Excel, all filter types enabled, 300s timeout
 
+flat-category.env
+  QA_CATEGORY_EXCEL_PATH=qa-tests/fixtures/products_check_category.xlsx
+  600s timeout (full category sweep can take several minutes)
+
 
 OPTIONAL .env.test VARIABLES
 ----------------------------
@@ -143,6 +157,9 @@ QA_EXCLUDE_TEST_FIELDS     Comma-separated fields to skip in productsFromExcel t
 QA_MAX_UNIQUE_VALUES_PER_FILTER   Cap checkbox values tested per field (default: all)
 QA_TEST_TIMEOUT_MS         Per-test timeout in milliseconds
 QA_DB_ONLY_EXPORT_PATH     Custom path for export:db-only-products output
+QA_CATEGORY_EXCEL_PATH     Path to category fixture (product_code + category_ids)
+QA_CATEGORY_IDS_TO_TEST    Comma-separated category_ids to test (e.g. 161,169)
+QA_MAX_CATEGORIES_TO_TEST  Cap how many categories are tested (ordered by id)
 
 
 TEST FILES MAP (qa-tests/api/)
@@ -154,6 +171,7 @@ productPrice.test.js        Product Price only (DB catalog)
 multiFilterPrice.test.js    Multi-checkbox + price
 dimensionRange.test.js      Display Width / Height only
 fullFilter.test.js          Everything combined
+categoryProducts.test.js    Category view (catId) vs Excel category_ids
 
 
 MOCHA RESULT LEGEND

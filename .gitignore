@@ -46,6 +46,7 @@ test-upload.js
 *.md
 *.csv
 env-production.txt
+PROJECT-PORTFOLIO.txt
 
 # Volusion chrome extraction scratch file
 client/src/external/volusion-page.html
