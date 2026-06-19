@@ -28,7 +28,8 @@ export function mountSidebarRoot(): HTMLElement | null {
 
   const root = document.createElement('div');
   root.id = SIDEBAR_ROOT_ID;
-  sidebar.insertAdjacentElement('afterend', root);
+  // Place beside Our Work inside the same wrapper (matches Volusion category template)
+  ourWork.insertAdjacentElement('afterend', root);
   document.documentElement.classList.add('xyz-filter-sidebar-active');
   return root;
 }

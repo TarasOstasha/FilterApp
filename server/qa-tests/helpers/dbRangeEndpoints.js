@@ -4,6 +4,7 @@ const {
   META_QUERY_KEYS,
   parseCheckboxFilterValues,
   appendCheckboxFilterJoins,
+  parseProductPriceRange,
 } = require('../../utils/filterQuery');
 const { visibleProductSql } = require('../../utils/productVisibility');
 const {
@@ -78,17 +79,24 @@ function buildRangeEndpointJoins(query, options = {}) {
       if (applyProductPriceFilter && query['Product Price']) {
         const priceField = allFilterFields.find((f) => f.field_name === 'Product Price');
         const priceBreakpoints = parsePriceBreakpoints(priceField?.allowed_values);
-        const [minInput, maxInput] = String(query['Product Price'])
-          .split(',')
-          .map((v) => parseFloat(v) || 0);
-        const minPrice =
-          priceBreakpoints.find((v) => v >= minInput) ?? priceBreakpoints[0];
-        const maxPrice =
-          [...priceBreakpoints].reverse().find((v) => v <= maxInput) ??
-          priceBreakpoints[priceBreakpoints.length - 1];
-        replacements.minPrice = minPrice;
-        replacements.maxPrice = maxPrice;
-        productPriceCondition = `WHERE p.product_price BETWEEN :minPrice AND :maxPrice`;
+        const parsed = parseProductPriceRange(query['Product Price']);
+        if (parsed) {
+          let minPrice;
+          let maxPrice;
+          if (priceBreakpoints.length) {
+            minPrice =
+              priceBreakpoints.find((v) => v >= parsed.minPrice) ?? priceBreakpoints[0];
+            maxPrice =
+              [...priceBreakpoints].reverse().find((v) => v <= parsed.maxPrice) ??
+              priceBreakpoints[priceBreakpoints.length - 1];
+          } else {
+            minPrice = parsed.minPrice;
+            maxPrice = parsed.maxPrice;
+          }
+          replacements.minPrice = minPrice;
+          replacements.maxPrice = maxPrice;
+          productPriceCondition = `WHERE p.product_price BETWEEN :minPrice AND :maxPrice`;
+        }
       }
 
       for (const fieldName of Object.keys(query)) {

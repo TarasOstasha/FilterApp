@@ -49,6 +49,51 @@ function appendCheckboxFilterJoins(joinClauses, replacements, fieldId, values, j
   return { joinClauses: clauses, joinIndex: idx };
 }
 
+/**
+ * Parse "Product Price" query value into numeric min/max for SQL BETWEEN.
+ * - "min,max" — both bounds
+ * - "min" only — min and max both set to min (avoids missing :maxPrice)
+ * - ",max" / "min," — empty segment treated as 0
+ * @returns {{ minPrice: number, maxPrice: number } | null}
+ */
+function parseProductPriceRange(rawValue) {
+  if (rawValue == null || rawValue === '') return null;
+
+  const segments = String(rawValue).split(',');
+  const parseSeg = (s) => {
+    const trimmed = String(s ?? '').trim();
+    if (trimmed === '') return 0;
+    const n = parseFloat(trimmed);
+    return Number.isFinite(n) ? n : 0;
+  };
+
+  if (segments.length === 1) {
+    const v = parseSeg(segments[0]);
+    return { minPrice: v, maxPrice: v };
+  }
+
+  return {
+    minPrice: parseSeg(segments[0]),
+    maxPrice: parseSeg(segments[1]),
+  };
+}
+
+/** Fail fast when SQL placeholders lack bound values (Sequelize throws opaque errors otherwise). */
+function assertSqlReplacements(sql, replacements) {
+  const names = new Set();
+  // Exclude PostgreSQL casts (::numeric) — only match bind params like :minPrice
+  const re = /(?<![:\w]):([a-zA-Z_][a-zA-Z0-9_]*)/g;
+  let match;
+  while ((match = re.exec(sql)) !== null) {
+    names.add(match[1]);
+  }
+  for (const name of names) {
+    if (!Object.prototype.hasOwnProperty.call(replacements, name) || replacements[name] === undefined) {
+      throw new Error(`SQL references :${name} but replacements.${name} is missing`);
+    }
+  }
+}
+
 /** Distinct checkbox option values — filter_value is stored as a single exact string. */
 const DISTINCT_FILTER_VALUE_SQL = `
   SELECT DISTINCT TRIM(pf.filter_value) AS val
@@ -77,14 +122,14 @@ function buildFilterJoins({ filters, allFilterFields, fieldIdMap, excludeFieldNa
     if (fieldName === excludeFieldName) continue;
 
     if (fieldName === 'Product Price') {
-      const [minPrice, maxPrice] = String(rawValue)
-        .split(',')
-        .map((v) => parseFloat(v) || 0);
+      const parsed = parseProductPriceRange(rawValue);
+      if (!parsed) continue;
+
       whereClauses += `
         AND p.product_price BETWEEN :minPrice AND :maxPrice
       `;
-      replacements.minPrice = minPrice;
-      replacements.maxPrice = maxPrice;
+      replacements.minPrice = parsed.minPrice;
+      replacements.maxPrice = parsed.maxPrice;
       continue;
     }
 
@@ -136,6 +181,8 @@ module.exports = {
   META_QUERY_KEYS,
   extractFiltersFromQuery,
   parseCheckboxFilterValues,
+  parseProductPriceRange,
+  assertSqlReplacements,
   singleCheckboxFilterJoinSql,
   appendCheckboxFilterJoins,
   DISTINCT_FILTER_VALUE_SQL,

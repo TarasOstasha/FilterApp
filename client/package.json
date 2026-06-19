@@ -29,9 +29,10 @@
   },
   "scripts": {
     "start": "cross-env HOST=localhost react-scripts start",
-    "build": "react-scripts build",
+    "build:app": "react-scripts build",
     "build:embed": "cross-env BUILD_EMBED=true GENERATE_SOURCEMAP=false REACT_APP_API_URL=https://filter.xyzdisplays.com/api craco build",
-    "build:all": "npm run build && npm run build:embed",
+    "build": "npm run build:app && npm run build:embed",
+    "build:all": "npm run build",
     "start:embed": "cross-env BUILD_EMBED=true REACT_APP_API_URL=http://localhost:5000/api craco start",
     "test": "react-scripts test",
     "eject": "react-scripts eject"

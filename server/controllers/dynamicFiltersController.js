@@ -5,6 +5,7 @@ const {
   extractFiltersFromQuery,
   DISTINCT_FILTER_VALUE_SQL,
   buildFilterJoins,
+  assertSqlReplacements,
 } = require('../utils/filterQuery');
 const { normalizeFilterResultsSortOrder } = require('../utils/filterFieldOrder');
 const { VISIBLE_PRODUCT_SQL_AND } = require('../utils/productVisibility');
@@ -80,6 +81,8 @@ module.exports.getDynamicFilters = async (req, res, next) => {
           WHERE product_price IS NOT NULL AND product_price > 0;
         `;
 
+        assertSqlReplacements(priceSql, replacements);
+
         const priceResult = await sequelize.query(priceSql, {
           replacements,
           type: QueryTypes.SELECT,
@@ -131,6 +134,8 @@ module.exports.getDynamicFilters = async (req, res, next) => {
       console.log(chalk.white(sql));
       console.log(chalk.yellow('\nREPLACEMENTS:'));
       console.log(JSON.stringify(fieldRepl, null, 2));
+
+      assertSqlReplacements(sql, fieldRepl);
 
       const values = await sequelize.query(sql, {
         replacements: fieldRepl,

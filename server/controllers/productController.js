@@ -8,6 +8,8 @@ const {
   parseCheckboxFilterValues,
   appendCheckboxFilterJoins,
   buildFilterJoins,
+  parseProductPriceRange,
+  assertSqlReplacements,
 } = require('../utils/filterQuery');
 const { visibleProductWhere, visibleProductSql, VISIBLE_PRODUCT_SQL_AND } = require('../utils/productVisibility');
 const {
@@ -147,17 +149,24 @@ module.exports.getPriceRange = async (req, res, next) => {
     //console.log(chalk.blue('Request query:', JSON.stringify(req.query, null, 2)));
     // Handle Price (range slider) → forced to use known breakpoints
     if (req.query['Product Price']) {
-      const [minInput, maxInput] = String(req.query['Product Price']).split(',').map((v) => parseFloat(v) || 0);
-      
-      // Find the next closest breakpoints
-      const minPrice = priceBreakpoints.find((v) => v >= minInput) ?? priceBreakpoints[0];
-      const maxPrice = [...priceBreakpoints].reverse().find((v) => v <= maxInput) ?? priceBreakpoints[priceBreakpoints.length - 1];
-      //console.log(chalk.green('Using Price range:', minPrice, maxPrice));
-      replacements.minPrice = minPrice;
-      replacements.maxPrice = maxPrice;
-      //console.log(chalk.yellow('Replacements for price range:', minPrice, maxPrice));
-      productPriceCondition = `WHERE p.product_price BETWEEN :minPrice AND :maxPrice`;
-      //console.log(chalk.red('Product Price condition:', productPriceCondition));
+      const parsed = parseProductPriceRange(req.query['Product Price']);
+      if (parsed) {
+        let minPrice;
+        let maxPrice;
+        if (priceBreakpoints.length) {
+          minPrice =
+            priceBreakpoints.find((v) => v >= parsed.minPrice) ?? priceBreakpoints[0];
+          maxPrice =
+            [...priceBreakpoints].reverse().find((v) => v <= parsed.maxPrice) ??
+            priceBreakpoints[priceBreakpoints.length - 1];
+        } else {
+          minPrice = parsed.minPrice;
+          maxPrice = parsed.maxPrice;
+        }
+        replacements.minPrice = minPrice;
+        replacements.maxPrice = maxPrice;
+        productPriceCondition = `WHERE p.product_price BETWEEN :minPrice AND :maxPrice`;
+      }
     }
 
     for (const fieldName of Object.keys(req.query)) {
@@ -206,8 +215,7 @@ module.exports.getPriceRange = async (req, res, next) => {
       ? `${productPriceCondition} AND ${visibleProductSql('p')}`
       : visibilityCondition;
 
-    const [filteredRow] = await sequelize.query(
-      `
+    const priceRangeSql = `
       WITH filtered_products AS (
         SELECT DISTINCT p.id, p.product_price
         FROM products p
@@ -218,7 +226,11 @@ module.exports.getPriceRange = async (req, res, next) => {
         MIN(product_price)::numeric AS min, 
         MAX(product_price)::numeric AS max 
       FROM filtered_products;
-    `,
+    `;
+    assertSqlReplacements(priceRangeSql, replacements);
+
+    const [filteredRow] = await sequelize.query(
+      priceRangeSql,
       {
         replacements,
         type: QueryTypes.SELECT,
@@ -343,6 +355,8 @@ module.exports.getProducts = async (req, res, next) => {
     replacements.limit = limit;
     replacements.offset = offset;
     console.log(chalk.yellow('Final Replacements:'), replacements);
+    assertSqlReplacements(sql, replacements);
+    assertSqlReplacements(countSql, replacements);
     const products = await sequelize.query(sql, {
       replacements,
       type: QueryTypes.SELECT,

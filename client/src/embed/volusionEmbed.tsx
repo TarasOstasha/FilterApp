@@ -9,23 +9,31 @@ import {
   mountSidebarRoot,
 } from './volusionDom';
 
-if (isVolusionCategoryPage()) {
+function initVolusionEmbed(): void {
+  if (!isVolusionCategoryPage()) return;
+
   const sidebarEl = mountSidebarRoot();
   const productsEl = mountProductsRoot();
 
-  if (sidebarEl || productsEl) {
-    initEmbedDomDefaults();
+  if (!sidebarEl && !productsEl) return;
 
-    const bridge = document.createElement('div');
-    bridge.id = 'xyz-filter-embed-bridge';
-    bridge.style.display = 'none';
-    document.body.appendChild(bridge);
+  initEmbedDomDefaults();
 
-    const root = ReactDOM.createRoot(bridge);
-    root.render(
-      <React.StrictMode>
-        <VolusionEmbedApp sidebarEl={sidebarEl} productsEl={productsEl} />
-      </React.StrictMode>
-    );
-  }
+  const bridge = document.createElement('div');
+  bridge.id = 'xyz-filter-embed-bridge';
+  bridge.style.display = 'none';
+  document.body.appendChild(bridge);
+
+  const root = ReactDOM.createRoot(bridge);
+  root.render(
+    <React.StrictMode>
+      <VolusionEmbedApp sidebarEl={sidebarEl} productsEl={productsEl} />
+    </React.StrictMode>
+  );
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initVolusionEmbed);
+} else {
+  initVolusionEmbed();
 }
