@@ -116,6 +116,27 @@ npm run test:api:category-filter:flat
   Default: top 5 categories by product count (~50 scenarios max)
   Focused: QA_CATEGORY_IDS_TO_TEST=161 npm run test:api:category-filter:flat
 
+npm run test:api:dynamic-sidebar:flat
+  Profile: flat-dynamic-sidebar.env
+  File:   dynamicSidebar.test.js
+  What:   Validates sidebar checkbox facet options:
+          GET /api/filterField?catId=X (static initial sidebar)
+          GET /api/dynamic-filters?catId=X&filters… (after user selects filters)
+          Scenarios from Excel fixtures; expected facets computed with the same
+          SQL scope as the API (category join + active filter joins).
+  Default: top 5 categories static + up to 50 dynamic scenarios
+  Focused: QA_CATEGORY_IDS_TO_TEST=161 npm run test:api:dynamic-sidebar:flat
+
+npm run test:api:range-endpoints:flat
+  Profile: flat-range-endpoints.env
+  File:   rangeEndpoints.test.js
+  What:   Validates slider rail endpoints vs reference SQL:
+          GET /api/products/price-range (min, max, breakpoints)
+          GET /api/products/width-range (min, max, globalMin, globalMax)
+          GET /api/products/height-range (min, max, globalMin, globalMax)
+          Scenarios: global, catId only, catId + checkbox filters.
+  Focused: QA_CATEGORY_IDS_TO_TEST=161 npm run test:api:range-endpoints:flat
+
 
 DIAGNOSTIC / DATA TOOLS (not Mocha tests)
 -----------------------------------------
@@ -158,6 +179,12 @@ flat-category.env
 flat-category-filter.env
   Flat filter Excel + category Excel, checkbox multi-filter combos with catId
 
+flat-dynamic-sidebar.env
+  Static filterField + dynamic-filters facet validation vs Excel
+
+flat-range-endpoints.env
+  price-range, width-range, height-range rail endpoints
+
 
 OPTIONAL .env.test VARIABLES
 ----------------------------
@@ -173,6 +200,7 @@ QA_CATEGORY_EXCEL_PATH     Path to category fixture (product_code + category_ids
 QA_CATEGORY_IDS_TO_TEST    Comma-separated category_ids to test (e.g. 161,169)
 QA_MAX_CATEGORIES_TO_TEST  Cap how many categories are tested (ordered by id)
 QA_MAX_CATEGORY_FILTER_SCENARIOS  Cap category+filter scenarios (default 50)
+QA_MAX_RANGE_ENDPOINT_SCENARIOS   Cap range endpoint scenarios (default 35)
 
 
 TEST FILES MAP (qa-tests/api/)
@@ -186,6 +214,8 @@ dimensionRange.test.js      Display Width / Height only
 fullFilter.test.js          Everything combined
 categoryProducts.test.js    Category view (catId) vs Excel category_ids
 categoryFilter.test.js      Category + checkbox filters (catId + AND filters)
+dynamicSidebar.test.js      Static + dynamic sidebar checkbox facets
+rangeEndpoints.test.js      Price / width / height range rail endpoints
 
 
 MOCHA RESULT LEGEND
@@ -209,3 +239,5 @@ SUGGESTED VALIDATION ORDER
 7. npm run test:api:full:flat        — full integration
 8. npm run test:api:category:flat    — category view (catId)
 9. npm run test:api:category-filter:flat — category + checkbox filters
+10. npm run test:api:dynamic-sidebar:flat — sidebar facet options (static + dynamic)
+11. npm run test:api:range-endpoints:flat — price / width / height range rails
