@@ -137,6 +137,24 @@ npm run test:api:range-endpoints:flat
           Scenarios: global, catId only, catId + checkbox filters.
   Focused: QA_CATEGORY_IDS_TO_TEST=161 npm run test:api:range-endpoints:flat
 
+npm run test:api:pagination-sort:flat
+  Profile: flat-pagination-sort.env
+  File:   paginationSort.test.js
+  What:   Validates GET /api/products pagination and sort:
+          totalProducts stable across pages; limit/offset slices match reference;
+          no duplicate product_codes across pages; sortBy most_popular | price_asc | price_desc.
+  Default: scenarios with ≥30 products; unions verified up to 600 (configurable).
+  Focused: QA_CATEGORY_IDS_TO_TEST=161 npm run test:api:pagination-sort:flat
+
+npm run test:api:mega:flat
+  Profile: flat-mega.env
+  File:   megaFilter.test.js
+  What:   Validates GET /api/products/mega (Mega Filter search bar):
+          searchTerms on product_name / product_code (word AND), optional catId,
+          sortBy most_popular | price_asc | price_desc, max 54 results.
+          Code/prefix scenarios from Excel + multi-word searches from DB catalog.
+  Focused: QA_CATEGORY_IDS_TO_TEST=161 npm run test:api:mega:flat
+
 
 DIAGNOSTIC / DATA TOOLS (not Mocha tests)
 -----------------------------------------
@@ -185,6 +203,12 @@ flat-dynamic-sidebar.env
 flat-range-endpoints.env
   price-range, width-range, height-range rail endpoints
 
+flat-pagination-sort.env
+  GET /api/products limit, offset, sortBy validation
+
+flat-mega.env
+  GET /api/products/mega search + catId + sortBy
+
 
 OPTIONAL .env.test VARIABLES
 ----------------------------
@@ -201,6 +225,12 @@ QA_CATEGORY_IDS_TO_TEST    Comma-separated category_ids to test (e.g. 161,169)
 QA_MAX_CATEGORIES_TO_TEST  Cap how many categories are tested (ordered by id)
 QA_MAX_CATEGORY_FILTER_SCENARIOS  Cap category+filter scenarios (default 50)
 QA_MAX_RANGE_ENDPOINT_SCENARIOS   Cap range endpoint scenarios (default 35)
+QA_MAX_PAGINATION_SCENARIOS       Cap pagination test scenarios (default 12)
+QA_PAGINATION_PAGE_SIZE           Page size for pagination tests (default 27)
+QA_MAX_PAGINATION_FULL_UNION      Max products to fully paginate per scenario (default 600)
+QA_MIN_PRODUCTS_FOR_PAGINATION    Min products required for a scenario (default 30)
+QA_MAX_MEGA_SCENARIOS               Cap mega code/prefix scenarios (default 10)
+QA_MAX_MEGA_MULTI_WORD              Cap multi-word mega scenarios (default 3)
 
 
 TEST FILES MAP (qa-tests/api/)
@@ -216,6 +246,8 @@ categoryProducts.test.js    Category view (catId) vs Excel category_ids
 categoryFilter.test.js      Category + checkbox filters (catId + AND filters)
 dynamicSidebar.test.js      Static + dynamic sidebar checkbox facets
 rangeEndpoints.test.js      Price / width / height range rail endpoints
+paginationSort.test.js      Pagination (limit/offset) + sortBy
+megaFilter.test.js          Mega Filter search (/api/products/mega)
 
 
 MOCHA RESULT LEGEND
@@ -241,3 +273,5 @@ SUGGESTED VALIDATION ORDER
 9. npm run test:api:category-filter:flat — category + checkbox filters
 10. npm run test:api:dynamic-sidebar:flat — sidebar facet options (static + dynamic)
 11. npm run test:api:range-endpoints:flat — price / width / height range rails
+12. npm run test:api:pagination-sort:flat — pagination + sorting
+13. npm run test:api:mega:flat — Mega Filter search

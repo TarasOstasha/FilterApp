@@ -472,6 +472,7 @@ module.exports = {
   buildApiQueryForPriceRange,
   buildApiQueryMulti,
   buildProductsRequestQuery,
+  fetchProductsPage,
   fetchAllProductsForFilter,
   productCodesFromApi,
   expectedProductCodesForFilter,

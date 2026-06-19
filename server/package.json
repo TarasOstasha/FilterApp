@@ -21,6 +21,8 @@
     "test:api:category-filter:flat": "node qa-tests/runApiTests.js flat-category-filter --spec qa-tests/api/categoryFilter.test.js",
     "test:api:dynamic-sidebar:flat": "node qa-tests/runApiTests.js flat-dynamic-sidebar --spec qa-tests/api/dynamicSidebar.test.js",
     "test:api:range-endpoints:flat": "node qa-tests/runApiTests.js flat-range-endpoints --spec qa-tests/api/rangeEndpoints.test.js",
+    "test:api:pagination-sort:flat": "node qa-tests/runApiTests.js flat-pagination-sort --spec qa-tests/api/paginationSort.test.js",
+    "test:api:mega:flat": "node qa-tests/runApiTests.js flat-mega --spec qa-tests/api/megaFilter.test.js",
     "test:compare-excel-db": "node qa-tests/scripts/compareExcelDb.js",
     "export:db-only-products": "node qa-tests/scripts/exportDbOnlyProducts.js",
     "coverage": "nyc mocha"
