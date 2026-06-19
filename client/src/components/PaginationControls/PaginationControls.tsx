@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import styles from './PaginationControls.module.scss';
 
 
@@ -59,10 +59,14 @@ const PaginationControls: React.FC<PaginationControlsProps> = ({
   isLoadingMore = false,
   hasUsedLoadMore = false,
 }) => {
+  const showViewMore = hasUsedLoadMore
+    ? visibleProducts < totalProducts
+    : currentPage < totalPages;
+
   return (
     <div className="pagination-controls">
       {/* View More button */}
-      {visibleProducts < totalProducts && (
+      {showViewMore && (
         <div className={styles['pagination-button']}>
           <button
             type="button"
@@ -83,7 +87,7 @@ const PaginationControls: React.FC<PaginationControlsProps> = ({
               type="button"
               onClick={() => onPageChange(currentPage - 1)}
               disabled={currentPage === 1}
-              className="btn"
+              className={styles['nav-button']}
             >
               Back
             </button>
@@ -96,8 +100,8 @@ const PaginationControls: React.FC<PaginationControlsProps> = ({
         <button
           type="button"
           onClick={() => onPageChange(currentPage + 1)}
-          disabled={currentPage === totalPages || (!hasUsedLoadMore && visibleProducts >= totalProducts)}
-          className="btn btn-default btn-xs btn_prevpage"
+          disabled={currentPage >= totalPages || visibleProducts >= totalProducts}
+          className={styles['nav-button']}
         >
           Next
         </button>

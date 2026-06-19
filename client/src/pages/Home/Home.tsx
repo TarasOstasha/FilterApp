@@ -293,6 +293,9 @@ const Home: React.FC = () => {
         setProducts((prev) => {
           const existingIds = new Set(prev.map(p => p.id));
           const uniqueNewProducts = newProducts.filter(p => !existingIds.has(p.id));
+          if (uniqueNewProducts.length === 0) {
+            setTotalProducts(prev.length);
+          }
           return [...prev, ...uniqueNewProducts];
         });
         setLoadedCount(prev => prev + itemsPerPage);

@@ -267,6 +267,9 @@ export function useVolusionFilterState({
         setProducts((prev) => {
           const existingIds = new Set(prev.map((p) => p.id));
           const unique = newProducts.filter((p) => !existingIds.has(p.id));
+          if (unique.length === 0) {
+            setTotalProducts(prev.length);
+          }
           return [...prev, ...unique];
         });
       }

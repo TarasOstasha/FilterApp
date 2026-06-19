@@ -6,28 +6,37 @@
     text-align: center;
     font-family: $rasa-font!important;
     button {
-        //font-family: $rasa-font;
         font-weight: 700;
         background-color: #fff;
         color: #000;
-        border-color: #000;
+        border: 1px solid #000;
         transition: .2s;
         border-radius: 0;
         padding: 12px 26px;
         font-size: 14px;
         line-height: 1.3333333;
         font-family: $rasa-font!important;
-        &:hover {
+
+        &:hover:not(:disabled) {
             background-color: #333;
             color: #fff;
             border-color: #333;
+        }
+
+        &:disabled {
+            opacity: 0.45;
+            cursor: not-allowed;
+            color: #999;
+            border-color: #ccc;
+            background-color: #f5f5f5;
         }
     }
 }
 .xyz-pagination-nav {
     text-align: right;
     font-family: $rasa-font!important;
-    button {
+
+    .nav-button {
         margin: 5px;
         padding: 1px 5px;
         border-radius: 0;
@@ -35,13 +44,22 @@
         font-size: 14px;
         line-height: 21px;
         font-weight: 700;
-        //color: $main-color;
-        border-color: $main-color;
-        //background: $white-color;
-        &:hover {
+        border: 1px solid $main-color;
+        background-color: #fff;
+        color: #000;
+
+        &:hover:not(:disabled) {
             background-color: #333;
             color: #fff;
             border-color: #333;
+        }
+
+        &:disabled {
+            opacity: 0.45;
+            cursor: not-allowed;
+            color: #999;
+            border-color: #ccc;
+            background-color: #f5f5f5;
         }
     }
 }
