@@ -1,6 +1,18 @@
 const { expect } = require('chai');
-const { visibleProductCodesOnly } = require('./filterTestUtils');
+const {
+  visibleProductCodesOnly,
+  expectedProductCodesForFilter,
+  expectedProductCodesForMultiFilter,
+} = require('./filterTestUtils');
 const { productHasCategoryId } = require('./excelCategoryLoader');
+
+/**
+ * @param {Set<string>} a
+ * @param {Set<string>} b
+ */
+function intersectProductCodeSets(a, b) {
+  return new Set([...a].filter((c) => b.has(c)));
+}
 
 /**
  * Expected visible product_codes assigned to a category in the fixture.
@@ -36,7 +48,48 @@ function assertProductsBelongToCategory(apiProducts, categoryId, excelByCode) {
   }
 }
 
+/**
+ * Products in category AND matching a single filter value.
+ */
+function expectedProductCodesForCategoryAndFilter(
+  filterProducts,
+  categoryProducts,
+  categoryId,
+  field,
+  filterValue
+) {
+  const categoryCodes = expectedProductCodesForCategory(categoryProducts, categoryId);
+  const filterCodes = expectedProductCodesForFilter(filterProducts, field, filterValue);
+  return intersectProductCodeSets(categoryCodes, filterCodes);
+}
+
+/**
+ * Products in category AND matching all multi-filter specs (AND).
+ */
+function expectedProductCodesForCategoryAndMultiFilter(
+  filterProducts,
+  categoryProducts,
+  categoryId,
+  filterSpecs
+) {
+  const categoryCodes = expectedProductCodesForCategory(categoryProducts, categoryId);
+  const filterCodes = expectedProductCodesForMultiFilter(filterProducts, filterSpecs);
+  return intersectProductCodeSets(categoryCodes, filterCodes);
+}
+
+/**
+ * @param {string|number} categoryId
+ * @param {Record<string, string|string[]>} filterQuery
+ */
+function buildApiQueryWithCategory(categoryId, filterQuery) {
+  return { catId: String(categoryId), ...filterQuery };
+}
+
 module.exports = {
+  intersectProductCodeSets,
   expectedProductCodesForCategory,
+  expectedProductCodesForCategoryAndFilter,
+  expectedProductCodesForCategoryAndMultiFilter,
   assertProductsBelongToCategory,
+  buildApiQueryWithCategory,
 };

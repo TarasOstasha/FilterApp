@@ -107,6 +107,15 @@ npm run test:api:category:flat
   Focused: QA_CATEGORY_IDS_TO_TEST=161 npm run test:api:category:flat
   Cap:     QA_MAX_CATEGORIES_TO_TEST=25 npm run test:api:category:flat
 
+npm run test:api:category-filter:flat
+  Profile: flat-category-filter.env
+  File:   categoryFilter.test.js
+  What:   Validates GET /api/products?catId=X&filters… — products must match
+          BOTH category_ids in products_check_category.xlsx AND filter columns
+          in product_filters_flat.xlsx. Single-checkbox spot checks + multi-filter AND.
+  Default: top 5 categories by product count (~50 scenarios max)
+  Focused: QA_CATEGORY_IDS_TO_TEST=161 npm run test:api:category-filter:flat
+
 
 DIAGNOSTIC / DATA TOOLS (not Mocha tests)
 -----------------------------------------
@@ -146,6 +155,9 @@ flat-category.env
   QA_CATEGORY_EXCEL_PATH=qa-tests/fixtures/products_check_category.xlsx
   600s timeout (full category sweep can take several minutes)
 
+flat-category-filter.env
+  Flat filter Excel + category Excel, checkbox multi-filter combos with catId
+
 
 OPTIONAL .env.test VARIABLES
 ----------------------------
@@ -160,6 +172,7 @@ QA_DB_ONLY_EXPORT_PATH     Custom path for export:db-only-products output
 QA_CATEGORY_EXCEL_PATH     Path to category fixture (product_code + category_ids)
 QA_CATEGORY_IDS_TO_TEST    Comma-separated category_ids to test (e.g. 161,169)
 QA_MAX_CATEGORIES_TO_TEST  Cap how many categories are tested (ordered by id)
+QA_MAX_CATEGORY_FILTER_SCENARIOS  Cap category+filter scenarios (default 50)
 
 
 TEST FILES MAP (qa-tests/api/)
@@ -172,6 +185,7 @@ multiFilterPrice.test.js    Multi-checkbox + price
 dimensionRange.test.js      Display Width / Height only
 fullFilter.test.js          Everything combined
 categoryProducts.test.js    Category view (catId) vs Excel category_ids
+categoryFilter.test.js      Category + checkbox filters (catId + AND filters)
 
 
 MOCHA RESULT LEGEND
@@ -193,3 +207,5 @@ SUGGESTED VALIDATION ORDER
 5. npm run test:api:multi:flat       — multi-checkbox
 6. npm run test:api:multi-price:flat  — multi-checkbox + price
 7. npm run test:api:full:flat        — full integration
+8. npm run test:api:category:flat    — category view (catId)
+9. npm run test:api:category-filter:flat — category + checkbox filters

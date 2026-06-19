@@ -219,6 +219,34 @@ function selectCategoryIdsForTest(allCategoryIds) {
   return allCategoryIds;
 }
 
+/**
+ * Categories for combined category+filter tests (defaults to top N by product count).
+ * @param {string[]} allCategoryIds
+ * @param {Record<string, number>} countsByCategory
+ */
+function selectCategoryIdsForCombinedFilterTest(allCategoryIds, countsByCategory) {
+  const explicit = process.env.QA_CATEGORY_IDS_TO_TEST?.trim();
+  if (explicit) {
+    const requested = explicit
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean);
+    const available = new Set(allCategoryIds);
+    return requested.filter((id) => available.has(id));
+  }
+
+  const sorted = [...allCategoryIds].sort(
+    (a, b) => (countsByCategory[b] || 0) - (countsByCategory[a] || 0)
+  );
+
+  const capRaw = process.env.QA_MAX_CATEGORIES_TO_TEST?.trim();
+  const defaultCap = 5;
+  const cap = capRaw ? parseInt(capRaw, 10) : defaultCap;
+  if (Number.isFinite(cap) && cap > 0) return sorted.slice(0, cap);
+
+  return sorted;
+}
+
 module.exports = {
   DEFAULT_CATEGORY_EXCEL_PATH,
   resolveCategoryExcelPath,
@@ -228,4 +256,5 @@ module.exports = {
   buildCategoryLoadSummary,
   formatCategoryLoadSummaryText,
   selectCategoryIdsForTest,
+  selectCategoryIdsForCombinedFilterTest,
 };
