@@ -64,5 +64,5 @@ export function setProductsRootVisible(visible: boolean): void {
 
 export function initEmbedDomDefaults(): void {
   setVolusionFormVisible(true);
-  setProductsRootVisible(false);
+  setProductsRootVisible(true);
 }

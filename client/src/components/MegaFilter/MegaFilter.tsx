@@ -30,6 +30,7 @@ interface ProductListProps {
     loading: boolean;
     categoryId?: string;
     onSearchResultIdsChange?: (ids: number[]) => void;
+    onSearchActiveChange?: (active: boolean) => void;
 }
 
 const MegaFilter: React.FC<ProductListProps> = ({
@@ -38,6 +39,7 @@ const MegaFilter: React.FC<ProductListProps> = ({
     loading,
     categoryId = '',
     onSearchResultIdsChange,
+    onSearchActiveChange,
 }) => {
     const [searchTerm, setSearchTerm] = useState('');
     const [megaFilteredProducts, setMegaFilteredProducts] = useState<Product[]>([]);
@@ -53,13 +55,16 @@ const MegaFilter: React.FC<ProductListProps> = ({
 
     // Tell parent which product IDs are shown in search results (to dedupe the list below)
     useEffect(() => {
-        if (searchTerm.trim() === '') {
+        const active = searchTerm.trim() !== '';
+        onSearchActiveChange?.(active);
+
+        if (!active) {
             onSearchResultIdsChange?.([]);
             return;
         }
         const ids = megaFilteredProducts.map((p) => p.id);
         onSearchResultIdsChange?.(ids);
-    }, [searchTerm, megaFilteredProducts, onSearchResultIdsChange]);
+    }, [searchTerm, megaFilteredProducts, onSearchResultIdsChange, onSearchActiveChange]);
 
     const resolveCategoryId = () => categoryId || getCategoryIdFromPath();
 

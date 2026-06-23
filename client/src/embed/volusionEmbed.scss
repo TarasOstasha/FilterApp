@@ -41,12 +41,12 @@ html.xyz-filter-sidebar-active nav#display_menu_2::before {
   top: 0;
 }
 
-#xyz-filter-products-root:not(.xyz-embed-products-visible) {
-  display: none;
+#xyz-filter-products-root {
+  display: block;
 }
 
-#xyz-filter-products-root.xyz-embed-products-visible {
-  display: block;
+.xyz-embed-products-panel {
+  margin-top: 1rem;
 }
 
 .xyz-embed-clear-filters {
