@@ -9,6 +9,7 @@ import PaginationControls from '../components/PaginationControls/PaginationContr
 import { FilterRangeRails } from '../utils/hasActiveFilters';
 import {
   getVolusionEmbedCategoryId,
+  ensureCategoryPageAtTop,
   setProductsRootVisible,
   setVolusionFormVisible,
 } from './volusionDom';
@@ -34,6 +35,10 @@ const VolusionEmbedApp: React.FC<VolusionEmbedAppProps> = ({
   });
 
   const showEmbedProducts = state.filtersActive || megaSearchActive;
+
+  useEffect(() => {
+    ensureCategoryPageAtTop();
+  }, [categoryId]);
 
   useEffect(() => {
     setVolusionFormVisible(!showEmbedProducts);
@@ -78,6 +83,7 @@ const VolusionEmbedApp: React.FC<VolusionEmbedAppProps> = ({
         filters={state.selectedFilters}
         loading={state.loading}
         categoryId={categoryId}
+        autoFocus={false}
         onSearchResultIdsChange={handleMegaSearchResultIdsChange}
         onSearchActiveChange={handleMegaSearchActiveChange}
       />

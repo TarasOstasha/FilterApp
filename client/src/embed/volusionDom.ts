@@ -73,3 +73,16 @@ export function initEmbedDomDefaults(): void {
   setVolusionFormVisible(true);
   setProductsRootVisible(true);
 }
+
+export function ensureCategoryPageAtTop(): void {
+  if ('scrollRestoration' in window.history) {
+    window.history.scrollRestoration = 'manual';
+  }
+
+  const scrollTop = () => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' as ScrollBehavior });
+  };
+
+  scrollTop();
+  requestAnimationFrame(scrollTop);
+}

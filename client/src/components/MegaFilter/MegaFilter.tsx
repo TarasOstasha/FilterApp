@@ -29,6 +29,7 @@ interface ProductListProps {
     filters: { [key: string]: string[] };
     loading: boolean;
     categoryId?: string;
+    autoFocus?: boolean;
     onSearchResultIdsChange?: (ids: number[]) => void;
     onSearchActiveChange?: (active: boolean) => void;
 }
@@ -38,6 +39,7 @@ const MegaFilter: React.FC<ProductListProps> = ({
     filters,
     loading,
     categoryId = '',
+    autoFocus = true,
     onSearchResultIdsChange,
     onSearchActiveChange,
 }) => {
@@ -46,12 +48,11 @@ const MegaFilter: React.FC<ProductListProps> = ({
     const [isLoading, setIsLoading] = useState(false);
     const inputRef = useRef<HTMLInputElement>(null);
 
-    // Focus the input field after each update
+    // Keep focus while searching; skip initial mount so category pages stay at the top.
     useEffect(() => {
-        if (inputRef.current) {
-            inputRef.current.focus();
-        }
-    }, [searchTerm, megaFilteredProducts]);
+        if (!autoFocus || !inputRef.current || searchTerm.trim() === '') return;
+        inputRef.current.focus();
+    }, [autoFocus, searchTerm, megaFilteredProducts]);
 
     // Tell parent which product IDs are shown in search results (to dedupe the list below)
     useEffect(() => {

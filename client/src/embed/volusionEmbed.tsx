@@ -3,6 +3,7 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import VolusionEmbedApp from './VolusionEmbedApp';
 import {
+  ensureCategoryPageAtTop,
   initEmbedDomDefaults,
   isVolusionCategoryPage,
   mountProductsRoot,
@@ -11,6 +12,8 @@ import {
 
 function initVolusionEmbed(): void {
   if (!isVolusionCategoryPage()) return;
+
+  ensureCategoryPageAtTop();
 
   const sidebarEl = mountSidebarRoot();
   const productsEl = mountProductsRoot();

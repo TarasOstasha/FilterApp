@@ -50,6 +50,8 @@ export function useVolusionFilterState({
   const rangeRailsRef = useRef(rangeRails);
   rangeRailsRef.current = rangeRails;
 
+  const isLoadingMoreRef = useRef(false);
+
   const offsetFrom = (page: number, limit: number) =>
     Math.max(0, (page - 1) * limit);
 
@@ -94,6 +96,7 @@ export function useVolusionFilterState({
     setCurrentPage(Math.floor(offset / limit) + 1);
     setSortBy(urlSort);
     setSelectedFilters(filters);
+    isLoadingMoreRef.current = false;
     setIsLoadingMore(false);
     setHasUsedLoadMore(false);
   }, []);
@@ -125,6 +128,8 @@ export function useVolusionFilterState({
       return;
     }
 
+    if (isLoadingMoreRef.current) return;
+
     setLoading(true);
     try {
       const qp = buildProductQueryParams({
@@ -138,22 +143,13 @@ export function useVolusionFilterState({
       const response = await fetchProductsFromAPI(qp, catId);
       if (response?.data) {
         const newProducts: Product[] = response.data.products || [];
-        if (isLoadingMore) {
-          setProducts((prev) => {
-            const existingIds = new Set(prev.map((p) => p.id));
-            const unique = newProducts.filter((p) => !existingIds.has(p.id));
-            return [...prev, ...unique];
-          });
-        } else {
-          setProducts(newProducts);
-        }
+        setProducts(newProducts);
         setTotalProducts(response.data.totalProducts || 0);
       }
     } catch (err) {
       console.error('Error fetching products:', err);
     } finally {
       setLoading(false);
-      setIsLoadingMore(false);
       setTimeout(() => setIsTransitioning(false), 120);
     }
   }, [
@@ -161,7 +157,6 @@ export function useVolusionFilterState({
     currentPage,
     itemsPerPage,
     sortBy,
-    isLoadingMore,
     categoryId,
   ]);
 
@@ -173,6 +168,7 @@ export function useVolusionFilterState({
 
   const handleFilterChange = (filter: { field: string; value: string }) => {
     setIsTransitioning(true);
+    isLoadingMoreRef.current = false;
     setIsLoadingMore(false);
     setHasUsedLoadMore(false);
     const { field, value } = filter;
@@ -205,6 +201,7 @@ export function useVolusionFilterState({
   const handleSortChange = (sortMethod: string) => {
     const validSort: SortBy = isSortBy(sortMethod) ? sortMethod : 'most_popular';
     setIsTransitioning(true);
+    isLoadingMoreRef.current = false;
     setIsLoadingMore(false);
     setHasUsedLoadMore(false);
     setSortBy(validSort);
@@ -219,6 +216,7 @@ export function useVolusionFilterState({
 
   const handleItemsPerPageChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     setIsTransitioning(true);
+    isLoadingMoreRef.current = false;
     setIsLoadingMore(false);
     setHasUsedLoadMore(false);
     const next = Number(e.target.value);
@@ -234,6 +232,7 @@ export function useVolusionFilterState({
 
   const handlePageChange = (page: number) => {
     setIsTransitioning(true);
+    isLoadingMoreRef.current = false;
     setHasUsedLoadMore(false);
     setIsLoadingMore(false);
     setCurrentPage(page);
@@ -247,6 +246,7 @@ export function useVolusionFilterState({
 
   const handleLoadMore = async () => {
     if (!filtersActive) return;
+    isLoadingMoreRef.current = true;
     setIsLoadingMore(true);
     setHasUsedLoadMore(true);
 
@@ -276,12 +276,14 @@ export function useVolusionFilterState({
     } catch (err) {
       console.error('Error loading more products:', err);
     } finally {
+      isLoadingMoreRef.current = false;
       setIsLoadingMore(false);
     }
   };
 
   const handleClearFilters = () => {
     setIsTransitioning(true);
+    isLoadingMoreRef.current = false;
     setIsLoadingMore(false);
     setHasUsedLoadMore(false);
     setSelectedFilters({});
