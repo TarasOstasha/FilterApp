@@ -35,9 +35,14 @@
   }
 }
 
-// Volusion left-nav decoration — only when our filter sidebar is mounted
+// Category pages only — sidebar mounts inside this wrapper beside .ourwork-container
+.xyz-filter-sidebar-parent {
+  padding-left: 15px;
+}
+
+// Volusion left-nav decoration — only when our filter sidebar is mounted (category pages)
 html.xyz-filter-sidebar-active nav#display_menu_2::before {
-  height: 35%;
+  height: 100%;
   top: 0;
 }
 

@@ -1,5 +1,6 @@
 export const VOLUSION_CATEGORY_RE = /-s\/\d+\.htm$/i;
 export const SIDEBAR_ROOT_ID = 'xyz-filter-sidebar-root';
+export const SIDEBAR_PARENT_CLASS = 'xyz-filter-sidebar-parent';
 export const PRODUCTS_ROOT_ID = 'xyz-filter-products-root';
 export const PRODUCTS_VISIBLE_CLASS = 'xyz-embed-products-visible';
 export const VOLUSION_FORM_SELECTOR = 'form#MainForm.search_results_section';
@@ -12,9 +13,14 @@ export function getVolusionEmbedCategoryId(): string {
   return window.location.pathname.match(/-s\/(\d+)\.htm$/i)?.[1] ?? '';
 }
 
+function markSidebarParent(root: HTMLElement): void {
+  root.parentElement?.classList.add(SIDEBAR_PARENT_CLASS);
+}
+
 export function mountSidebarRoot(): HTMLElement | null {
   const existing = document.getElementById(SIDEBAR_ROOT_ID);
   if (existing) {
+    markSidebarParent(existing);
     document.documentElement.classList.add('xyz-filter-sidebar-active');
     return existing;
   }
@@ -30,6 +36,7 @@ export function mountSidebarRoot(): HTMLElement | null {
   root.id = SIDEBAR_ROOT_ID;
   // Place beside Our Work inside the same wrapper (matches Volusion category template)
   ourWork.insertAdjacentElement('afterend', root);
+  markSidebarParent(root);
   document.documentElement.classList.add('xyz-filter-sidebar-active');
   return root;
 }
