@@ -33,6 +33,39 @@
       'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol' !important;
     font-weight: 400 !important;
   }
+
+  // Protect react-slider track/thumbs from Volusion sidebar CSS
+  [class*='range-slider']:not([class*='thumb']):not([class*='track']) {
+    position: relative !important;
+    width: 100% !important;
+    height: 25px !important;
+    margin-top: 10px !important;
+  }
+
+  [class*='range-slider-thumb'] {
+    position: absolute !important;
+    width: 15px !important;
+    height: 15px !important;
+    background-color: #40a3db !important;
+    border-radius: 50% !important;
+    cursor: pointer !important;
+    top: 50% !important;
+    transform: translate(-50%, -50%) !important;
+    z-index: 1 !important;
+  }
+
+  [class*='range-slider-track'] {
+    position: absolute !important;
+    height: 5px !important;
+    background: #efece9 !important;
+    border-radius: 2px !important;
+    top: 50% !important;
+    transform: translateY(-50%) !important;
+  }
+
+  [class*='range-slider-track'][class*='-1'] {
+    background: #3f51b5 !important;
+  }
 }
 
 // Category pages only — sidebar mounts inside this wrapper beside .ourwork-container
