@@ -668,3 +668,77 @@ code {
     border-top-color: #1f2937;
   }
 }
+
+.embedSettingsPanel {
+  margin: 2rem auto 2.5rem;
+  max-width: 640px;
+  padding: 1.5rem;
+  text-align: left;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.06);
+}
+
+.embedSettingsDesc {
+  margin: 0 0 1rem;
+  font-size: 14px;
+  line-height: 1.5;
+  color: #6b7280;
+}
+
+.embedSettingsStatusRow {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.embedSettingsLabel {
+  font-weight: 600;
+  color: #374151;
+}
+
+.embedSettingsLoading {
+  color: #6b7280;
+}
+
+.embedStatusOn,
+.embedStatusOff {
+  display: inline-block;
+  padding: 0.25rem 0.65rem;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.embedStatusOn {
+  color: #166534;
+  background: #dcfce7;
+}
+
+.embedStatusOff {
+  color: #991b1b;
+  background: #fee2e2;
+}
+
+.embedHideBtn,
+.embedShowBtn {
+  margin: 0 !important;
+}
+
+.embedHideBtn {
+  background-color: #dc2626 !important;
+
+  &:hover:not(:disabled) {
+    background-color: #b91c1c !important;
+  }
+}
+
+.embedShowBtn {
+  background-color: #16a34a !important;
+
+  &:hover:not(:disabled) {
+    background-color: #15803d !important;
+  }
+}

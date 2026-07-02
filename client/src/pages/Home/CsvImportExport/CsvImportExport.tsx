@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { AxiosResponse } from 'axios';
 import { ToastContainer, toast } from 'react-toastify';
@@ -21,6 +21,8 @@ import {
     createCategory,
     updateCategoryByCategoryId,
     deleteCategoryByCategoryId,
+    fetchEmbedSettings,
+    updateEmbedSettings,
     AdminProduct,
     AdminProductPayload,
     AdminProductFilterField,
@@ -120,6 +122,40 @@ const CsvImportExport: React.FC = () => {
     const [isCategoryDefLoading, setIsCategoryDefLoading] = useState(false);
     const [isCategoryDefSaving, setIsCategoryDefSaving] = useState(false);
     const [isCategoryDefRemoving, setIsCategoryDefRemoving] = useState(false);
+    const [embedEnabled, setEmbedEnabled] = useState<boolean | null>(null);
+    const [isEmbedSettingsLoading, setIsEmbedSettingsLoading] = useState(true);
+    const [isEmbedSettingsSaving, setIsEmbedSettingsSaving] = useState(false);
+    const [embedToggleStep, setEmbedToggleStep] = useState<1 | 2 | null>(null);
+    const [pendingEmbedEnabled, setPendingEmbedEnabled] = useState<boolean | null>(null);
+
+    useEffect(() => {
+        let cancelled = false;
+
+        const loadEmbedSettings = async () => {
+            setIsEmbedSettingsLoading(true);
+            try {
+                const settings = await fetchEmbedSettings();
+                if (!cancelled) {
+                    setEmbedEnabled(settings.enabled);
+                }
+            } catch {
+                if (!cancelled) {
+                    setEmbedEnabled(true);
+                    toast.error('Failed to load Volusion filter status.');
+                }
+            } finally {
+                if (!cancelled) {
+                    setIsEmbedSettingsLoading(false);
+                }
+            }
+        };
+
+        void loadEmbedSettings();
+
+        return () => {
+            cancelled = true;
+        };
+    }, []);
 
     const getFilterInstanceKey = (field: AdminProductFilterField) =>
         `${field.filter_field_id}-${field.value_index}`;
@@ -343,6 +379,44 @@ const CsvImportExport: React.FC = () => {
             return error.message;
         }
         return fallback;
+    };
+
+    const handleEmbedToggleClick = () => {
+        if (embedEnabled === null || isEmbedSettingsLoading) return;
+        setPendingEmbedEnabled(!embedEnabled);
+        setEmbedToggleStep(1);
+    };
+
+    const handleEmbedToggleCancel = () => {
+        if (isEmbedSettingsSaving) return;
+        setEmbedToggleStep(null);
+        setPendingEmbedEnabled(null);
+    };
+
+    const handleEmbedToggleStep1Continue = () => {
+        setEmbedToggleStep(2);
+    };
+
+    const handleEmbedToggleConfirm = async () => {
+        if (pendingEmbedEnabled === null) return;
+
+        setIsEmbedSettingsSaving(true);
+        try {
+            const response = await updateEmbedSettings(pendingEmbedEnabled);
+            const enabled = response?.data?.enabled !== false;
+            setEmbedEnabled(enabled);
+            toast.success(
+                enabled
+                    ? 'Volusion filter is now visible on category pages.'
+                    : 'Volusion filter is now hidden on category pages.'
+            );
+            setEmbedToggleStep(null);
+            setPendingEmbedEnabled(null);
+        } catch (error) {
+            toast.error(getApiErrorMessage(error, 'Failed to update Volusion filter status.'));
+        } finally {
+            setIsEmbedSettingsSaving(false);
+        }
     };
 
     const handleEditProduct = () => {
@@ -869,6 +943,43 @@ const CsvImportExport: React.FC = () => {
                 pauseOnHover
             />
             <Admin />
+            <section className={styles.embedSettingsPanel}>
+                <h2 className={styles.sectionTitle}>Volusion Filter</h2>
+                <p className={styles.embedSettingsDesc}>
+                    Control whether the filter app appears on Volusion category pages.
+                    Visitors may need to refresh the page for changes to take effect.
+                </p>
+                <div className={styles.embedSettingsStatusRow}>
+                    <span className={styles.embedSettingsLabel}>Current status:</span>
+                    {isEmbedSettingsLoading ? (
+                        <span className={styles.embedSettingsLoading}>Loading...</span>
+                    ) : (
+                        <span
+                            className={
+                                embedEnabled ? styles.embedStatusOn : styles.embedStatusOff
+                            }
+                        >
+                            {embedEnabled ? 'Visible on Volusion' : 'Hidden on Volusion'}
+                        </span>
+                    )}
+                </div>
+                <button
+                    type="button"
+                    className={embedEnabled ? styles.embedHideBtn : styles.embedShowBtn}
+                    onClick={handleEmbedToggleClick}
+                    disabled={
+                        isEmbedSettingsLoading ||
+                        isEmbedSettingsSaving ||
+                        embedEnabled === null
+                    }
+                >
+                    {isEmbedSettingsLoading
+                        ? 'Loading...'
+                        : embedEnabled
+                          ? 'Hide filter on Volusion'
+                          : 'Show filter on Volusion'}
+                </button>
+            </section>
             <h2>Import CSV</h2>
             <input 
                 type="file" 
@@ -1916,6 +2027,115 @@ const CsvImportExport: React.FC = () => {
                                     : categoryDefModalMode === 'add'
                                       ? 'Create category'
                                       : 'Save changes'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {embedToggleStep === 1 && pendingEmbedEnabled !== null && (
+                <div
+                    className={styles.confirmOverlay}
+                    role="dialog"
+                    aria-modal="true"
+                    aria-labelledby="embed-toggle-step1-title"
+                    onClick={handleEmbedToggleCancel}
+                >
+                    <div className={styles.confirmDialog} onClick={(e) => e.stopPropagation()}>
+                        <div className={styles.confirmHeader}>
+                            <div className={styles.confirmIcon} aria-hidden="true">!</div>
+                            <div>
+                                <h3 id="embed-toggle-step1-title" className={styles.confirmTitle}>
+                                    {pendingEmbedEnabled
+                                        ? 'Show filter on Volusion?'
+                                        : 'Hide filter on Volusion?'}
+                                </h3>
+                                <p className={styles.confirmSubtitle}>
+                                    {pendingEmbedEnabled
+                                        ? 'This will mount the filter sidebar and product panel on Volusion category pages.'
+                                        : 'This will stop the filter app from loading on Volusion category pages.'}
+                                </p>
+                            </div>
+                        </div>
+                        <div className={styles.confirmBody}>
+                            <p className={styles.confirmMessage}>
+                                You will be asked to confirm once more before this change is saved.
+                            </p>
+                        </div>
+                        <div className={styles.confirmActions}>
+                            <button
+                                type="button"
+                                className={styles.confirmCancelBtn}
+                                onClick={handleEmbedToggleCancel}
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                type="button"
+                                className={styles.confirmProceedBtn}
+                                onClick={handleEmbedToggleStep1Continue}
+                            >
+                                Continue
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {embedToggleStep === 2 && pendingEmbedEnabled !== null && (
+                <div
+                    className={styles.confirmOverlay}
+                    role="dialog"
+                    aria-modal="true"
+                    aria-labelledby="embed-toggle-step2-title"
+                    onClick={() => !isEmbedSettingsSaving && handleEmbedToggleCancel()}
+                >
+                    <div className={styles.confirmDialog} onClick={(e) => e.stopPropagation()}>
+                        <div className={styles.confirmHeader}>
+                            <div
+                                className={`${styles.confirmIcon} ${styles.confirmIconDanger}`}
+                                aria-hidden="true"
+                            >
+                                !
+                            </div>
+                            <div>
+                                <h3 id="embed-toggle-step2-title" className={styles.confirmTitle}>
+                                    Confirm this change
+                                </h3>
+                                <p className={styles.confirmSubtitle}>
+                                    {pendingEmbedEnabled
+                                        ? 'Turn the Volusion filter back on for all category pages?'
+                                        : 'Turn the Volusion filter off for all category pages?'}
+                                </p>
+                            </div>
+                        </div>
+                        <div className={styles.confirmBody}>
+                            <p className={styles.confirmMessage}>
+                                {pendingEmbedEnabled
+                                    ? 'After you confirm, shoppers will see the custom filter UI again after they refresh Volusion category pages.'
+                                    : 'After you confirm, Volusion will use its native category layout again after visitors refresh the page.'}
+                            </p>
+                        </div>
+                        <div className={styles.confirmActions}>
+                            <button
+                                type="button"
+                                className={styles.confirmCancelBtn}
+                                onClick={handleEmbedToggleCancel}
+                                disabled={isEmbedSettingsSaving}
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                type="button"
+                                className={styles.confirmProceedBtn}
+                                onClick={handleEmbedToggleConfirm}
+                                disabled={isEmbedSettingsSaving}
+                            >
+                                {isEmbedSettingsSaving
+                                    ? 'Saving...'
+                                    : pendingEmbedEnabled
+                                      ? 'Yes, show filter'
+                                      : 'Yes, hide filter'}
                             </button>
                         </div>
                     </div>

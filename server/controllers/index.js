@@ -10,3 +10,4 @@ module.exports.importController = require('./importController');
 module.exports.exportController = require('./exportController');
 module.exports.authController = require('./authController');
 module.exports.dynamicFiltersController = require('./dynamicFiltersController');
+module.exports.embedSettingsController = require('./embedSettingsController');

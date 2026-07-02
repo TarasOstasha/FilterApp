@@ -10,6 +10,7 @@ const exportRouter = require('./exportRouter');
 const authRouter = require('./authRouter');
 const dynamicFilterRouter = require('./dynamicFilterRouter');
 const imageProxyRouter = require('./imageProxyRouter');
+const embedSettingsRouter = require('./embedSettingsRouter');
 
 
 
@@ -27,6 +28,7 @@ router.use('/export', exportRouter);
 router.use('/admin', authRouter);
 router.use('/dynamic-filters', dynamicFilterRouter);
 router.use('/image-proxy', imageProxyRouter);
+router.use('/embed-settings', embedSettingsRouter);
 
 
 

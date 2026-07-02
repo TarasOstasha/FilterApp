@@ -505,3 +505,29 @@ export const changePassword = async (values: {
         return undefined;
     }
 };
+
+export interface EmbedSettings {
+    enabled: boolean;
+}
+
+export const fetchEmbedSettings = async (): Promise<EmbedSettings> => {
+    const response = await axiosInstance.get<EmbedSettings>('/embed-settings');
+    return {
+        enabled: response.data.enabled !== false,
+    };
+};
+
+export const updateEmbedSettings = async (
+    enabled: boolean
+): Promise<AxiosResponse<EmbedSettings> | undefined> => {
+    try {
+        return await axiosInstance.put(
+            '/embed-settings',
+            { enabled },
+            { headers: getAuthHeaders() }
+        );
+    } catch (error) {
+        console.error('Error updating embed settings:', error);
+        throw error;
+    }
+};
