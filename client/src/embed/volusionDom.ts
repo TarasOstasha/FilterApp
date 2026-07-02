@@ -69,6 +69,20 @@ export function setProductsRootVisible(visible: boolean): void {
   }
 }
 
+export function repositionProductsRoot(aboveCategories: boolean): void {
+  const root = document.getElementById(PRODUCTS_ROOT_ID);
+  const form = document.querySelector(VOLUSION_FORM_SELECTOR);
+  const container = form?.parentElement;
+  if (!root || !form || !container) return;
+
+  if (aboveCategories) {
+    container.insertBefore(root, container.firstChild);
+    return;
+  }
+
+  form.insertAdjacentElement('afterend', root);
+}
+
 export function initEmbedDomDefaults(): void {
   setVolusionFormVisible(true);
   setProductsRootVisible(true);

@@ -10,6 +10,7 @@ import { FilterRangeRails } from '../utils/hasActiveFilters';
 import {
   getVolusionEmbedCategoryId,
   ensureCategoryPageAtTop,
+  repositionProductsRoot,
   setProductsRootVisible,
   setVolusionFormVisible,
 } from './volusionDom';
@@ -43,6 +44,7 @@ const VolusionEmbedApp: React.FC<VolusionEmbedAppProps> = ({
   useEffect(() => {
     setVolusionFormVisible(!showEmbedProducts);
     setProductsRootVisible(true);
+    repositionProductsRoot(showEmbedProducts);
   }, [showEmbedProducts]);
 
   const handleRangeRailsChange = useCallback((rails: FilterRangeRails) => {
