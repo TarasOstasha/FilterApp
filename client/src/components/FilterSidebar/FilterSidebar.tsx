@@ -682,7 +682,7 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
   );
 
   return (
-    <div className={styles.sidebar} style={{ width: '250px', position: 'relative' }}>
+    <div className={styles.sidebar}>
       {isLoading && (
         <>
           {/* Loading indicator */}

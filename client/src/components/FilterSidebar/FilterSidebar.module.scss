@@ -11,9 +11,16 @@
 
 
 .sidebar {
+  width: 250px;
+  position: relative;
   //font-family: $arial-font;
   font-size: 14px;
   //color: $main-color;
+
+  @media (min-width: 992px) and (max-width: 1199px) {
+    width: auto;
+  }
+
   .filterItem {
     cursor: pointer;
     padding: 10px 0;
