@@ -90,11 +90,7 @@ const VolusionEmbedApp: React.FC<VolusionEmbedAppProps> = ({
         onSearchActiveChange={handleMegaSearchActiveChange}
       />
       {state.filtersActive && (
-        <div
-          className={`xyz-embed-page-transition ${
-            !state.isTransitioning ? 'xyz-embed-show' : ''
-          }`}
-        >
+        <div className="xyz-embed-page-transition xyz-embed-show">
           <div className="xyz-embed-controls">
             <SortDropdown
               handleSortChange={state.handleSortChange}

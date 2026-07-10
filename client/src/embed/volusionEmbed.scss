@@ -89,6 +89,7 @@ html.xyz-filter-sidebar-active nav#display_menu_2::before {
   [class*='xyzProductItem'] {
     color: #000 !important;
     text-decoration: none !important;
+    animation: none !important;
   }
 
   [class*='xyzPname'] {
@@ -141,14 +142,12 @@ html.xyz-filter-sidebar-active nav#display_menu_2::before {
   gap: 0.5rem;
 }
 
+// Opacity-only — avoid transform/will-change (causes blurry text on Windows embed)
 .xyz-embed-page-transition {
   opacity: 0;
-  transform: translateY(8px);
-  transition: opacity 0.18s ease, transform 0.18s ease;
-  will-change: opacity, transform;
+  transition: opacity 0.18s ease;
 
   &.xyz-embed-show {
     opacity: 1;
-    transform: none;
   }
 }
