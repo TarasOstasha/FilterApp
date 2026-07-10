@@ -44,6 +44,9 @@ const VolusionEmbedApp: React.FC<VolusionEmbedAppProps> = ({
     setVolusionFormVisible(!showEmbedProducts);
     setProductsRootVisible(showEmbedProducts);
     repositionProductsRoot(showEmbedProducts);
+    if (showEmbedProducts) {
+      ensureCategoryPageAtTop();
+    }
   }, [showEmbedProducts]);
 
   const handleRangeRailsChange = useCallback((rails: FilterRangeRails) => {

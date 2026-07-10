@@ -9,7 +9,10 @@ import {
   FilterRangeRails,
   hasActiveFilters,
 } from '../utils/hasActiveFilters';
-import { getVolusionEmbedCategoryId } from './volusionDom';
+import {
+  ensureCategoryPageAtTop,
+  getVolusionEmbedCategoryId,
+} from './volusionDom';
 
 const ALLOWED_SORTS = ['most_popular', 'price_asc', 'price_desc'] as const;
 type SortBy = (typeof ALLOWED_SORTS)[number];
@@ -109,6 +112,7 @@ export function useVolusionFilterState({
     const onPopState = () => {
       setIsTransitioning(true);
       hydrateFromUrl();
+      ensureCategoryPageAtTop();
     };
     window.addEventListener('popstate', onPopState);
     return () => window.removeEventListener('popstate', onPopState);
@@ -196,6 +200,8 @@ export function useVolusionFilterState({
 
       return next;
     });
+
+    ensureCategoryPageAtTop();
   };
 
   const handleSortChange = (sortMethod: string) => {
@@ -212,6 +218,7 @@ export function useVolusionFilterState({
       sortBy: validSort,
       filters: selectedFilters,
     });
+    ensureCategoryPageAtTop();
   };
 
   const handleItemsPerPageChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -228,6 +235,7 @@ export function useVolusionFilterState({
       sortBy,
       filters: selectedFilters,
     });
+    ensureCategoryPageAtTop();
   };
 
   const handlePageChange = (page: number) => {
@@ -235,6 +243,7 @@ export function useVolusionFilterState({
     isLoadingMoreRef.current = false;
     setHasUsedLoadMore(false);
     setIsLoadingMore(false);
+    ensureCategoryPageAtTop();
     setCurrentPage(page);
     writeUrl({
       limit: itemsPerPage,
@@ -295,6 +304,7 @@ export function useVolusionFilterState({
     // Volusion category pages: return to the native category URL with no query params.
     // pushState keeps the filtered URL in history so Back restores prior filter state.
     window.history.pushState({}, '', window.location.pathname);
+    ensureCategoryPageAtTop();
     setTimeout(() => setIsTransitioning(false), 120);
   };
 
