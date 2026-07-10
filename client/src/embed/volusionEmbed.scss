@@ -1,6 +1,9 @@
 #xyz-filter-sidebar-root,
 #xyz-filter-products-root {
   box-sizing: border-box;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
 
   *,
   *::before,
@@ -81,6 +84,35 @@ html.xyz-filter-sidebar-active nav#display_menu_2::before {
 
 #xyz-filter-products-root {
   display: block;
+
+  // Match ProductList/MegaFilter typography — protect from Volusion global CSS
+  [class*='xyzProductItem'] {
+    color: #000 !important;
+    text-decoration: none !important;
+  }
+
+  [class*='xyzPname'] {
+    margin: 0 !important;
+    font-size: 16px !important;
+    line-height: 23px !important;
+    font-family: 'Open Sans Condensed', sans-serif !important;
+    font-weight: 700 !important;
+  }
+
+  [class*='xyzPprice'] {
+    font-size: 16px !important;
+    line-height: 23px !important;
+    font-family: Arial, Helvetica, 'Segoe UI', Roboto, sans-serif,
+      'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol' !important;
+    font-weight: 400 !important;
+    color: #000 !important;
+
+    span {
+      font-size: 16px !important;
+      line-height: 23px !important;
+      font-weight: 700 !important;
+    }
+  }
 }
 
 .xyz-embed-products-panel {
