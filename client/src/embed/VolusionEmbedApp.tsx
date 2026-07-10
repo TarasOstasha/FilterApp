@@ -27,7 +27,6 @@ const VolusionEmbedApp: React.FC<VolusionEmbedAppProps> = ({
 }) => {
   const categoryId = getVolusionEmbedCategoryId();
   const [rangeRails, setRangeRails] = useState<FilterRangeRails>({});
-  const [megaSearchActive, setMegaSearchActive] = useState(false);
   const [megaSearchResultIds, setMegaSearchResultIds] = useState<number[]>([]);
 
   const state = useVolusionFilterState({
@@ -35,7 +34,7 @@ const VolusionEmbedApp: React.FC<VolusionEmbedAppProps> = ({
     rangeRails,
   });
 
-  const showEmbedProducts = state.filtersActive || megaSearchActive;
+  const showEmbedProducts = state.filtersActive;
 
   useEffect(() => {
     ensureCategoryPageAtTop();
@@ -43,7 +42,7 @@ const VolusionEmbedApp: React.FC<VolusionEmbedAppProps> = ({
 
   useEffect(() => {
     setVolusionFormVisible(!showEmbedProducts);
-    setProductsRootVisible(true);
+    setProductsRootVisible(showEmbedProducts);
     repositionProductsRoot(showEmbedProducts);
   }, [showEmbedProducts]);
 
@@ -53,10 +52,6 @@ const VolusionEmbedApp: React.FC<VolusionEmbedAppProps> = ({
 
   const handleMegaSearchResultIdsChange = useCallback((ids: number[]) => {
     setMegaSearchResultIds(ids);
-  }, []);
-
-  const handleMegaSearchActiveChange = useCallback((active: boolean) => {
-    setMegaSearchActive(active);
   }, []);
 
   const sidebarContent = sidebarEl ? (
@@ -78,18 +73,17 @@ const VolusionEmbedApp: React.FC<VolusionEmbedAppProps> = ({
     </>
   ) : null;
 
-  const productsContent = productsEl ? (
-    <div className="xyz-embed-products-panel">
-      <MegaFilter
-        sortBy={state.sortBy}
-        filters={state.selectedFilters}
-        loading={state.loading}
-        categoryId={categoryId}
-        autoFocus={false}
-        onSearchResultIdsChange={handleMegaSearchResultIdsChange}
-        onSearchActiveChange={handleMegaSearchActiveChange}
-      />
-      {state.filtersActive && (
+  const productsContent =
+    productsEl && state.filtersActive ? (
+      <div className="xyz-embed-products-panel">
+        <MegaFilter
+          sortBy={state.sortBy}
+          filters={state.selectedFilters}
+          loading={state.loading}
+          categoryId={categoryId}
+          autoFocus={false}
+          onSearchResultIdsChange={handleMegaSearchResultIdsChange}
+        />
         <div className="xyz-embed-page-transition xyz-embed-show">
           <div className="xyz-embed-controls">
             <SortDropdown
@@ -119,9 +113,8 @@ const VolusionEmbedApp: React.FC<VolusionEmbedAppProps> = ({
             hasUsedLoadMore={state.hasUsedLoadMore}
           />
         </div>
-      )}
-    </div>
-  ) : null;
+      </div>
+    ) : null;
 
   return (
     <>
