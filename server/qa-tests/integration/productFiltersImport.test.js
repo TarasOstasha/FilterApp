@@ -1,6 +1,7 @@
 const { expect } = require('chai');
 const {
   importAllProductFiltersInTransaction,
+  resolveProductIdentity,
 } = require('../../services/import/productFiltersCsvProcessor');
 const {
   createMockPgPool,
@@ -20,6 +21,70 @@ function buildFiltersByProduct(entries) {
 
   return filtersByProduct;
 }
+
+function mockProductIdByCode(entries) {
+  return new Map(
+    entries.map(({ product_code, id }) => [
+      String(product_code).trim().toUpperCase(),
+      { id, product_code: String(product_code).trim() },
+    ])
+  );
+}
+
+describe('product_filters.csv import — product identity resolution', function () {
+  const productIdByCode = mockProductIdByCode([
+    { product_code: 'MK3200', id: 28 },
+    { product_code: 'AB10103', id: 22292 },
+  ]);
+
+  it('resolves product_id from product_code when product_id is omitted', function () {
+    const result = resolveProductIdentity(
+      { product_code: 'MK3200', filter_field_id_1: '1', 'Product Price': '10000' },
+      productIdByCode
+    );
+
+    expect(result).to.deep.equal({ product_id: 28, product_code: 'MK3200' });
+  });
+
+  it('accepts product_id when product_code is omitted', function () {
+    const result = resolveProductIdentity({ product_id: '28' }, productIdByCode);
+
+    expect(result).to.deep.equal({ product_id: 28, product_code: '' });
+  });
+
+  it('accepts product_id and product_code when they match', function () {
+    const result = resolveProductIdentity(
+      { product_id: '28', product_code: 'MK3200' },
+      productIdByCode
+    );
+
+    expect(result).to.deep.equal({ product_id: 28, product_code: 'MK3200' });
+  });
+
+  it('rejects mismatched product_id and product_code', function () {
+    const result = resolveProductIdentity(
+      { product_id: '99', product_code: 'MK3200' },
+      productIdByCode
+    );
+
+    expect(result.product_id).to.equal(null);
+    expect(result.reason).to.match(/does not match/i);
+  });
+
+  it('rejects unknown product_code', function () {
+    const result = resolveProductIdentity({ product_code: 'NOPE' }, productIdByCode);
+
+    expect(result.product_id).to.equal(null);
+    expect(result.reason).to.match(/not found/i);
+  });
+
+  it('rejects rows with neither product_code nor product_id', function () {
+    const result = resolveProductIdentity({ filter_field_id_1: '1' }, productIdByCode);
+
+    expect(result.product_id).to.equal(null);
+    expect(result.reason).to.match(/Missing product_code/i);
+  });
+});
 
 describe('product_filters.csv import — file-level transaction', function () {
   it('commits all products when the import succeeds', async function () {

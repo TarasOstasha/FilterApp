@@ -111,7 +111,10 @@ const AllowedFilenamesNote: React.FC<NoteProps> = ({ file, open = false, onClose
                     </li>
                     <li className='table-responsive'>
                         <code>product_filters.csv</code>
-                        <span className={styles.noteDesc}>for uploading product filters</span>
+                        <span className={styles.noteDesc}>
+                            for uploading product filters — <code>product_code</code> required;{' '}
+                            <code>product_id</code> optional
+                        </span>
                         <table className="table table-striped table-bordered table-hover align-middle text-center">
                             <thead className="table-dark">
                                 <tr>

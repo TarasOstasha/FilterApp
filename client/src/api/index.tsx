@@ -127,7 +127,7 @@ export const fetchDynamicFilters = async (
     params: FilterQueryParams,
     catId: string
 ) => {
-    console.log(params, catId, '<< params and catId in fetchDynamicFilters');
+    // console.log(params, catId, '<< params and catId in fetchDynamicFilters');
     try {
         return await axiosInstance.get('/dynamic-filters', { params: { ...params, catId } });
     } catch (err) {

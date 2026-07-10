@@ -1,6 +1,7 @@
 const chalk = require('chalk');
 const fs = require('fs');
 const csv = require('csv-parser');
+const { Op } = require('sequelize');
 const db = require('../../models');
 const pool = require('../../config/dbConfig');
 
@@ -60,6 +61,98 @@ const parseProductId = (row) => {
   }
 
   return { product_id, productIdKey, productIdRaw, keys };
+};
+
+const parseProductCode = (row) => String(row.product_code ?? '').trim();
+
+const normalizeProductCodeKey = (code) => String(code ?? '').trim().toUpperCase();
+
+/**
+ * Batch-resolve product_code → { id, product_code } (case-insensitive, trimmed).
+ * @param {string[]} codes
+ * @returns {Promise<Map<string, { id: number, product_code: string }>>}
+ */
+const fetchProductIdsByCode = async (codes) => {
+  const uniqueCodes = [...new Set(codes.map((code) => String(code).trim()).filter(Boolean))];
+  if (uniqueCodes.length === 0) return new Map();
+
+  const upperCodes = uniqueCodes.map((code) => normalizeProductCodeKey(code));
+
+  const products = await db.Product.findAll({
+    where: db.sequelize.where(
+      db.sequelize.fn('upper', db.sequelize.fn('trim', db.sequelize.col('product_code'))),
+      { [Op.in]: upperCodes }
+    ),
+    attributes: ['id', 'product_code'],
+    raw: true,
+  });
+
+  const productIdByCode = new Map();
+  for (const product of products) {
+    const key = normalizeProductCodeKey(product.product_code);
+    if (!key) continue;
+    productIdByCode.set(key, {
+      id: product.id,
+      product_code: String(product.product_code).trim(),
+    });
+  }
+
+  return productIdByCode;
+};
+
+/**
+ * Resolve product_id from product_id and/or product_code on a CSV row.
+ * @param {object} row
+ * @param {Map<string, { id: number, product_code: string }>} productIdByCode
+ */
+const resolveProductIdentity = (row, productIdByCode) => {
+  const product_code = parseProductCode(row);
+  const { product_id: parsedId, productIdRaw } = parseProductId(row);
+
+  if (parsedId && product_code) {
+    const entry = productIdByCode.get(normalizeProductCodeKey(product_code));
+    if (!entry) {
+      return {
+        product_id: null,
+        product_code,
+        product_id_raw: productIdRaw,
+        reason: `Product not found for product_code "${product_code}"`,
+      };
+    }
+    if (entry.id !== parsedId) {
+      return {
+        product_id: null,
+        product_code,
+        product_id_raw: productIdRaw,
+        reason: `product_id ${parsedId} does not match product_code "${product_code}" (database id is ${entry.id})`,
+      };
+    }
+    return { product_id: parsedId, product_code: entry.product_code };
+  }
+
+  if (parsedId) {
+    return { product_id: parsedId, product_code };
+  }
+
+  if (!product_code) {
+    return {
+      product_id: null,
+      product_code: '',
+      product_id_raw: productIdRaw ?? '',
+      reason: 'Missing product_code (provide product_code or a valid product_id)',
+    };
+  }
+
+  const entry = productIdByCode.get(normalizeProductCodeKey(product_code));
+  if (!entry) {
+    return {
+      product_id: null,
+      product_code,
+      reason: `Product not found for product_code "${product_code}"`,
+    };
+  }
+
+  return { product_id: entry.id, product_code: entry.product_code };
 };
 
 const collectFilterValuesForRow = (row, product_id, idToValueCol, filterFieldMap) => {
@@ -200,7 +293,7 @@ const importAllProductFiltersInTransaction = async (filtersByProduct, poolInstan
 
 /**
  * Import pivot-style product filters CSV:
- * product_id, product_code, (filter_field_id_X, <Field Name>), ...
+ * product_code (required), product_id (optional), (filter_field_id_X, <Field Name>), ...
  */
 const processProductFiltersCsvFile = (csvFilePath) => {
   return new Promise((resolve, reject) => {
@@ -269,30 +362,34 @@ const processProductFiltersCsvFile = (csvFilePath) => {
           return;
         }
 
+        const dataRows = csvRows.filter((row) => !isBlankPivotRow(row));
+        const blankRowsSkipped = csvRows.length - dataRows.length;
+        const productIdByCode = await fetchProductIdsByCode(
+          dataRows.map((row) => parseProductCode(row)).filter(Boolean)
+        );
+
         /** @type {Map<number, Map<number, { values: string[] }>>} */
         const filtersByProduct = new Map();
         const errorRows = [];
         const validationErrors = [];
-        let blankRowsSkipped = 0;
 
-        for (const row of csvRows) {
-          if (isBlankPivotRow(row)) {
-            blankRowsSkipped += 1;
-            continue;
-          }
-
-          const { product_id, productIdRaw } = parseProductId(row);
+        for (const row of dataRows) {
+          const {
+            product_id,
+            product_code,
+            product_id_raw: productIdRaw,
+            reason: identityReason,
+          } = resolveProductIdentity(row, productIdByCode);
 
           if (!product_id) {
-            const product_code = String(row.product_code ?? '').trim();
             errorRows.push({
-              product_code,
+              product_code: product_code || parseProductCode(row),
               product_id: productIdRaw ?? '',
-              reason: 'Missing or invalid product_id',
+              reason: identityReason || 'Missing or invalid product identity',
             });
             console.error(
               chalk.red(
-                `Missing product_id (product_code=${product_code || 'n/a'}): ${JSON.stringify(row)}`
+                `Invalid product identity (product_code=${product_code || 'n/a'}): ${identityReason || 'unknown error'}`
               )
             );
             continue;
@@ -353,7 +450,7 @@ const processProductFiltersCsvFile = (csvFilePath) => {
 
         if (blankRowsSkipped > 0) {
           console.log(
-            chalk.gray(`Skipped ${blankRowsSkipped} blank row(s) at end of file (no product_id/product_code).`)
+            chalk.gray(`Skipped ${blankRowsSkipped} blank row(s) at end of file (no product_code or product_id).`)
           );
         }
 
@@ -375,3 +472,5 @@ const processProductFiltersCsvFile = (csvFilePath) => {
 module.exports = processProductFiltersCsvFile;
 module.exports.importAllProductFiltersInTransaction = importAllProductFiltersInTransaction;
 module.exports.collectFilterValuesForRow = collectFilterValuesForRow;
+module.exports.resolveProductIdentity = resolveProductIdentity;
+module.exports.fetchProductIdsByCode = fetchProductIdsByCode;
