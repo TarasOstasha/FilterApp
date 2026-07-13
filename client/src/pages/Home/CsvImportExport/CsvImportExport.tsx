@@ -1318,7 +1318,6 @@ const CsvImportExport: React.FC = () => {
                     role="dialog"
                     aria-modal="true"
                     aria-labelledby="edit-product-modal-title"
-                    onClick={() => !isProductSaving && closeEditModal()}
                 >
                     <div
                         className={`${styles.confirmDialog} ${styles.editProductDialog}`}
@@ -1731,7 +1730,6 @@ const CsvImportExport: React.FC = () => {
                     role="dialog"
                     aria-modal="true"
                     aria-labelledby="filter-field-modal-title"
-                    onClick={() => !isFilterFieldDefSaving && closeFilterFieldDefModal()}
                 >
                     <div
                         className={`${styles.confirmDialog} ${styles.editProductDialog}`}
@@ -2005,7 +2003,6 @@ const CsvImportExport: React.FC = () => {
                     role="dialog"
                     aria-modal="true"
                     aria-labelledby="category-modal-title"
-                    onClick={() => !isCategoryDefSaving && closeCategoryDefModal()}
                 >
                     <div
                         className={`${styles.confirmDialog} ${styles.editProductDialog}`}
