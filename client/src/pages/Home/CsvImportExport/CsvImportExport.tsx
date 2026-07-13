@@ -1473,6 +1473,17 @@ const CsvImportExport: React.FC = () => {
                     placeholder="Enter product code"
                     value={filterProductCode}
                     onChange={(e) => setFilterProductCode(e.target.value)}
+                    onKeyDown={(e) => {
+                        if (
+                            e.key === 'Enter' &&
+                            getTrimmedFilterProductCode() &&
+                            !isFilterProductLoading &&
+                            !isFilterProductSaving
+                        ) {
+                            e.preventDefault();
+                            handleLoadProductFilters();
+                        }
+                    }}
                     disabled={isFilterProductLoading || isFilterProductSaving}
                     className={styles.productCodeInput}
                 />
