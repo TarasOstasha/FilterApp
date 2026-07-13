@@ -582,6 +582,25 @@ const CsvImportExport: React.FC = () => {
     const getSelectedFilterField = () =>
         filterFields.find((field) => getFilterInstanceKey(field) === selectedFilterKey);
 
+    // Range fields (e.g. Product Price) describe a min -> max span, so they only
+    // ever make sense with exactly two value instances.
+    const RANGE_FIELD_MAX_VALUES = 2;
+
+    const isRangeFilterField = (field: AdminProductFilterField | undefined) =>
+        field?.field_type === 'range';
+
+    const getFilterFieldInstanceCount = (filterFieldId: number) =>
+        filterFields.filter((field) => field.filter_field_id === filterFieldId).length;
+
+    const isAddFilterValueDisabled = () => {
+        const selected = getSelectedFilterField();
+        if (!selected) return true;
+        return (
+            isRangeFilterField(selected) &&
+            getFilterFieldInstanceCount(selected.filter_field_id) >= RANGE_FIELD_MAX_VALUES
+        );
+    };
+
     const getFilterValueOptions = (field: AdminProductFilterField | undefined) => {
         if (!field) return [];
         return field.allowed_values || [];
@@ -599,6 +618,16 @@ const CsvImportExport: React.FC = () => {
         const selected = getSelectedFilterField();
         if (!selected) {
             toast.error('Please select a filter field first.');
+            return;
+        }
+
+        if (
+            isRangeFilterField(selected) &&
+            getFilterFieldInstanceCount(selected.filter_field_id) >= RANGE_FIELD_MAX_VALUES
+        ) {
+            toast.error(
+                `"${selected.field_name}" is a range field, so it can only have ${RANGE_FIELD_MAX_VALUES} values (a minimum and a maximum).`
+            );
             return;
         }
 
@@ -1480,8 +1509,13 @@ const CsvImportExport: React.FC = () => {
                             <button
                                 type="button"
                                 onClick={handleAddFilterValueInstance}
-                                disabled={!selectedFilterKey || isFilterProductSaving}
+                                disabled={!selectedFilterKey || isFilterProductSaving || isAddFilterValueDisabled()}
                                 className={styles.confirmCancelBtn}
+                                title={
+                                    isAddFilterValueDisabled()
+                                        ? `Range fields can only have ${RANGE_FIELD_MAX_VALUES} values (a minimum and a maximum).`
+                                        : undefined
+                                }
                             >
                                 Add New Value For This Field
                             </button>
