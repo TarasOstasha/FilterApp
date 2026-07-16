@@ -181,8 +181,8 @@ async function updateProductByCode(productCode, payload) {
   }
 
   const canonicalCode = existing.product_code;
-
   const {
+    product_code: rawNewProductCode,
     product_name,
     product_link,
     product_img_link,
@@ -191,6 +191,11 @@ async function updateProductByCode(productCode, payload) {
     hide_product: rawHideProduct,
     category_ids: rawCategoryIds,
   } = payload;
+
+  const newCode =
+    rawNewProductCode != null && String(rawNewProductCode).trim() !== ''
+      ? String(rawNewProductCode).trim()
+      : canonicalCode;
 
   if (!product_name?.trim()) {
     throw createHttpError(400, 'product_name is required');
@@ -224,6 +229,15 @@ async function updateProductByCode(productCode, payload) {
     throw createHttpError(400, `Category ID does not exist: ${missingIds.join(', ')}`);
   }
 
+  const codeChanged =
+    newCode.toUpperCase() !== String(canonicalCode).trim().toUpperCase();
+  if (codeChanged) {
+    const conflict = await getProductByCode(newCode);
+    if (conflict && conflict.id !== existing.id) {
+      throw createHttpError(409, `Product already exists: ${newCode}`);
+    }
+  }
+
   const normalizedImgLink = normalizeProductImgLink(product_img_link);
   const mostPopularValue =
     most_popular === '' || most_popular == null ? null : parseFloat(most_popular);
@@ -238,16 +252,18 @@ async function updateProductByCode(productCode, payload) {
 
     const productResult = await client.query(
       `UPDATE products
-       SET product_name = $2,
-           product_link = $3,
-           product_img_link = $4,
-           product_price = $5,
-           most_popular = $6,
-           hide_product = $7
-       WHERE product_code = $1
+       SET product_code = $2,
+           product_name = $3,
+           product_link = $4,
+           product_img_link = $5,
+           product_price = $6,
+           most_popular = $7,
+           hide_product = $8
+       WHERE id = $1
        RETURNING id`,
       [
-        canonicalCode,
+        existing.id,
+        newCode,
         product_name.trim(),
         product_link.trim(),
         normalizedImgLink.trim(),
@@ -277,7 +293,7 @@ async function updateProductByCode(productCode, payload) {
     client.release();
   }
 
-  return getProductByCode(canonicalCode);
+  return getProductByCode(newCode);
 }
 
 async function deleteProductByCode(productCode) {

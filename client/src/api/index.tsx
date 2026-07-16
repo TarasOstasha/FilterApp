@@ -205,6 +205,7 @@ export interface AdminProduct {
 }
 
 export interface AdminProductPayload {
+    product_code?: string;
     product_name: string;
     product_link: string;
     product_img_link: string;

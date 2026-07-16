@@ -486,24 +486,31 @@ const CsvImportExport: React.FC = () => {
     const handleSaveProduct = async () => {
         if (!editForm) return;
 
-        const code =
-            productModalMode === 'add'
-                ? editForm.product_code.trim()
-                : getTrimmedProductCode();
+        const newCode = editForm.product_code.trim();
+        if (!newCode) {
+            toast.error('Please enter a product code.');
+            return;
+        }
+
+        const lookupCode =
+            productModalMode === 'add' ? newCode : getTrimmedProductCode();
         setIsProductSaving(true);
 
         try {
-            const { product_code, ...basePayload } = editForm;
             if (productModalMode === 'add') {
                 await createProductByCode({
-                    product_code: code,
-                    ...basePayload,
+                    ...editForm,
+                    product_code: newCode,
                 });
-                setProductCode(code);
-                toast.success(`Product "${code}" created successfully.`);
+                setProductCode(newCode);
+                toast.success(`Product "${newCode}" created successfully.`);
             } else {
-                await updateProductByCode(code, basePayload);
-                toast.success(`Product "${code}" updated successfully.`);
+                await updateProductByCode(lookupCode, {
+                    ...editForm,
+                    product_code: newCode,
+                });
+                setProductCode(newCode);
+                toast.success(`Product "${newCode}" updated successfully.`);
             }
             closeEditModal();
         } catch (error) {
@@ -1328,28 +1335,18 @@ const CsvImportExport: React.FC = () => {
                                 <h3 id="edit-product-modal-title" className={styles.confirmTitle}>
                                     {productModalMode === 'add' ? 'Add product' : 'Edit product'}
                                 </h3>
-                                <p className={styles.confirmSubtitle}>
-                                    Product code:{' '}
-                                    <strong>
-                                        {productModalMode === 'add'
-                                            ? editForm.product_code
-                                            : getTrimmedProductCode()}
-                                    </strong>
-                                </p>
                             </div>
                         </div>
                         <div className={styles.editProductForm}>
-                            {productModalMode === 'add' && (
-                                <label>
-                                    Product code
-                                    <input
-                                        type="text"
-                                        value={editForm.product_code}
-                                        onChange={(e) => updateEditField('product_code', e.target.value)}
-                                        disabled={isProductSaving}
-                                    />
-                                </label>
-                            )}
+                            <label>
+                                Product code
+                                <input
+                                    type="text"
+                                    value={editForm.product_code}
+                                    onChange={(e) => updateEditField('product_code', e.target.value)}
+                                    disabled={isProductSaving}
+                                />
+                            </label>
                             <label>
                                 Product name
                                 <input
@@ -1430,10 +1427,7 @@ const CsvImportExport: React.FC = () => {
                                 type="button"
                                 className={styles.confirmProceedBtn}
                                 onClick={handleSaveProduct}
-                                disabled={
-                                    isProductSaving ||
-                                    (productModalMode === 'add' && !editForm.product_code.trim())
-                                }
+                                disabled={isProductSaving || !editForm.product_code.trim()}
                             >
                                 {isProductSaving
                                     ? 'Saving...'
