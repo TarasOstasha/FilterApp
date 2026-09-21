@@ -6,6 +6,7 @@ import ItemsPerPageDropdown from '../../components/ItemsPerPageDropdown/ItemsPer
 import PaginationControls from '../../components/PaginationControls/PaginationControls';
 import { fetchProductsFromAPI } from '../../api';
 import MegaFilter from '../../components/MegaFilter/MegaFilter';
+import ActiveFilters from '../../components/ActiveFilters/ActiveFilters';
 import CategoryTester from '../../components/CategoryTester/CategoryTester';
 import styles from './Home.module.scss';
 import {
@@ -222,6 +223,31 @@ const Home: React.FC = () => {
     window.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior });
   };
 
+  const handleRemoveFilter = (filter: { field: string; value: string }) => {
+    if (!RANGE_FILTER_KEYS.includes(filter.field)) {
+      handleFilterChange(filter);
+      return;
+    }
+
+    setIsTransitioning(true);
+    setIsLoadingMore(false);
+    setHasUsedLoadMore(false);
+    setSelectedFilters((prev) => {
+      const next = { ...prev };
+      delete next[filter.field];
+      setCurrentPage(1);
+      setLoadedCount(itemsPerPage);
+      writeUrl({
+        limit: itemsPerPage,
+        offset: 0,
+        sortBy,
+        filters: next,
+      });
+      return next;
+    });
+    window.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior });
+  };
+
   const handleSortChange = (sortMethod: string) => {
     const validSort: SortBy = isSortBy(sortMethod) ? sortMethod : 'most_popular';
     setIsTransitioning(true);
@@ -372,16 +398,22 @@ const Home: React.FC = () => {
 
             <br />
 
+            <MegaFilter
+              sortBy={sortBy}
+              filters={selectedFilters}
+              loading={loading}
+              categoryId={getCategoryIdFromPath()}
+              onSearchResultIdsChange={setMegaSearchResultIds}
+            />
+
+            <ActiveFilters
+              selectedFilters={selectedFilters}
+              onRemove={handleRemoveFilter}
+              onClearAll={handleClearFilters}
+            />
+
             {/* Fade this whole region during transitions */}
             <div className={`${styles.pageTransition} ${!isTransitioning ? styles.show : ''}`}>
-              <MegaFilter
-                sortBy={sortBy}
-                filters={selectedFilters}
-                loading={loading}
-                categoryId={getCategoryIdFromPath()}
-                onSearchResultIdsChange={setMegaSearchResultIds}
-              />
-
               <ProductList
                 products={products}
                 filters={selectedFilters}

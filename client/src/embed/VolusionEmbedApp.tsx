@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import FilterSidebar from '../components/FilterSidebar/FilterSidebar';
 import MegaFilter from '../components/MegaFilter/MegaFilter';
+import ActiveFilters from '../components/ActiveFilters/ActiveFilters';
 import ProductList from '../components/ProductList/ProductList';
 import SortDropdown from '../components/SortDropdown/SortDropdown';
 import ItemsPerPageDropdown from '../components/ItemsPerPageDropdown/ItemsPerPageDropdown';
@@ -87,18 +88,23 @@ const VolusionEmbedApp: React.FC<VolusionEmbedAppProps> = ({
           autoFocus={false}
           onSearchResultIdsChange={handleMegaSearchResultIdsChange}
         />
+        <div className="xyz-embed-controls">
+          <SortDropdown
+            handleSortChange={state.handleSortChange}
+            currentSort={state.sortBy}
+          />
+          <ItemsPerPageDropdown
+            itemsPerPage={state.itemsPerPage}
+            handleItemsPerPageChange={state.handleItemsPerPageChange}
+          />
+        </div>
+        <br />
+        <ActiveFilters
+          selectedFilters={state.selectedFilters}
+          onRemove={state.handleRemoveFilter}
+          onClearAll={state.handleClearFilters}
+        />
         <div className="xyz-embed-page-transition xyz-embed-show">
-          <div className="xyz-embed-controls">
-            <SortDropdown
-              handleSortChange={state.handleSortChange}
-              currentSort={state.sortBy}
-            />
-            <ItemsPerPageDropdown
-              itemsPerPage={state.itemsPerPage}
-              handleItemsPerPageChange={state.handleItemsPerPageChange}
-            />
-          </div>
-          <br />
           <ProductList
             products={state.products}
             filters={state.selectedFilters}

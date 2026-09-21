@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { fetchProductsFromAPI } from '../api';
 import {
+  RANGE_FILTER_KEYS,
   appendFilterValues,
   buildProductQueryParams,
   parseFiltersFromSearch,
@@ -204,6 +205,31 @@ export function useVolusionFilterState({
     ensureCategoryPageAtTop();
   };
 
+  const handleRemoveFilter = (filter: { field: string; value: string }) => {
+    if (!RANGE_FILTER_KEYS.includes(filter.field)) {
+      handleFilterChange(filter);
+      return;
+    }
+
+    setIsTransitioning(true);
+    isLoadingMoreRef.current = false;
+    setIsLoadingMore(false);
+    setHasUsedLoadMore(false);
+    setSelectedFilters((prev) => {
+      const next = { ...prev };
+      delete next[filter.field];
+      setCurrentPage(1);
+      writeUrl({
+        limit: itemsPerPage,
+        offset: 0,
+        sortBy,
+        filters: next,
+      });
+      return next;
+    });
+    ensureCategoryPageAtTop();
+  };
+
   const handleSortChange = (sortMethod: string) => {
     const validSort: SortBy = isSortBy(sortMethod) ? sortMethod : 'most_popular';
     setIsTransitioning(true);
@@ -324,6 +350,7 @@ export function useVolusionFilterState({
     filtersActive,
     totalPages,
     handleFilterChange,
+    handleRemoveFilter,
     handleSortChange,
     handleItemsPerPageChange,
     handlePageChange,
