@@ -368,6 +368,36 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
     }
   }, [onFilterChange]);
 
+  const setLiveDimensionRange = useCallback((
+    fieldName: 'Display Width' | 'Display Height',
+    range: [number, number],
+  ) => {
+    if (fieldName === 'Display Width') setDebouncedWidthRange(range);
+    else setDebouncedHeightRange(range);
+  }, []);
+
+  const commitDimensionRange = useCallback((
+    fieldName: 'Display Width' | 'Display Height',
+    range: [number, number],
+    fullRange: [number, number],
+  ) => {
+    const timeoutRef = fieldName === 'Display Width' ? widthDebounceTimeout : heightDebounceTimeout;
+    window.clearTimeout(timeoutRef.current);
+
+    const [minIn, maxIn] = range;
+    const near = (x: number, y: number) => Math.abs(x - y) < 1e-6;
+    const current = selectedFilters[fieldName]?.[0];
+
+    if (current) {
+      const [curMin, curMax] = current.split(',').map(Number);
+      if (near(curMin, minIn) && near(curMax, maxIn)) return;
+    } else if (near(minIn, fullRange[0]) && near(maxIn, fullRange[1])) {
+      return;
+    }
+
+    onFilterChange({ field: fieldName, value: `${minIn},${maxIn}` });
+  }, [onFilterChange, selectedFilters]);
+
   // Cleanup timeouts on unmount
   useEffect(() => {
     return () => {
@@ -932,6 +962,14 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
             const lo = clamp(toUi(selMinIn), uiMin, uiMax);
             const hi = clamp(toUi(selMaxIn), uiMin, uiMax);
 
+            const inchPairFromSlider = (vals: number | number[]): [number, number] | null => {
+              if (!Array.isArray(vals)) return null;
+              const a = clamp(vals[0], uiMin, uiMax);
+              const b = clamp(vals[1], uiMin, uiMax);
+              const [minUi, maxUi] = a <= b ? [a, b] : [uiMin, uiMax];
+              return [fromUi(minUi), fromUi(maxUi)];
+            };
+
             return (
               <FilterAccordionSection
                 key={ff.id}
@@ -959,13 +997,19 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
                   withTracks
                   minDistance={isFrozen ? 0 : 1}
                   onChange={(vals) => {
-                    // Ignore slider changes when updating from text input
                     if (updatingFromInputRef.current) return;
-                    if (isFrozen || !Array.isArray(vals)) return;
-                    const a = clamp(vals[0], uiMin, uiMax);
-                    const b = clamp(vals[1], uiMin, uiMax);
-                    const [minUi, maxUi] = a <= b ? [a, b] : [uiMin, uiMax];
-                    handleRangeSliderChange(fn, [fromUi(minUi), fromUi(maxUi)]);
+                    if (isFrozen) return;
+                    const pair = inchPairFromSlider(vals);
+                    if (!pair) return;
+                    setLiveDimensionRange(fn, pair);
+                  }}
+                  onAfterChange={(vals) => {
+                    if (updatingFromInputRef.current) return;
+                    if (isFrozen) return;
+                    const pair = inchPairFromSlider(vals);
+                    if (!pair) return;
+                    setLiveDimensionRange(fn, pair);
+                    commitDimensionRange(fn, pair, [fromUi(uiMin), fromUi(uiMax)]);
                   }}
                 />
                 <div className={styles['range-values']}>
@@ -1062,6 +1106,14 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
             const lo = clamp(toUi(selMinIn), minUi, maxUi);
             const hi = clamp(toUi(selMaxIn), minUi, maxUi);
 
+            const inchPairFromSlider = (vals: number | number[]): [number, number] | null => {
+              if (!Array.isArray(vals)) return null;
+              const a = clamp(vals[0], minUi, maxUi);
+              const b = clamp(vals[1], minUi, maxUi);
+              const [minUiVal, maxUiVal] = a <= b ? [a, b] : [minUi, maxUi];
+              return [fromUi(minUiVal), fromUi(maxUiVal)];
+            };
+
             return (
               <FilterAccordionSection
                 key={ff.id}
@@ -1088,14 +1140,20 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
                   pearling={!isFrozen}
                   withTracks
                   minDistance={isFrozen ? 0 : 1}
-                  onChange={vals => {
-                    // Ignore slider changes when updating from text input
+                  onChange={(vals) => {
                     if (updatingFromInputRef.current) return;
-                    if (isFrozen || !Array.isArray(vals)) return;
-                    const a = clamp(vals[0], minUi, maxUi);
-                    const b = clamp(vals[1], minUi, maxUi);
-                    const [minUiVal, maxUiVal] = a <= b ? [a, b] : [minUi, maxUi];
-                    handleRangeSliderChange(fn, [fromUi(minUiVal), fromUi(maxUiVal)]);
+                    if (isFrozen) return;
+                    const pair = inchPairFromSlider(vals);
+                    if (!pair) return;
+                    setLiveDimensionRange(fn, pair);
+                  }}
+                  onAfterChange={(vals) => {
+                    if (updatingFromInputRef.current) return;
+                    if (isFrozen) return;
+                    const pair = inchPairFromSlider(vals);
+                    if (!pair) return;
+                    setLiveDimensionRange(fn, pair);
+                    commitDimensionRange(fn, pair, [fromUi(minUi), fromUi(maxUi)]);
                   }}
                 />
                 <div className={styles['range-values']}>
