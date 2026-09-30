@@ -23,7 +23,7 @@ const ExternalHeader: React.FC = () => {
           <ExternalHeaderSkeleton />
         </div>
       )}
-
+      
       <div
         ref={headerRef}
         className={`external-header-wrapper external-chrome-content${

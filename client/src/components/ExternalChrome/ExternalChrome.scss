@@ -62,6 +62,9 @@
     height: auto;
     max-height: none;
   }
+  .header__top {
+    height: 48px !important;
+  }
 }
 
 /* Header loading shell — reserved height prevents CLS while Volusion CSS loads */
