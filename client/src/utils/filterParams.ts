@@ -1,4 +1,13 @@
-export const URL_META_KEYS = new Set(['limit', 'offset', 'sortBy', 'catId']);
+export const URL_META_KEYS = new Set([
+  'limit',
+  'offset',
+  'sortBy',
+  'catId',
+  // Volusion Refine() query keys — not sidebar filters
+  'searching',
+  'cat',
+  'show',
+]);
 
 export interface SidebarFilterField {
   id: number;
