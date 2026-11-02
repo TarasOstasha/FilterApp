@@ -333,21 +333,10 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
     });
   };
 
-  // Debounced handler for range changes
+  // Debounced handler for dimension text inputs
   const handleRangeSliderChange = useCallback((fieldName: string, sliderValue: number | number[]) => {
     if (!Array.isArray(sliderValue) || sliderValue.length !== 2) return;
-    console.log(sliderValue, 'sliderValue for', fieldName);
-    // Update local state immediately for smooth UI
-    if (fieldName === 'Product Price') {
-      setDebouncedPriceRange([sliderValue[0], sliderValue[1]]);
-      window.clearTimeout(priceDebounceTimeout.current);
-      priceDebounceTimeout.current = window.setTimeout(() => {
-        onFilterChange({
-          field: fieldName,
-          value: `${sliderValue[0]},${sliderValue[1]}`
-        });
-      }, 500); // 500ms delay
-    } else if (fieldName === 'Display Width') {
+    if (fieldName === 'Display Width') {
       setDebouncedWidthRange([sliderValue[0], sliderValue[1]]);
       window.clearTimeout(widthDebounceTimeout.current);
       widthDebounceTimeout.current = window.setTimeout(() => {
@@ -355,7 +344,7 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
           field: fieldName,
           value: `${sliderValue[0]},${sliderValue[1]}`
         });
-      }, 500); // 500ms delay
+      }, 500);
     } else if (fieldName === 'Display Height') {
       setDebouncedHeightRange([sliderValue[0], sliderValue[1]]);
       window.clearTimeout(heightDebounceTimeout.current);
@@ -364,9 +353,33 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
           field: fieldName,
           value: `${sliderValue[0]},${sliderValue[1]}`
         });
-      }, 500); // 500ms delay
+      }, 500);
     }
   }, [onFilterChange]);
+
+  const setLivePriceRange = useCallback((range: [number, number]) => {
+    setDebouncedPriceRange(range);
+  }, []);
+
+  const commitPriceRange = useCallback((
+    range: [number, number],
+    fullRange: [number, number],
+  ) => {
+    window.clearTimeout(priceDebounceTimeout.current);
+
+    const [minIn, maxIn] = range;
+    const near = (x: number, y: number) => Math.abs(x - y) < 1e-6;
+    const current = selectedFilters['Product Price']?.[0];
+
+    if (current) {
+      const [curMin, curMax] = current.split(',').map(Number);
+      if (near(curMin, minIn) && near(curMax, maxIn)) return;
+    } else if (near(minIn, fullRange[0]) && near(maxIn, fullRange[1])) {
+      return;
+    }
+
+    onFilterChange({ field: 'Product Price', value: `${minIn},${maxIn}` });
+  }, [onFilterChange, selectedFilters]);
 
   const setLiveDimensionRange = useCallback((
     fieldName: 'Display Width' | 'Display Height',
@@ -876,15 +889,26 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
                     step={1}
                     value={[loIdx, hiIdx]}
                     disabled={isFrozen}
-                    pearling={!isFrozen}
+                    pearling={false}
                     withTracks
                     minDistance={isFrozen ? 0 : 1}
                     onChange={(indices) => {
                       if (isFrozen || !Array.isArray(indices)) return;
                       const a = clampIdx(indices[0]);
                       const b = clampIdx(indices[1]);
-                      const [minIdx, maxIdx] = a <= b ? [a, b] : [0, safeRailBps.length - 1];
-                      handleRangeSliderChange(fn, [safeRailBps[minIdx], safeRailBps[maxIdx]]);
+                      const minIdx = Math.min(a, b);
+                      const maxIdx = Math.max(a, b);
+                      setLivePriceRange([safeRailBps[minIdx], safeRailBps[maxIdx]]);
+                    }}
+                    onAfterChange={(indices) => {
+                      if (isFrozen || !Array.isArray(indices)) return;
+                      const a = clampIdx(indices[0]);
+                      const b = clampIdx(indices[1]);
+                      const minIdx = Math.min(a, b);
+                      const maxIdx = Math.max(a, b);
+                      const next: [number, number] = [safeRailBps[minIdx], safeRailBps[maxIdx]];
+                      setLivePriceRange(next);
+                      commitPriceRange(next, [railMin, railMax]);
                     }}
                   />
 
@@ -901,7 +925,12 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
                         if (Number.isNaN(raw)) return;
                         const clamped = Math.max(railMin, Math.min(raw, railMax));
                         const i = lastIdxLE(clamped);
-                        handleRangeSliderChange(fn, [safeRailBps[i], effMax]);
+                        const next: [number, number] = [safeRailBps[i], effMax];
+                        setLivePriceRange(next);
+                        window.clearTimeout(priceDebounceTimeout.current);
+                        priceDebounceTimeout.current = window.setTimeout(() => {
+                          commitPriceRange(next, [railMin, railMax]);
+                        }, 500);
                       }}
                       style={{ width: 80, marginRight: 8 }}
                     />
@@ -917,7 +946,12 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
                         if (Number.isNaN(raw)) return;
                         const clamped = Math.max(railMin, Math.min(raw, railMax));
                         const i = lastIdxLE(clamped);
-                        handleRangeSliderChange(fn, [effMin, safeRailBps[i]]);
+                        const next: [number, number] = [effMin, safeRailBps[i]];
+                        setLivePriceRange(next);
+                        window.clearTimeout(priceDebounceTimeout.current);
+                        priceDebounceTimeout.current = window.setTimeout(() => {
+                          commitPriceRange(next, [railMin, railMax]);
+                        }, 500);
                       }}
                       style={{ width: 80 }}
                     />
@@ -993,7 +1027,7 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
                   step={1}
                   value={[lo, hi]}
                   disabled={isFrozen}
-                  pearling={!isFrozen}
+                  pearling={false}
                   withTracks
                   minDistance={isFrozen ? 0 : 1}
                   onChange={(vals) => {
@@ -1137,7 +1171,7 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
                   step={1}
                   value={[lo, hi]}
                   disabled={isFrozen}
-                  pearling={!isFrozen}
+                  pearling={false}
                   withTracks
                   minDistance={isFrozen ? 0 : 1}
                   onChange={(vals) => {
