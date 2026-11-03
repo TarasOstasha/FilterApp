@@ -133,7 +133,6 @@ module.exports.getPriceRange = async (req, res, next) => {
     }
 
     let joins = '';
-    let productPriceCondition = '';
     const replacements = {};
     let checkIdx = 0;
     let rangeIdx = 0;
@@ -147,29 +146,9 @@ module.exports.getPriceRange = async (req, res, next) => {
       `;
       replacements.catId = catId;
     }
-    //console.log(chalk.blue('Request query:', JSON.stringify(req.query, null, 2)));
-    // Handle Price (range slider) → forced to use known breakpoints
-    if (req.query['Product Price']) {
-      const parsed = parseProductPriceRange(req.query['Product Price']);
-      if (parsed) {
-        let minPrice;
-        let maxPrice;
-        if (priceBreakpoints.length) {
-          minPrice =
-            priceBreakpoints.find((v) => v >= parsed.minPrice) ?? priceBreakpoints[0];
-          maxPrice =
-            [...priceBreakpoints].reverse().find((v) => v <= parsed.maxPrice) ??
-            priceBreakpoints[priceBreakpoints.length - 1];
-        } else {
-          minPrice = parsed.minPrice;
-          maxPrice = parsed.maxPrice;
-        }
-        replacements.minPrice = minPrice;
-        replacements.maxPrice = maxPrice;
-        productPriceCondition = `WHERE p.product_price BETWEEN :minPrice AND :maxPrice`;
-      }
-    }
 
+    // Never apply active "Product Price" here — rails must not shrink themselves.
+    // Other filters + searchTerms + catId still scope available price bounds.
     for (const fieldName of Object.keys(req.query)) {
       if (fieldName === 'Product Price' || META_QUERY_KEYS.has(fieldName)) continue;
 
@@ -211,10 +190,7 @@ module.exports.getPriceRange = async (req, res, next) => {
     // console.log(joins);
     // console.log(chalk.yellow('Replacements:'), replacements);
 
-    const visibilityCondition = `WHERE ${visibleProductSql('p')}`;
-    let filteredProductsWhere = productPriceCondition
-      ? `${productPriceCondition} AND ${visibleProductSql('p')}`
-      : visibilityCondition;
+    let filteredProductsWhere = `WHERE ${visibleProductSql('p')}`;
     filteredProductsWhere = appendSearchTermsSql(
       filteredProductsWhere,
       replacements,
@@ -529,6 +505,7 @@ module.exports.getWidthRange = async (req, res, next) => {
     const replacements = {};
     let rangeIdx = 0;
     let checkIdx = 0;
+    let productPriceWhere = '';
     
     // Add category filter if catId exists
     if (catId) {
@@ -546,6 +523,17 @@ module.exports.getWidthRange = async (req, res, next) => {
       const rawVal = req.query[fieldName];
       const field = filterMap[fieldName];
       if (!field || !rawVal || fieldName === 'Display Width') continue;
+
+      // Product Price lives on products.product_price — never product_filters.
+      if (fieldName === 'Product Price') {
+        const parsed = parseProductPriceRange(rawVal);
+        if (parsed) {
+          replacements.minPrice = parsed.minPrice;
+          replacements.maxPrice = parsed.maxPrice;
+          productPriceWhere = ` AND p.product_price BETWEEN :minPrice AND :maxPrice`;
+        }
+        continue;
+      }
 
       if (field.type === 'range') {
         const [min, max] = String(rawVal).split(',').map((v) => parseFloat(v) || 0);
@@ -580,7 +568,7 @@ module.exports.getWidthRange = async (req, res, next) => {
     const widthField = filterMap['Display Width'];
     if (!widthField) throw new Error('Display Width filter field not found');
 
-    let widthWhere = `WHERE ${visibleProductSql('p')}`;
+    let widthWhere = `WHERE ${visibleProductSql('p')}${productPriceWhere}`;
     widthWhere = appendSearchTermsSql(widthWhere, replacements, req.query.searchTerms);
 
     // get filteredRow
@@ -652,6 +640,7 @@ module.exports.getHeightRange = async (req, res, next) => {
     const replacements = {};
     let rangeIdx = 0;
     let checkIdx = 0;
+    let productPriceWhere = '';
     
     // Add category filter if catId exists
     if (catId) {
@@ -669,6 +658,17 @@ module.exports.getHeightRange = async (req, res, next) => {
       const rawVal = req.query[fieldName];
       const field = filterMap[fieldName];
       if (!field || !rawVal || fieldName === 'Display Height') continue;
+
+      // Product Price lives on products.product_price — never product_filters.
+      if (fieldName === 'Product Price') {
+        const parsed = parseProductPriceRange(rawVal);
+        if (parsed) {
+          replacements.minPrice = parsed.minPrice;
+          replacements.maxPrice = parsed.maxPrice;
+          productPriceWhere = ` AND p.product_price BETWEEN :minPrice AND :maxPrice`;
+        }
+        continue;
+      }
 
       if (field.type === 'range') {
         const [min, max] = String(rawVal).split(',').map((v) => parseFloat(v) || 0);
@@ -703,7 +703,7 @@ module.exports.getHeightRange = async (req, res, next) => {
     const heightField = filterMap['Display Height'];
     if (!heightField) throw new Error('Display Height filter field not found');
 
-    let heightWhere = `WHERE ${visibleProductSql('p')}`;
+    let heightWhere = `WHERE ${visibleProductSql('p')}${productPriceWhere}`;
     heightWhere = appendSearchTermsSql(heightWhere, replacements, req.query.searchTerms);
 
     const [filteredRow] = await sequelize.query(

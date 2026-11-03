@@ -29,6 +29,30 @@ export function normalizeFilterFieldsOrder<T extends SidebarFilterField>(
     .sort((a, b) => a.sort_order - b.sort_order)
     .map((f, i) => ({ ...f, sort_order: i }));
 }
+
+/**
+ * Keep currently selected checkbox values visible (removable) even when the
+ * dynamic facet API omits them for the current product set.
+ */
+export function mergeSelectedCheckboxFacets<T extends SidebarFilterField>(
+  fields: T[],
+  selectedFilters: Record<string, string[] | undefined>
+): T[] {
+  return fields.map((field) => {
+    if (field.field_type !== 'checkbox') return field;
+    const selected = (selectedFilters[field.field_name] || []).filter(Boolean);
+    if (!selected.length) return field;
+    const current = Array.isArray(field.allowed_values)
+      ? (field.allowed_values as string[])
+      : [];
+    const merged = [...current];
+    for (const val of selected) {
+      if (!merged.includes(val)) merged.push(val);
+    }
+    if (merged.length === current.length) return field;
+    return { ...field, allowed_values: merged };
+  });
+}
 export const RANGE_FILTER_KEYS = ['Product Price', 'Display Width', 'Display Height'];
 
 /** Append each selected value as its own query param (commas stay inside one value). */
@@ -117,4 +141,21 @@ export function withSearchTermsParam(
   const term = (searchTerms || '').trim();
   if (!term) return params;
   return { ...params, searchTerms: term };
+}
+
+/**
+ * Clear All: empty filters + search, page 1. Category stays on pathname (not in query).
+ * Search-only clear should use searchTerms: '' while keeping filters.
+ */
+export function buildClearAllQueryParams(options?: {
+  limit?: number;
+  sortBy?: string;
+}): URLSearchParams {
+  return buildProductQueryParams({
+    limit: options?.limit ?? 27,
+    offset: 0,
+    sortBy: options?.sortBy ?? 'most_popular',
+    filters: {},
+    searchTerms: '',
+  });
 }

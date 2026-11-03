@@ -4,6 +4,9 @@ import {
   parseFiltersFromSearch,
   buildProductQueryParams,
   withSearchTermsParam,
+  mergeSelectedCheckboxFacets,
+  buildClearAllQueryParams,
+  SidebarFilterField,
 } from './filterParams';
 
 describe('filterParams — searchTerms', () => {
@@ -65,5 +68,49 @@ describe('filterParams — searchTerms', () => {
     const cleared = parseFiltersFromSearch('?Brand=Acme&limit=27');
     expect(cleared.searchTerms).toBe('');
     expect(cleared.filters.Brand).toEqual(['Acme']);
+  });
+
+  it('merges selected checkbox values missing from dynamic facets', () => {
+    const fields: SidebarFilterField[] = [
+      {
+        id: 1,
+        field_name: 'Product Type',
+        field_type: 'checkbox',
+        allowed_values: ['Backdrop'],
+        sort_order: 0,
+      },
+    ];
+    const merged = mergeSelectedCheckboxFacets(fields, {
+      'Product Type': ['Backdrop', 'Orphan Type'],
+    });
+    expect(merged[0].allowed_values).toEqual(['Backdrop', 'Orphan Type']);
+  });
+
+  it('Clear All drops searchTerms and filters (page 1)', () => {
+    const cleared = buildClearAllQueryParams({ limit: 27, sortBy: 'most_popular' });
+    expect(cleared.has('searchTerms')).toBe(false);
+    expect(cleared.get('offset')).toBe('0');
+    expect(cleared.get('limit')).toBe('27');
+    expect(cleared.get('sortBy')).toBe('most_popular');
+    expect(cleared.has('Product Type')).toBe(false);
+    expect(cleared.has('Product Price')).toBe(false);
+
+    const parsed = parseFiltersFromSearch(`?${cleared.toString()}`);
+    expect(parsed.searchTerms).toBe('');
+    expect(parsed.filters).toEqual({});
+    expect(parsed.offset).toBe(0);
+  });
+
+  it('clearing search only keeps other filters in URL parse', () => {
+    const qp = buildProductQueryParams({
+      limit: 27,
+      offset: 0,
+      sortBy: 'most_popular',
+      filters: { 'Product Type': ['Backdrop'], 'Product Price': ['0,50'] },
+      searchTerms: '',
+    });
+    expect(qp.has('searchTerms')).toBe(false);
+    expect(qp.getAll('Product Type')).toEqual(['Backdrop']);
+    expect(qp.get('Product Price')).toBe('0,50');
   });
 });

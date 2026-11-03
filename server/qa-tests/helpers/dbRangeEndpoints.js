@@ -153,15 +153,11 @@ async function expectedPriceRangeLikeApi(categoryId, filterQuery = {}) {
   const query = { ...filterQuery };
   if (categoryId != null) query.catId = String(categoryId);
 
-  const builder = buildRangeEndpointJoins(query, { applyProductPriceFilter: true });
-  const { joins, replacements, productPriceCondition } = builder.applyProductPriceFromQuery(
-    allFilterFields
-  );
+  // Price rails exclude active Product Price (same as getPriceRange).
+  const builder = buildRangeEndpointJoins(query, { applyProductPriceFilter: false });
+  const { joins, replacements } = builder.applyProductPriceFromQuery(allFilterFields);
 
-  const visibilityCondition = `WHERE ${visibleProductSql('p')}`;
-  let filteredProductsWhere = productPriceCondition
-    ? `${productPriceCondition} AND ${visibleProductSql('p')}`
-    : visibilityCondition;
+  let filteredProductsWhere = `WHERE ${visibleProductSql('p')}`;
   filteredProductsWhere = appendSearchTermsSql(
     filteredProductsWhere,
     replacements,
@@ -231,7 +227,18 @@ async function expectedDimensionRangeLikeApi(fieldName, categoryId, filterQuery 
   const builder = buildRangeEndpointJoins(query, { skipRangeField: fieldName });
   const { joins, replacements } = builder.applyProductPriceFromQuery(allFilterFields);
 
-  let dimWhere = `WHERE ${visibleProductSql('p')}`;
+  // Match getWidthRange/getHeightRange: Product Price via products.product_price.
+  let productPriceWhere = '';
+  if (query['Product Price']) {
+    const parsed = parseProductPriceRange(query['Product Price']);
+    if (parsed) {
+      replacements.minPrice = parsed.minPrice;
+      replacements.maxPrice = parsed.maxPrice;
+      productPriceWhere = ` AND p.product_price BETWEEN :minPrice AND :maxPrice`;
+    }
+  }
+
+  let dimWhere = `WHERE ${visibleProductSql('p')}${productPriceWhere}`;
   dimWhere = appendSearchTermsSql(dimWhere, replacements, query.searchTerms);
 
   const sequelize = createSequelize();

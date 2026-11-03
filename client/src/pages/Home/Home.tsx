@@ -418,19 +418,23 @@ const Home: React.FC = () => {
   };
 
   const handleClearFilters = () => {
+    skipSearchDebounceRef.current = true;
     setIsTransitioning(true);
     setIsLoadingMore(false);
     setHasUsedLoadMore(false);
     setSelectedFilters({});
+    setSearchInput('');
+    setSearchTerms('');
     setCurrentPage(1);
     setLoadedCount(itemsPerPage);
     setSortBy('most_popular');
+    lastFetchKeyRef.current = '';
     writeUrl({
       limit: itemsPerPage,
       offset: 0,
       sortBy: 'most_popular',
       filters: {},
-      searchTerms,
+      searchTerms: '',
     });
     window.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior });
   };

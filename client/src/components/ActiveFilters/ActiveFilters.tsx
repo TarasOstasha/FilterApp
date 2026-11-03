@@ -4,6 +4,7 @@ import {
   DimensionUnit,
   formatDimensionRangeChipLabel,
 } from '../../utils/dimensionUnits';
+import { formatProductPriceChipLabel } from '../../utils/priceFormat';
 
 const DIMENSION_CHIP_FIELDS = new Set(['Display Width', 'Display Height']);
 
@@ -25,6 +26,9 @@ function chipLabel(
   value: string,
   dimensionUnits?: DimensionUnitSelections
 ): string {
+  if (field === 'Product Price') {
+    return formatProductPriceChipLabel(value);
+  }
   if (DIMENSION_CHIP_FIELDS.has(field)) {
     const unit = dimensionUnits?.[field as keyof DimensionUnitSelections] || 'in';
     return formatDimensionRangeChipLabel(field, value, unit);

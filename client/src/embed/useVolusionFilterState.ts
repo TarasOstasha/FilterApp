@@ -421,32 +421,22 @@ export function useVolusionFilterState({
   };
 
   const handleClearFilters = () => {
+    skipSearchDebounceRef.current = true;
     setIsTransitioning(true);
     isLoadingMoreRef.current = false;
     setIsLoadingMore(false);
     setHasUsedLoadMore(false);
     setSelectedFilters({});
+    setSearchInput('');
+    setSearchTerms('');
     setCurrentPage(1);
     setItemsPerPage(27);
     setSortBy('most_popular');
     setProducts([]);
     setTotalProducts(0);
-    // Preserve search when clearing sidebar filters (search has its own clear control).
-    // If search is also empty, return to the native category URL.
-    if (!searchTerms.trim()) {
-      skipSearchDebounceRef.current = true;
-      setSearchInput('');
-      setSearchTerms('');
-      window.history.pushState({}, '', window.location.pathname);
-    } else {
-      writeUrl({
-        limit: 27,
-        offset: 0,
-        sortBy: 'most_popular',
-        filters: {},
-        searchTerms,
-      });
-    }
+    lastFetchKeyRef.current = '';
+    // Clear All resets filters + search; keep category via pathname (no query).
+    window.history.pushState({}, '', window.location.pathname);
     ensureCategoryPageAtTop();
     setTimeout(() => setIsTransitioning(false), 120);
   };

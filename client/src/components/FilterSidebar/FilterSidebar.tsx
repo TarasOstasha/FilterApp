@@ -13,11 +13,18 @@ import { useDebouncedEffect } from '../../utils/useDebouncedEffect';
 import { getCategoryIdFromPath } from '../../utils/helpers';
 import {
   filtersToQueryParams,
+  mergeSelectedCheckboxFacets,
   normalizeFilterFieldsOrder,
   withSearchTermsParam,
   SidebarFilterField,
 } from '../../utils/filterParams';
 import { FilterRangeRails } from '../../utils/hasActiveFilters';
+import {
+  hasScopedPriceRails,
+  resolvePriceDisplayBounds,
+  resolvePriceRawRail,
+  shouldApplyPriceRangeResponse,
+} from '../../utils/priceRangeUi';
 import {
   DIMENSION_INPUT_COMMIT_MS,
   dimensionInchPairsEqual,
@@ -262,6 +269,10 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
   const [priceMax, setPriceMax] = useState(0);
   const [priceBreakpoints, setPriceBreakpoints] = useState<number[]>([]);
   const priceFetchTimeout = useRef<number>();
+  /** Monotonic seq so stale price-range responses cannot overwrite newer scopes. */
+  const priceRangeFetchSeqRef = useRef(0);
+  /** Monotonic seq for dynamic-filters facet responses. */
+  const dynamicFiltersFetchSeqRef = useRef(0);
 
   const [globalMinWidth, setGlobalMinWidth] = useState(0);
   const [globalMaxWidth, setGlobalMaxWidth] = useState(0);
@@ -746,13 +757,17 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
     (async () => {
       try {
         const catId = resolveCategoryId();
+        const priceSeq = ++priceRangeFetchSeqRef.current;
         const [pr, wr, hr] = await Promise.all([
           fetchPriceRange(undefined, catId),
           fetchWidthRange({}, catId),
           fetchHeightRange({}, catId),
         ]);
 
-        if (pr?.data) {
+        if (
+          pr?.data &&
+          shouldApplyPriceRangeResponse(priceSeq, priceRangeFetchSeqRef.current)
+        ) {
           setPriceMin(pr.data.min);
           setPriceMax(pr.data.max);
           if (pr.data.breakpoints?.length) {
@@ -890,11 +905,9 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
 
     window.clearTimeout(priceFetchTimeout.current);
     priceFetchTimeout.current = window.setTimeout(() => {
-      // Sidebar fields - always fetch on initial load or when no filters are applied
-      // Also fetch when we only have price filter and no other filters
-      const onlyHasPriceFilter = keys.length === 1 && keys[0] === 'Product Price' && nonPrice.length === 0;
-      
-      if ((keys.length === 0 || onlyHasPriceFilter) && !hasSearch) {
+      // Sidebar fields — static only when nothing scopes the catalog.
+      // Product Price alone (or with search) uses dynamic-filters so facets match ProductList.
+      if (keys.length === 0 && !hasSearch) {
         const catId = resolveCategoryId();
         fetchFilterSidebarData(catId)
           .then((r) => {
@@ -923,36 +936,42 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
             console.warn('Static reload failed:', err);
             // Don't clear filterFields on error - keep existing state
           });
-      } else if (nonPrice.length > 0 || hasSearch) {
+      } else if (nonPrice.length > 0 || hasSearch || keys.includes('Product Price')) {
         setIsLoadingFilters(true);
+        // Include Product Price so facets match ProductList (AND with search/other filters).
+        // Price-range endpoint still omits Product Price for self-excluding rails.
+        const facetKeys = keys.filter((k) => k !== 'Display Width' && k !== 'Display Height');
         const params = withSearchTermsParam(
           filtersToQueryParams(
-            Object.fromEntries(nonPrice.map((k) => [k, normalized[k]]))
+            Object.fromEntries(facetKeys.map((k) => [k, normalized[k]]))
           ),
           searchTerms
         );
         const catId = resolveCategoryId();
+        const dynSeq = ++dynamicFiltersFetchSeqRef.current;
         fetchDynamicFilters(params, catId)
           .then((r) => {
+            if (dynSeq !== dynamicFiltersFetchSeqRef.current) return;
             setIsLoadingFilters(false);
             const d = r?.data;
-            if (Array.isArray(d) && d.length > 0) { // Only update if we got valid data
-              const next: FilterField[] = normalizeFilterFieldsOrder(
-                d.map((f: any) => ({
-                  id: f.filter_field_id,
-                  field_name: f.field_name,
-                  field_type: f.field_type,
-                  allowed_values: f.values,
-                  sort_order: f.sort_order ?? 0,
-                }))
+            if (Array.isArray(d) && d.length > 0) {
+              const next: FilterField[] = mergeSelectedCheckboxFacets(
+                normalizeFilterFieldsOrder(
+                  d.map((f: any) => ({
+                    id: f.filter_field_id,
+                    field_name: f.field_name,
+                    field_type: f.field_type,
+                    allowed_values: f.values,
+                    sort_order: f.sort_order ?? 0,
+                  }))
+                ),
+                selectedFiltersRef.current
               );
               setFilterFields((prev) => {
-                // More robust comparison to prevent unnecessary updates
                 if (prev.length !== next.length) return next;
                 const hasChanges = prev.some((p, i) => {
                   const n = next[i];
                   if (!n || p.id !== n.id || p.field_name !== n.field_name || p.field_type !== n.field_type) return true;
-                  // Check if allowed_values have changed
                   if (p.field_type === 'checkbox') {
                     const prevVals = Array.isArray(p.allowed_values) ? p.allowed_values : [];
                     const nextVals = Array.isArray(n.allowed_values) ? n.allowed_values : [];
@@ -966,14 +985,16 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
             }
           })
           .catch((err) => {
+            if (dynSeq !== dynamicFiltersFetchSeqRef.current) return;
             setIsLoadingFilters(false);
             console.warn('Dynamic filters fetch failed:', err);
-            // Fallback to static data, but don't clear existing state if that fails too
             const catId = resolveCategoryId();
             fetchFilterSidebarData(catId)
               .then((r) => {
-                const fallbackData = normalizeFilterFieldsOrder(
-                  (r?.data ?? []) as FilterField[]
+                if (dynSeq !== dynamicFiltersFetchSeqRef.current) return;
+                const fallbackData = mergeSelectedCheckboxFacets(
+                  normalizeFilterFieldsOrder((r?.data ?? []) as FilterField[]),
+                  selectedFiltersRef.current
                 );
                 if (fallbackData.length > 0) {
                   setFilterFields(fallbackData);
@@ -981,7 +1002,6 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
               })
               .catch(() => {
                 console.warn('Fallback static reload also failed - keeping existing state');
-                // Don't clear filterFields - keep existing state
               });
           });
       }
@@ -1006,14 +1026,20 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
             : undefined;
 
         const catId = resolveCategoryId();
+        const priceSeq = ++priceRangeFetchSeqRef.current;
         fetchPriceRange(priceParams, catId)
           .then((pr) => {
-            if (pr?.data) {
-              setPriceMin((prev) => (prev === pr.data.min ? prev : pr.data.min));
-              setPriceMax((prev) => (prev === pr.data.max ? prev : pr.data.max));
-              const nextBps: number[] = pr.data.breakpoints || [];
-              setPriceBreakpoints((prev) => (arraysEqual(prev, nextBps) ? prev : nextBps));
+            if (
+              !pr?.data ||
+              !shouldApplyPriceRangeResponse(priceSeq, priceRangeFetchSeqRef.current)
+            ) {
+              return;
             }
+            setPriceMin((prev) => (prev === pr.data.min ? prev : pr.data.min));
+            setPriceMax((prev) => (prev === pr.data.max ? prev : pr.data.max));
+            const nextBps: number[] = pr.data.breakpoints || [];
+            setPriceBreakpoints((prev) => (arraysEqual(prev, nextBps) ? prev : nextBps));
+            // Rails only — never commit Product Price / create a chip here.
           })
           .catch((err) => {
             console.warn('Filtered price fetch failed:', err, priceParams);
@@ -1037,6 +1063,12 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
   const hasNonPriceFilters = Object.keys(sanitizeFilters(selectedFilters)).some(
     (k) => k !== 'Product Price'
   );
+  /** Category / search / non-price filters — use API priceMin/priceMax rails. */
+  const scopedPriceRails = hasScopedPriceRails({
+    hasNonPriceFilters,
+    searchTerms,
+    categoryId: resolveCategoryId(),
+  });
 
   return (
     <div className={styles.sidebar}>
@@ -1131,13 +1163,15 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
               );
             }
 
-            const hasRealRange = priceMax > 0 && priceMax >= priceMin;
-            const rawRailMin = hasNonPriceFilters
-              ? (hasRealRange ? priceMin : priceBpFirst)
-              : priceBpFirst;
-            const rawRailMax = hasNonPriceFilters
-              ? (hasRealRange ? priceMax : priceBpLast)
-              : priceBpLast;
+            // API already snaps containment; keep local snap for empty/fallback rails.
+            // Use API bounds for category, search, and/or non-price filter scopes.
+            const { rawRailMin, rawRailMax } = resolvePriceRawRail({
+              scoped: scopedPriceRails,
+              priceMin,
+              priceMax,
+              priceBpFirst,
+              priceBpLast,
+            });
             const railMin = snapMinToBreakpoint(priceSliderBreakpoints, rawRailMin);
             const railMax = snapMaxToBreakpoint(priceSliderBreakpoints, rawRailMax);
 
@@ -1159,13 +1193,16 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
               );
             }
 
-            // Use debounced values if available for immediate UI feedback
-            let effMin = Number.isFinite(curMinRaw) ? curMinRaw : railMin;
-            let effMax = Number.isFinite(curMaxRaw) ? curMaxRaw : railMax;
-            if (debouncedPriceRange) {
-              effMin = debouncedPriceRange[0];
-              effMax = debouncedPriceRange[1];
-            }
+            // Selected price → show selection; otherwise show dynamic API rail
+            // (not the static full breakpoint span from parseRangeValue fallback).
+            const display = resolvePriceDisplayBounds({
+              railMin,
+              railMax,
+              selectedRaw: selectedFilters['Product Price']?.[0],
+              liveDraft: debouncedPriceRange,
+            });
+            let effMin = display.min;
+            let effMax = display.max;
             if (effMin > effMax) { effMin = railMin; effMax = railMax; }
 
             const railBps = priceSliderBreakpoints.filter(v => v >= railMin && v <= railMax);
@@ -1229,17 +1266,17 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
                   <div className={styles['range-values']}>
                     <input
                       type="number"
-                      min={railMin}
-                      max={railMax}
                       value={effMin}
                       disabled={isFrozen}
                       onChange={(e) => {
                         if (isFrozen) return;
                         const raw = Number(e.target.value);
-                        if (Number.isNaN(raw)) return;
-                        const clamped = Math.max(railMin, Math.min(raw, railMax));
-                        const i = lastIdxLE(clamped);
-                        const next: [number, number] = [safeRailBps[i], effMax];
+                        if (!Number.isFinite(raw) || raw < 0) return;
+                        // Custom prices: keep exact numeric values (no breakpoint snap).
+                        const next: [number, number] = [
+                          raw,
+                          Number.isFinite(effMax) ? effMax : railMax,
+                        ];
                         setLivePriceRange(next);
                         window.clearTimeout(priceDebounceTimeout.current);
                         priceDebounceTimeout.current = window.setTimeout(() => {
@@ -1250,17 +1287,16 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
                     />
                     <input
                       type="number"
-                      min={railMin}
-                      max={railMax}
                       value={effMax}
                       disabled={isFrozen}
                       onChange={(e) => {
                         if (isFrozen) return;
                         const raw = Number(e.target.value);
-                        if (Number.isNaN(raw)) return;
-                        const clamped = Math.max(railMin, Math.min(raw, railMax));
-                        const i = lastIdxLE(clamped);
-                        const next: [number, number] = [effMin, safeRailBps[i]];
+                        if (!Number.isFinite(raw) || raw < 0) return;
+                        const next: [number, number] = [
+                          Number.isFinite(effMin) ? effMin : railMin,
+                          raw,
+                        ];
                         setLivePriceRange(next);
                         window.clearTimeout(priceDebounceTimeout.current);
                         priceDebounceTimeout.current = window.setTimeout(() => {
@@ -1287,6 +1323,25 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
             const toUi = (inch: number) => inchesToUiValue(inch, unit);
             const fromUi = (ui: number) => uiValueToInches(ui, unit);
             const sliderStep = dimensionSliderStep(unit);
+
+            // API 0–0 = no dimension rows on filtered products (don't fall back to global).
+            if (
+              initializedFromFilterFields.current &&
+              widthMin === 0 &&
+              widthMax === 0
+            ) {
+              return (
+                <FilterAccordionSection
+                  key={ff.id}
+                  fieldName={fn}
+                  isOpen={openSections.has(fn)}
+                  onToggle={toggleSection}
+                  selectedCount={getFilterSelectedCount(fn, ft, selectedFilters)}
+                >
+                  <div className={styles['frozenHint']}>No dimensions available</div>
+                </FilterAccordionSection>
+              );
+            }
 
             const railMinIn = widthMin || globalMinWidth;
             const railMaxIn = widthMax || globalMaxWidth;
@@ -1423,6 +1478,24 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
             const toUi = (inch: number) => inchesToUiValue(inch, unit);
             const fromUi = (ui: number) => uiValueToInches(ui, unit);
             const sliderStep = dimensionSliderStep(unit);
+
+            if (
+              initializedFromFilterFields.current &&
+              heightMin === 0 &&
+              heightMax === 0
+            ) {
+              return (
+                <FilterAccordionSection
+                  key={ff.id}
+                  fieldName={fn}
+                  isOpen={openSections.has(fn)}
+                  onToggle={toggleSection}
+                  selectedCount={getFilterSelectedCount(fn, ft, selectedFilters)}
+                >
+                  <div className={styles['frozenHint']}>No dimensions available</div>
+                </FilterAccordionSection>
+              );
+            }
 
             const railMinIn = heightMin || globalMinHeight;
             const railMaxIn = heightMax || globalMaxHeight;
