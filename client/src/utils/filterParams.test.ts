@@ -6,6 +6,7 @@ import {
   withSearchTermsParam,
   mergeSelectedCheckboxFacets,
   buildClearAllQueryParams,
+  buildDynamicFacetParams,
   SidebarFilterField,
 } from './filterParams';
 
@@ -112,5 +113,40 @@ describe('filterParams — searchTerms', () => {
     expect(qp.has('searchTerms')).toBe(false);
     expect(qp.getAll('Product Type')).toEqual(['Backdrop']);
     expect(qp.get('Product Price')).toBe('0,50');
+  });
+
+  it('dynamic-filters params include Display Width/Height (same scope as /products)', () => {
+    const params = buildDynamicFacetParams(
+      {
+        'Display Width': ['71.88,360'],
+        'Display Height': ['84,96'],
+        'Product Price': ['0,5000'],
+      },
+      'embrace'
+    );
+    expect(params.searchTerms).toBe('embrace');
+    expect(params['Display Width']).toBe('71.88,360');
+    expect(params['Display Height']).toBe('84,96');
+    expect(params['Product Price']).toBe('0,5000');
+  });
+
+  it('mergeSelectedCheckboxFacets still preserves selected Product Type after dimension scope', () => {
+    const fields: SidebarFilterField[] = [
+      {
+        id: 1,
+        field_name: 'Product Type',
+        field_type: 'checkbox',
+        allowed_values: ['Backdrop', 'Trade Show Booth'],
+        sort_order: 0,
+      },
+    ];
+    const merged = mergeSelectedCheckboxFacets(fields, {
+      'Product Type': ['Banner Stand'],
+    });
+    expect(merged[0].allowed_values).toEqual([
+      'Backdrop',
+      'Trade Show Booth',
+      'Banner Stand',
+    ]);
   });
 });

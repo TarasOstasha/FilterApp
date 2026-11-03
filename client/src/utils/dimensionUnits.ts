@@ -1,14 +1,27 @@
 /** Inches per foot — dimension filters store inches internally. */
 export const INCHES_PER_FOOT = 12;
 
-/** Exact feet from inches (no rounding). */
+/**
+ * Max decimal places for stored/serialized inches (kills float noise like 79.19999999999999).
+ * Does not affect feet display rounding (still 1 dp via formatFeetFromInches).
+ */
+export const DIMENSION_INCH_DECIMALS = 4;
+
+/** Round inches to at most DIMENSION_INCH_DECIMALS places. */
+export function normalizeInches(inches: number): number {
+  if (!Number.isFinite(inches)) return inches;
+  const factor = 10 ** DIMENSION_INCH_DECIMALS;
+  return Math.round(inches * factor) / factor;
+}
+
+/** Exact feet from inches (no display rounding). */
 export function inchesToFeet(inches: number): number {
   return inches / INCHES_PER_FOOT;
 }
 
-/** Exact inches from feet (no rounding/truncation). */
+/** Inches from feet, normalized to kill binary float artifacts (6.6 ft → 79.2). */
 export function feetToInches(feet: number): number {
-  return feet * INCHES_PER_FOOT;
+  return normalizeInches(feet * INCHES_PER_FOOT);
 }
 
 /**
@@ -95,10 +108,10 @@ export const DIMENSION_INPUT_COMMIT_MS = 400;
 
 /**
  * Convert a UI-unit value to inches for filtering.
- * Feet → exact * 12; inches → as-is.
+ * Feet → * 12 (normalized); inches → normalized as-is.
  */
 export function uiValueToInches(uiValue: number, unit: 'ft' | 'in'): number {
-  return unit === 'ft' ? feetToInches(uiValue) : uiValue;
+  return unit === 'ft' ? feetToInches(uiValue) : normalizeInches(uiValue);
 }
 
 /**
@@ -126,10 +139,11 @@ export function enforceDimensionMinMax(
 
 /**
  * Normalize an inch pair when the edited bound is unknown (e.g. slider).
- * If inverted, collapse so Max = Min (same as raising Min past Max).
+ * Applies inch decimal normalization; if inverted, collapse so Max = Min.
  */
 export function normalizeDimensionInchPair(pair: [number, number]): [number, number] {
-  const [min, max] = pair;
+  const min = normalizeInches(pair[0]);
+  const max = normalizeInches(pair[1]);
   if (min <= max) return [min, max];
   return [min, min];
 }
@@ -144,9 +158,22 @@ export function syncDimensionBoundPair(
 ): [number, number] {
   const pair: [number, number] =
     edited === 'min'
-      ? [editedInches, otherBoundInches]
-      : [otherBoundInches, editedInches];
+      ? [normalizeInches(editedInches), normalizeInches(otherBoundInches)]
+      : [normalizeInches(otherBoundInches), normalizeInches(editedInches)];
   return enforceDimensionMinMax(pair, edited);
+}
+
+/** Serialize a committed inch pair for URL / filter state (no float noise). */
+export function formatDimensionFilterInchesPair(pair: [number, number]): string {
+  const [min, max] = normalizeDimensionInchPair(pair);
+  return `${min},${max}`;
+}
+
+/** Normalize a "min,max" inch filter string for URL / API (dimensions only). */
+export function normalizeDimensionFilterValue(raw: string): string {
+  const pair = parseDimensionFilterInches(raw);
+  if (!pair) return raw;
+  return formatDimensionFilterInchesPair(pair);
 }
 
 /** Tolerance for inch comparisons (avoids float noise without changing stored values). */
@@ -169,14 +196,14 @@ export function dimensionInchPairsEqual(
   return dimensionInchesNearEqual(a[0], b[0], eps) && dimensionInchesNearEqual(a[1], b[1], eps);
 }
 
-/** Parse committed "min,max" inch filter string from URL/state. */
+/** Parse committed "min,max" inch filter string from URL/state (normalized inches). */
 export function parseDimensionFilterInches(
   raw: string | undefined | null
 ): [number, number] | null {
   if (raw == null || raw === '') return null;
   const [min, max] = String(raw).split(',').map((v) => parseFloat(v));
   if (!Number.isFinite(min) || !Number.isFinite(max)) return null;
-  return [min, max];
+  return [normalizeInches(min), normalizeInches(max)];
 }
 
 /**

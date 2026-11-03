@@ -1,9 +1,13 @@
 import {
   DIMENSION_INPUT_COMMIT_MS,
+  DIMENSION_INCH_DECIMALS,
   DIMENSION_INCH_EPSILON,
   inchesToFeet,
   feetToInches,
   formatFeetFromInches,
+  formatDimensionFilterInchesPair,
+  normalizeDimensionFilterValue,
+  normalizeInches,
   dimensionSliderStep,
   parseDimensionInputText,
   isDimensionDraftTextAllowed,
@@ -21,6 +25,11 @@ import {
   resolveCommittedDimensionInches,
   shouldSkipDimensionCommit,
 } from './dimensionUnits';
+import {
+  appendFilterValues,
+  buildProductQueryParams,
+  parseFiltersFromSearch,
+} from './filterParams';
 
 describe('dimensionUnits — feet ↔ inches conversion', () => {
   it('converts 7.5 ft to 90 in and back without rounding', () => {
@@ -36,11 +45,11 @@ describe('dimensionUnits — feet ↔ inches conversion', () => {
     expect(formatFeetFromInches(87)).toBe('7.3');
   });
 
-  it('converts 7.1 ft to 85.2 in and back without rounding', () => {
-    expect(feetToInches(7.1)).toBeCloseTo(85.2, 10);
+  it('converts 7.1 ft to 85.2 in exactly (normalized)', () => {
+    expect(feetToInches(7.1)).toBe(85.2);
     expect(inchesToFeet(feetToInches(7.1))).toBeCloseTo(7.1, 10);
     expect(formatFeetFromInches(feetToInches(7.1))).toBe('7.1');
-    expect(uiValueToInches(7.1, 'ft')).toBeCloseTo(85.2, 10);
+    expect(uiValueToInches(7.1, 'ft')).toBe(85.2);
   });
 
   it('formats auto-converted feet to a maximum of 1 decimal place', () => {
@@ -80,6 +89,71 @@ describe('dimensionUnits — feet ↔ inches conversion', () => {
   it('leaves inches unchanged in inches mode', () => {
     expect(uiValueToInches(90, 'in')).toBe(90);
     expect(inchesToUiValue(90, 'in')).toBe(90);
+  });
+});
+
+describe('dimensionUnits — inch float normalization', () => {
+  it('caps stored inches at 4 decimal places', () => {
+    expect(DIMENSION_INCH_DECIMALS).toBe(4);
+    expect(normalizeInches(79.19999999999999)).toBe(79.2);
+  });
+
+  it('6.6 ft → 79.2 in (not 79.19999999999999)', () => {
+    expect(6.6 * 12).not.toBe(79.2); // raw float noise
+    expect(feetToInches(6.6)).toBe(79.2);
+    expect(uiValueToInches(6.6, 'ft')).toBe(79.2);
+    expect(formatDimensionFilterInchesPair([feetToInches(6.6), 144])).toBe(
+      '79.2,144'
+    );
+  });
+
+  it('7.1 ft → 85.2 in; 7.25 ft → 87 in', () => {
+    expect(feetToInches(7.1)).toBe(85.2);
+    expect(feetToInches(7.25)).toBe(87);
+  });
+
+  it('URL round-trip cleans noisy Display Width values', () => {
+    const noisy = '79.19999999999999,144';
+    expect(normalizeDimensionFilterValue(noisy)).toBe('79.2,144');
+    expect(parseDimensionFilterInches(noisy)).toEqual([79.2, 144]);
+
+    const sp = new URLSearchParams();
+    appendFilterValues(sp, 'Display Width', [noisy]);
+    expect(sp.get('Display Width')).toBe('79.2,144');
+
+    const qp = buildProductQueryParams({
+      limit: 27,
+      offset: 0,
+      sortBy: 'most_popular',
+      filters: { 'Display Width': [noisy] },
+    });
+    expect(qp.get('Display Width')).toBe('79.2,144');
+
+    const parsed = parseFiltersFromSearch(
+      '?Display+Width=79.19999999999999%2C144'
+    );
+    expect(parsed.filters['Display Width']).toEqual(['79.2,144']);
+
+    // Price / checkboxes untouched
+    const priceSp = new URLSearchParams();
+    appendFilterValues(priceSp, 'Product Price', ['19.99,5000']);
+    expect(priceSp.get('Product Price')).toBe('19.99,5000');
+  });
+
+  it('does not change feet display rounding (still max 1 dp)', () => {
+    expect(formatFeetFromInches(feetToInches(6.6))).toBe('6.6');
+    expect(formatFeetFromInches(87)).toBe('7.3'); // 7.25 shown as 7.3
+  });
+
+  it('skips redundant commits when float noise matches normalized value', () => {
+    const rail: [number, number] = [48, 144];
+    expect(
+      shouldSkipDimensionCommit(
+        [79.2, 144],
+        '79.19999999999999,144',
+        rail
+      )
+    ).toBe(true);
   });
 });
 
@@ -211,7 +285,8 @@ describe('dimensionUnits — active filter chip labels', () => {
   it('does not alter the raw inch pair used for filtering/URL', () => {
     const raw = '82.95996,124.35996';
     formatDimensionRangeChipLabel('Display Width', raw, 'ft');
-    expect(parseDimensionFilterInches(raw)).toEqual([82.95996, 124.35996]);
+    // Parse normalizes to 4 decimal places (stored/filter precision)
+    expect(parseDimensionFilterInches(raw)).toEqual([82.96, 124.36]);
   });
 
   it('falls back when raw value is not a min,max pair', () => {

@@ -12,6 +12,7 @@ import {
 import { useDebouncedEffect } from '../../utils/useDebouncedEffect';
 import { getCategoryIdFromPath } from '../../utils/helpers';
 import {
+  buildDynamicFacetParams,
   filtersToQueryParams,
   mergeSelectedCheckboxFacets,
   normalizeFilterFieldsOrder,
@@ -20,16 +21,25 @@ import {
 } from '../../utils/filterParams';
 import { FilterRangeRails } from '../../utils/hasActiveFilters';
 import {
+  PRICE_INPUT_COMMIT_MS,
+  PRICE_MIN_GT_MAX_MESSAGE,
+  PriceDraftKey,
+  finalizePriceInputText,
+  formatPriceBoundDisplay,
   hasScopedPriceRails,
+  isPriceDraftTextAllowed,
+  resolvePriceBoundCommit,
   resolvePriceDisplayBounds,
   resolvePriceRawRail,
   shouldApplyPriceRangeResponse,
+  shouldSkipPriceCommit,
 } from '../../utils/priceRangeUi';
 import {
   DIMENSION_INPUT_COMMIT_MS,
   dimensionInchPairsEqual,
   dimensionSliderStep,
   finalizeDimensionInputText,
+  formatDimensionFilterInchesPair,
   formatFeetFromInches,
   inchesToUiValue,
   isDimensionDraftTextAllowed,
@@ -291,6 +301,15 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
   const [debouncedPriceRange, setDebouncedPriceRange] = useState<[number, number] | null>(null);
   const [debouncedWidthRange, setDebouncedWidthRange] = useState<[number, number] | null>(null);
   const [debouncedHeightRange, setDebouncedHeightRange] = useState<[number, number] | null>(null);
+  /** Local draft text while editing Price Min/Max — never reformatted until commit. */
+  const [priceDrafts, setPriceDrafts] = useState<Partial<Record<PriceDraftKey, string>>>({});
+  const priceDraftsRef = useRef(priceDrafts);
+  priceDraftsRef.current = priceDrafts;
+  const priceCommitTimeouts = useRef<Partial<Record<PriceDraftKey, number>>>({});
+  /** Latest numeric bounds for the other side when committing one draft. */
+  const priceSelRef = useRef({ min: 0, max: 0 });
+  const [priceInputError, setPriceInputError] = useState<string | null>(null);
+  const priceFullRailRef = useRef<[number, number]>([0, 0]);
   
   // Refs for debounce timeouts
   const priceDebounceTimeout = useRef<number>();
@@ -340,6 +359,12 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
       setDebouncedPriceRange(null);
       setDebouncedWidthRange(null);
       setDebouncedHeightRange(null);
+      setPriceDrafts({});
+      setPriceInputError(null);
+      (['min', 'max'] as PriceDraftKey[]).forEach((key) => {
+        window.clearTimeout(priceCommitTimeouts.current[key]);
+        delete priceCommitTimeouts.current[key];
+      });
     }
     
     // Only reset if we've initialized AND there are no filters
@@ -441,7 +466,7 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
         }
         onFilterChange({
           field: fieldName,
-          value: `${pair[0]},${pair[1]}`,
+          value: formatDimensionFilterInchesPair(pair),
         });
       }, 500);
     } else {
@@ -458,7 +483,7 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
         }
         onFilterChange({
           field: fieldName,
-          value: `${pair[0]},${pair[1]}`,
+          value: formatDimensionFilterInchesPair(pair),
         });
       }, 500);
     }
@@ -468,25 +493,136 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
     setDebouncedPriceRange(range);
   }, []);
 
+  const clearPriceDraft = useCallback((key: PriceDraftKey) => {
+    setPriceDrafts((prev) => {
+      if (prev[key] === undefined) return prev;
+      const next = { ...prev };
+      delete next[key];
+      return next;
+    });
+  }, []);
+
+  const clearAllPriceDrafts = useCallback(() => {
+    (['min', 'max'] as PriceDraftKey[]).forEach((key) => {
+      window.clearTimeout(priceCommitTimeouts.current[key]);
+      delete priceCommitTimeouts.current[key];
+    });
+    setPriceDrafts({});
+    setPriceInputError(null);
+  }, []);
+
   const commitPriceRange = useCallback((
     range: [number, number],
     fullRange: [number, number],
   ) => {
     window.clearTimeout(priceDebounceTimeout.current);
 
-    const [minIn, maxIn] = range;
-    const near = (x: number, y: number) => Math.abs(x - y) < 1e-6;
-    const current = selectedFilters['Product Price']?.[0];
+    const current = selectedFiltersRef.current['Product Price']?.[0];
+    if (shouldSkipPriceCommit(range, current, fullRange)) return;
 
-    if (current) {
-      const [curMin, curMax] = current.split(',').map(Number);
-      if (near(curMin, minIn) && near(curMax, maxIn)) return;
-    } else if (near(minIn, fullRange[0]) && near(maxIn, fullRange[1])) {
-      return;
+    const [minIn, maxIn] = range;
+    onFilterChange({ field: 'Product Price', value: `${minIn},${maxIn}` });
+  }, [onFilterChange]);
+
+  /** @returns true when filter state was updated (or skipped as unchanged). */
+  const applyPriceBoundCommit = useCallback((
+    bound: PriceDraftKey,
+    value: number,
+  ): boolean => {
+    const other = bound === 'min' ? priceSelRef.current.max : priceSelRef.current.min;
+    const resolved = resolvePriceBoundCommit({
+      edited: bound,
+      editedValue: value,
+      otherBound: other,
+    });
+
+    if (!resolved.ok) {
+      setPriceInputError(PRICE_MIN_GT_MAX_MESSAGE);
+      return false;
     }
 
-    onFilterChange({ field: 'Product Price', value: `${minIn},${maxIn}` });
-  }, [onFilterChange, selectedFilters]);
+    setPriceInputError(null);
+    const fullRail = priceFullRailRef.current;
+    setLivePriceRange(resolved.pair);
+    commitPriceRange(resolved.pair, fullRail);
+    return true;
+  }, [commitPriceRange, setLivePriceRange]);
+
+  const commitPriceDraft = useCallback((
+    draftKey: PriceDraftKey,
+    options?: { finalizePartial?: boolean; clearDraft?: boolean },
+  ) => {
+    const text = priceDraftsRef.current[draftKey];
+    if (text === undefined) return;
+
+    const finalized = options?.finalizePartial
+      ? finalizePriceInputText(text)
+      : (() => {
+          if (!isPriceDraftTextAllowed(text)) return { ok: false as const };
+          const f = finalizePriceInputText(text);
+          if (!f.ok) return { ok: false as const };
+          // Debounced commit only for complete numbers (not trailing ".")
+          if (text.trim().endsWith('.') && text.trim() !== '.') return { ok: false as const };
+          return f;
+        })();
+
+    if (finalized.ok) {
+      const committed = applyPriceBoundCommit(draftKey, finalized.value);
+      // Keep draft on Min>Max so typed text stays; clear only after a valid commit.
+      if (options?.clearDraft && committed) clearPriceDraft(draftKey);
+    } else if (options?.clearDraft) {
+      // Empty / incomplete on blur → revert to last committed/rail display.
+      clearPriceDraft(draftKey);
+      setPriceInputError(null);
+    }
+  }, [applyPriceBoundCommit, clearPriceDraft]);
+
+  const schedulePriceDraftCommit = useCallback((draftKey: PriceDraftKey) => {
+    window.clearTimeout(priceCommitTimeouts.current[draftKey]);
+    priceCommitTimeouts.current[draftKey] = window.setTimeout(() => {
+      commitPriceDraft(draftKey, { finalizePartial: false });
+    }, PRICE_INPUT_COMMIT_MS);
+  }, [commitPriceDraft]);
+
+  /** Typing: update draft only — never reformat or commit immediately. */
+  const handlePriceBoundInput = useCallback((
+    draftKey: PriceDraftKey,
+    text: string,
+  ) => {
+    if (!isPriceDraftTextAllowed(text)) return;
+    updatingFromInputRef.current = true;
+    setPriceInputError(null);
+    setPriceDrafts((prev) => ({ ...prev, [draftKey]: text }));
+    schedulePriceDraftCommit(draftKey);
+  }, [schedulePriceDraftCommit]);
+
+  const handlePriceBoundBlur = useCallback((draftKey: PriceDraftKey) => {
+    window.clearTimeout(priceCommitTimeouts.current[draftKey]);
+    delete priceCommitTimeouts.current[draftKey];
+    commitPriceDraft(draftKey, { finalizePartial: true, clearDraft: true });
+    updatingFromInputRef.current = false;
+  }, [commitPriceDraft]);
+
+  const handlePriceBoundKeyDown = useCallback((
+    e: React.KeyboardEvent<HTMLInputElement>,
+    draftKey: PriceDraftKey,
+  ) => {
+    if (e.key !== 'Enter') return;
+    e.preventDefault();
+    window.clearTimeout(priceCommitTimeouts.current[draftKey]);
+    delete priceCommitTimeouts.current[draftKey];
+    commitPriceDraft(draftKey, { finalizePartial: true, clearDraft: true });
+    (e.target as HTMLInputElement).blur();
+  }, [commitPriceDraft]);
+
+  useEffect(() => {
+    return () => {
+      (['min', 'max'] as PriceDraftKey[]).forEach((key) => {
+        const id = priceCommitTimeouts.current[key];
+        if (id != null) window.clearTimeout(id);
+      });
+    };
+  }, []);
 
   const setLiveDimensionRange = useCallback((
     fieldName: 'Display Width' | 'Display Height',
@@ -536,7 +672,10 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
       return;
     }
 
-    onFilterChange({ field: fieldName, value: `${normalized[0]},${normalized[1]}` });
+    onFilterChange({
+      field: fieldName,
+      value: formatDimensionFilterInchesPair(normalized),
+    });
   }, [onFilterChange]);
 
   // Keep unit ref in sync for debounced commits; notify chip formatting
@@ -938,15 +1077,10 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
           });
       } else if (nonPrice.length > 0 || hasSearch || keys.includes('Product Price')) {
         setIsLoadingFilters(true);
-        // Include Product Price so facets match ProductList (AND with search/other filters).
-        // Price-range endpoint still omits Product Price for self-excluding rails.
-        const facetKeys = keys.filter((k) => k !== 'Display Width' && k !== 'Display Height');
-        const params = withSearchTermsParam(
-          filtersToQueryParams(
-            Object.fromEntries(facetKeys.map((k) => [k, normalized[k]]))
-          ),
-          searchTerms
-        );
+        // Send all active filters (incl. Display Width/Height + Product Price) so checkbox
+        // facets match /products. Price-range below still omits Product Price (self-exclude).
+        // Width/height-range endpoints still self-exclude via buildParams(..., excludeField).
+        const params = buildDynamicFacetParams(normalized, searchTerms);
         const catId = resolveCategoryId();
         const dynSeq = ++dynamicFiltersFetchSeqRef.current;
         fetchDynamicFilters(params, catId)
@@ -1195,6 +1329,8 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
 
             // Selected price → show selection; otherwise show dynamic API rail
             // (not the static full breakpoint span from parseRangeValue fallback).
+            const hasActivePriceDraft =
+              priceDrafts.min !== undefined || priceDrafts.max !== undefined;
             const display = resolvePriceDisplayBounds({
               railMin,
               railMax,
@@ -1203,7 +1339,23 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
             });
             let effMin = display.min;
             let effMax = display.max;
-            if (effMin > effMax) { effMin = railMin; effMax = railMax; }
+            // Never reset both to the rail while typing — Min<=Max is validated on commit only.
+            if (!hasActivePriceDraft && effMin > effMax) {
+              effMin = railMin;
+              effMax = railMax;
+            }
+
+            priceSelRef.current = { min: effMin, max: effMax };
+            priceFullRailRef.current = [railMin, railMax];
+
+            const displayMin =
+              priceDrafts.min !== undefined
+                ? priceDrafts.min
+                : formatPriceBoundDisplay(effMin);
+            const displayMax =
+              priceDrafts.max !== undefined
+                ? priceDrafts.max
+                : formatPriceBoundDisplay(effMax);
 
             const railBps = priceSliderBreakpoints.filter(v => v >= railMin && v <= railMax);
             const safeRailBps = railBps.length ? railBps : [railMin, railMax];
@@ -1218,8 +1370,11 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
               return idx;
             };
 
-            let loIdx = clampIdx(lastIdxLE(effMin));
-            let hiIdx = clampIdx(lastIdxLE(effMax));
+            // Slider stays on breakpoint indices from last valid numeric bounds.
+            const sliderMin = Number.isFinite(effMin) ? effMin : railMin;
+            const sliderMax = Number.isFinite(effMax) ? effMax : railMax;
+            let loIdx = clampIdx(lastIdxLE(Math.min(sliderMin, sliderMax)));
+            let hiIdx = clampIdx(lastIdxLE(Math.max(sliderMin, sliderMax)));
             if (loIdx > hiIdx) { loIdx = 0; hiIdx = safeRailBps.length - 1; }
 
             return (
@@ -1244,6 +1399,7 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
                     withTracks
                     minDistance={isFrozen ? 0 : 1}
                     onChange={(indices) => {
+                      if (updatingFromInputRef.current) return;
                       if (isFrozen || !Array.isArray(indices)) return;
                       const a = clampIdx(indices[0]);
                       const b = clampIdx(indices[1]);
@@ -1252,12 +1408,14 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
                       setLivePriceRange([safeRailBps[minIdx], safeRailBps[maxIdx]]);
                     }}
                     onAfterChange={(indices) => {
+                      if (updatingFromInputRef.current) return;
                       if (isFrozen || !Array.isArray(indices)) return;
                       const a = clampIdx(indices[0]);
                       const b = clampIdx(indices[1]);
                       const minIdx = Math.min(a, b);
                       const maxIdx = Math.max(a, b);
                       const next: [number, number] = [safeRailBps[minIdx], safeRailBps[maxIdx]];
+                      clearAllPriceDrafts();
                       setLivePriceRange(next);
                       commitPriceRange(next, [railMin, railMax]);
                     }}
@@ -1265,47 +1423,40 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
 
                   <div className={styles['range-values']}>
                     <input
-                      type="number"
-                      value={effMin}
+                      type="text"
+                      inputMode="decimal"
+                      value={displayMin}
                       disabled={isFrozen}
+                      aria-invalid={priceInputError != null && priceDrafts.min !== undefined}
                       onChange={(e) => {
                         if (isFrozen) return;
-                        const raw = Number(e.target.value);
-                        if (!Number.isFinite(raw) || raw < 0) return;
-                        // Custom prices: keep exact numeric values (no breakpoint snap).
-                        const next: [number, number] = [
-                          raw,
-                          Number.isFinite(effMax) ? effMax : railMax,
-                        ];
-                        setLivePriceRange(next);
-                        window.clearTimeout(priceDebounceTimeout.current);
-                        priceDebounceTimeout.current = window.setTimeout(() => {
-                          commitPriceRange(next, [railMin, railMax]);
-                        }, 500);
+                        handlePriceBoundInput('min', e.target.value);
                       }}
+                      onBlur={() => handlePriceBoundBlur('min')}
+                      onKeyDown={(e) => handlePriceBoundKeyDown(e, 'min')}
                       style={{ width: 80, marginRight: 8 }}
                     />
                     <input
-                      type="number"
-                      value={effMax}
+                      type="text"
+                      inputMode="decimal"
+                      value={displayMax}
                       disabled={isFrozen}
+                      aria-invalid={priceInputError != null && priceDrafts.max !== undefined}
                       onChange={(e) => {
                         if (isFrozen) return;
-                        const raw = Number(e.target.value);
-                        if (!Number.isFinite(raw) || raw < 0) return;
-                        const next: [number, number] = [
-                          Number.isFinite(effMin) ? effMin : railMin,
-                          raw,
-                        ];
-                        setLivePriceRange(next);
-                        window.clearTimeout(priceDebounceTimeout.current);
-                        priceDebounceTimeout.current = window.setTimeout(() => {
-                          commitPriceRange(next, [railMin, railMax]);
-                        }, 500);
+                        handlePriceBoundInput('max', e.target.value);
                       }}
+                      onBlur={() => handlePriceBoundBlur('max')}
+                      onKeyDown={(e) => handlePriceBoundKeyDown(e, 'max')}
                       style={{ width: 80 }}
                     />
                   </div>
+
+                  {priceInputError && (
+                    <div className={styles['frozenHint']} role="alert">
+                      {priceInputError}
+                    </div>
+                  )}
 
                   {isFrozen && (
                     <div className={styles['frozenHint']}>

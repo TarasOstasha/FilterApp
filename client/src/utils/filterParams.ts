@@ -1,3 +1,5 @@
+import { normalizeDimensionFilterValue } from './dimensionUnits';
+
 export const URL_META_KEYS = new Set([
   'limit',
   'offset',
@@ -55,13 +57,21 @@ export function mergeSelectedCheckboxFacets<T extends SidebarFilterField>(
 }
 export const RANGE_FILTER_KEYS = ['Product Price', 'Display Width', 'Display Height'];
 
+const DIMENSION_RANGE_KEYS = new Set(['Display Width', 'Display Height']);
+
+/** Normalize dimension inch pairs for URL/API; leave price and other filters untouched. */
+function serializeFilterValue(key: string, value: string): string {
+  if (!DIMENSION_RANGE_KEYS.has(key)) return value;
+  return normalizeDimensionFilterValue(value);
+}
+
 /** Append each selected value as its own query param (commas stay inside one value). */
 export function appendFilterValues(
   params: URLSearchParams,
   key: string,
   values: string[]
 ): void {
-  values.forEach((v) => params.append(key, v));
+  values.forEach((v) => params.append(key, serializeFilterValue(key, v)));
 }
 
 /** Build axios/query object: checkbox fields as string[], range fields as single "min,max" string. */
@@ -72,7 +82,7 @@ export function filtersToQueryParams(
   for (const [key, values] of Object.entries(filters)) {
     if (!values?.length) continue;
     if (RANGE_FILTER_KEYS.includes(key)) {
-      out[key] = values[0];
+      out[key] = serializeFilterValue(key, values[0]);
     } else {
       out[key] = values;
     }
@@ -104,7 +114,10 @@ export function parseFiltersFromSearch(search: string): {
     const decodedKey = decodeURIComponent(rawKey).replace(/\+/g, ' ');
     const values = sp.getAll(rawKey);
     if (RANGE_FILTER_KEYS.includes(decodedKey)) {
-      filters[decodedKey] = values.length ? [values[0]] : [];
+      const raw = values.length ? values[0] : '';
+      filters[decodedKey] = raw
+        ? [serializeFilterValue(decodedKey, raw)]
+        : [];
     } else {
       filters[decodedKey] = values;
     }
@@ -141,6 +154,18 @@ export function withSearchTermsParam(
   const term = (searchTerms || '').trim();
   if (!term) return params;
   return { ...params, searchTerms: term };
+}
+
+/**
+ * Params for GET /dynamic-filters — same filter scope as /products
+ * (includes Display Width, Display Height, Product Price when active).
+ * Does not include catId (caller passes separately).
+ */
+export function buildDynamicFacetParams(
+  filters: Record<string, string[] | undefined>,
+  searchTerms?: string
+): Record<string, string | string[]> {
+  return withSearchTermsParam(filtersToQueryParams(filters), searchTerms);
 }
 
 /**

@@ -160,3 +160,246 @@ describe('Search + Product Price — dynamic facets & dimension ranges', functio
     expect(a.body.max).to.equal(b.body.max);
   });
 });
+
+/**
+ * Find catId + search + width + height where dimensions narrow Product Type facets.
+ */
+async function discoverSearchDimensionFacetScenario() {
+  const sequelize = createSequelize();
+  try {
+    const rows = await sequelize.query(
+      `
+      SELECT
+        pc.category_id::int AS category_id,
+        p.id AS product_id,
+        p.product_name,
+        MAX(CASE WHEN ff.field_name = 'Display Width'
+          THEN CAST(regexp_replace(pf.filter_value, '[^0-9\\.]', '', 'g') AS FLOAT) END) AS width_in,
+        MAX(CASE WHEN ff.field_name = 'Display Height'
+          THEN CAST(regexp_replace(pf.filter_value, '[^0-9\\.]', '', 'g') AS FLOAT) END) AS height_in
+      FROM products p
+      JOIN product_categories pc ON pc.product_id = p.id
+      JOIN product_filters pf ON pf.product_id = p.id
+      JOIN filter_fields ff ON ff.id = pf.filter_field_id
+        AND ff.field_name IN ('Display Width', 'Display Height')
+      WHERE ${visibleProductSql('p')}
+        AND p.product_name IS NOT NULL
+        AND POSITION(' ' IN TRIM(p.product_name)) > 0
+      GROUP BY pc.category_id, p.id, p.product_name
+      HAVING
+        MAX(CASE WHEN ff.field_name = 'Display Width'
+          THEN CAST(regexp_replace(pf.filter_value, '[^0-9\\.]', '', 'g') AS FLOAT) END) IS NOT NULL
+        AND MAX(CASE WHEN ff.field_name = 'Display Height'
+          THEN CAST(regexp_replace(pf.filter_value, '[^0-9\\.]', '', 'g') AS FLOAT) END) IS NOT NULL
+      ORDER BY p.id
+      LIMIT 250
+      `,
+      { type: QueryTypes.SELECT }
+    );
+
+    for (const row of rows) {
+      const words = String(row.product_name)
+        .trim()
+        .split(/\s+/)
+        .map((w) => w.replace(/[^a-zA-Z0-9]/g, ''))
+        .filter((w) => w.length >= 3);
+      if (!words.length) continue;
+
+      const searchTerms = words[0];
+      const w = parseFloat(row.width_in);
+      const h = parseFloat(row.height_in);
+      if (!Number.isFinite(w) || !Number.isFinite(h)) continue;
+
+      // Tight band around this product so many search matches drop out
+      const widthFilter = `${Math.max(0, w - 0.5)},${w + 0.5}`;
+      const heightFilter = `${Math.max(0, h - 0.5)},${h + 0.5}`;
+      const catId = String(row.category_id);
+
+      const searchOnly = { searchTerms, catId };
+      const withDims = {
+        searchTerms,
+        catId,
+        'Display Width': widthFilter,
+        'Display Height': heightFilter,
+      };
+
+      const facetsSearch = await expectedCheckboxFacetsLikeApi(
+        catId,
+        { searchTerms },
+        new Set()
+      );
+      const facetsDims = await expectedCheckboxFacetsLikeApi(
+        catId,
+        {
+          searchTerms,
+          'Display Width': widthFilter,
+          'Display Height': heightFilter,
+        },
+        new Set()
+      );
+
+      const typeSearch = facetsSearch['Product Type'] || [];
+      const typeDims = facetsDims['Product Type'] || [];
+      if (typeSearch.length < 2) continue;
+      if (typeDims.length === 0) continue;
+      if (typeDims.length >= typeSearch.length) continue;
+
+      return {
+        catId,
+        searchTerms,
+        widthFilter,
+        heightFilter,
+        typeSearchCount: typeSearch.length,
+        typeDimsCount: typeDims.length,
+        searchOnly,
+        withDims,
+      };
+    }
+    return null;
+  } finally {
+    await sequelize.close();
+  }
+}
+
+describe('Search + Display Width/Height — dynamic facets match /products scope', function () {
+  this.timeout(parseInt(process.env.QA_TEST_TIMEOUT_MS || '300000', 10));
+
+  let agent;
+  /** @type {Awaited<ReturnType<typeof discoverSearchDimensionFacetScenario>>} */
+  let scenario = null;
+
+  before(async function () {
+    await bootstrapApiProductVisibility();
+    agent = getTestAgent();
+    scenario = await discoverSearchDimensionFacetScenario();
+    if (!scenario) {
+      // eslint-disable-next-line no-console
+      console.log('  skipped — no search+width+height facet scenario');
+      this.skip();
+    }
+    // eslint-disable-next-line no-console
+    console.log(
+      `\n=== dim facet scenario catId=${scenario.catId} search="${scenario.searchTerms}" ` +
+        `W=${scenario.widthFilter} H=${scenario.heightFilter} ` +
+        `types ${scenario.typeSearchCount}→${scenario.typeDimsCount} ===`
+    );
+  });
+
+  it('dynamic-filters with search+width+height+catId matches DB facet SQL', async function () {
+    const expected = await expectedCheckboxFacetsLikeApi(
+      scenario.catId,
+      {
+        searchTerms: scenario.searchTerms,
+        'Display Width': scenario.widthFilter,
+        'Display Height': scenario.heightFilter,
+      },
+      new Set()
+    );
+
+    const res = await agent
+      .get('/api/dynamic-filters')
+      .query({
+        catId: scenario.catId,
+        searchTerms: scenario.searchTerms,
+        'Display Width': scenario.widthFilter,
+        'Display Height': scenario.heightFilter,
+      })
+      .expect(200);
+
+    expect(res.body).to.be.an('array');
+    const typeField = res.body.find((f) => f.field_name === 'Product Type');
+    expect(typeField, 'Product Type field').to.exist;
+    expect([...typeField.values].sort()).to.deep.equal(
+      [...(expected['Product Type'] || [])].sort()
+    );
+  });
+
+  it('dimensions narrow Product Type vs search+catId alone', async function () {
+    const resSearch = await agent
+      .get('/api/dynamic-filters')
+      .query({ catId: scenario.catId, searchTerms: scenario.searchTerms })
+      .expect(200);
+    const resDims = await agent
+      .get('/api/dynamic-filters')
+      .query({
+        catId: scenario.catId,
+        searchTerms: scenario.searchTerms,
+        'Display Width': scenario.widthFilter,
+        'Display Height': scenario.heightFilter,
+      })
+      .expect(200);
+
+    const typeSearch = resSearch.body.find((f) => f.field_name === 'Product Type');
+    const typeDims = resDims.body.find((f) => f.field_name === 'Product Type');
+    expect(typeSearch).to.exist;
+    expect(typeDims).to.exist;
+    expect(typeDims.values.length).to.be.below(typeSearch.values.length);
+  });
+
+  it('Product Type facets ⊆ types on /products with same filters', async function () {
+    const productsRes = await agent
+      .get('/api/products')
+      .query({
+        catId: scenario.catId,
+        searchTerms: scenario.searchTerms,
+        'Display Width': scenario.widthFilter,
+        'Display Height': scenario.heightFilter,
+        limit: 500,
+        offset: 0,
+        sortBy: 'most_popular',
+      })
+      .expect(200);
+
+    const productIds = (productsRes.body.products || []).map((p) => p.id);
+    expect(productIds.length).to.be.above(0);
+
+    const sequelize = createSequelize();
+    let typesOnProducts = [];
+    try {
+      const rows = await sequelize.query(
+        `
+        SELECT DISTINCT TRIM(pf.filter_value) AS val
+        FROM product_filters pf
+        JOIN filter_fields ff ON ff.id = pf.filter_field_id AND ff.field_name = 'Product Type'
+        WHERE pf.product_id IN (:ids)
+        ORDER BY 1
+        `,
+        { replacements: { ids: productIds }, type: QueryTypes.SELECT }
+      );
+      typesOnProducts = rows.map((r) => String(r.val).trim()).filter(Boolean);
+    } finally {
+      await sequelize.close();
+    }
+
+    const facetsRes = await agent
+      .get('/api/dynamic-filters')
+      .query({
+        catId: scenario.catId,
+        searchTerms: scenario.searchTerms,
+        'Display Width': scenario.widthFilter,
+        'Display Height': scenario.heightFilter,
+      })
+      .expect(200);
+
+    const typeField = facetsRes.body.find((f) => f.field_name === 'Product Type');
+    expect(typeField).to.exist;
+    for (const val of typeField.values) {
+      expect(typesOnProducts, `facet "${val}" must appear on /products set`).to.include(val);
+    }
+    expect([...typeField.values].sort()).to.deep.equal([...typesOnProducts].sort());
+  });
+
+  it('width-range still self-excludes Display Width when height+search applied', async function () {
+    const base = {
+      catId: scenario.catId,
+      searchTerms: scenario.searchTerms,
+      'Display Height': scenario.heightFilter,
+    };
+    const withWidth = { ...base, 'Display Width': scenario.widthFilter };
+    const a = await agent.get('/api/products/width-range').query(base).expect(200);
+    const b = await agent.get('/api/products/width-range').query(withWidth).expect(200);
+    // Self-exclusion: applying Display Width must not shrink the width rail
+    expect(a.body.min).to.equal(b.body.min);
+    expect(a.body.max).to.equal(b.body.max);
+  });
+});
