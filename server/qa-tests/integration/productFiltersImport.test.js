@@ -39,7 +39,7 @@ describe('product_filters.csv import — product identity resolution', function 
 
   it('resolves product_id from product_code when product_id is omitted', function () {
     const result = resolveProductIdentity(
-      { product_code: 'MK3200', filter_field_id_1: '1', 'Product Price': '10000' },
+      { product_code: 'MK3200', filter_field_id_2: '2', 'Product Type': 'Backdrop' },
       productIdByCode
     );
 
@@ -153,5 +153,23 @@ describe('product_filters.csv import — file-level transaction', function () {
     expect(getFiltersForProductField(state.filters, 1, 19)).to.deep.equal(['Backlit']);
     expect(getFiltersForProductField(state.filters, 1, 2)).to.deep.equal(['Backdrop']);
     expect(getFiltersForProductField(state.filters, 1, 12)).to.deep.equal(['10 x 10']);
+  });
+
+  it('leaves legacy Product Price rows untouched when import omits that field', async function () {
+    const { pool, state } = createMockPgPool([
+      { product_id: 1, filter_field_id: 1, filter_value: '1000' },
+      { product_id: 1, filter_field_id: 1, filter_value: '5000' },
+      { product_id: 1, filter_field_id: 19, filter_value: 'Old-Backlit' },
+    ]);
+
+    // Collect/import path never includes field id 1 after Product Price skip.
+    const filtersByProduct = buildFiltersByProduct([
+      { product_id: 1, filter_field_id: 19, values: ['Backlit'] },
+    ]);
+
+    await importAllProductFiltersInTransaction(filtersByProduct, pool);
+
+    expect(getFiltersForProductField(state.filters, 1, 19)).to.deep.equal(['Backlit']);
+    expect(getFiltersForProductField(state.filters, 1, 1)).to.deep.equal(['1000', '5000']);
   });
 });

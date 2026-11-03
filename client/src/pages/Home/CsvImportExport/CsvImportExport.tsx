@@ -565,7 +565,10 @@ const CsvImportExport: React.FC = () => {
         setIsFilterProductLoading(true);
         try {
             const response = await fetchProductFiltersByCode(code);
-            const filters = response?.data?.filters ?? [];
+            // Product Price is managed via product_price, not product_filters assignments.
+            const filters = (response?.data?.filters ?? []).filter(
+                (field: AdminProductFilterField) => field.field_name !== 'Product Price'
+            );
 
             setFilterFields(filters);
             if (filters.length > 0) {
@@ -589,9 +592,12 @@ const CsvImportExport: React.FC = () => {
     const getSelectedFilterField = () =>
         filterFields.find((field) => getFilterInstanceKey(field) === selectedFilterKey);
 
-    // Range fields (e.g. Product Price) describe a min -> max span, so they only
-    // ever make sense with exactly two value instances.
+    // Range fields (e.g. Display Width/Height) describe a min -> max span, so they
+    // only ever make sense with exactly two value instances.
+    // Product Price is excluded — it uses products.product_price, not product_filters.
     const RANGE_FIELD_MAX_VALUES = 2;
+    const isAssignableProductFilter = (field: AdminProductFilterField) =>
+        field.field_name !== 'Product Price';
 
     const isRangeFilterField = (field: AdminProductFilterField | undefined) =>
         field?.field_type === 'range';
@@ -1492,6 +1498,11 @@ const CsvImportExport: React.FC = () => {
                 </div>
                 {filterFields.length > 0 && (
                     <div className={styles.productFilterEditor}>
+                        <p className={styles.noteDesc} style={{ marginBottom: '0.75rem' }}>
+                            Product Price is set on the product (<code>product_price</code>), not
+                            as a filter assignment. Edit price via Edit Product above; slider
+                            breakpoints live on the Product Price filter field definition.
+                        </p>
                         <label>
                             Filter field
                             <select
@@ -1499,7 +1510,7 @@ const CsvImportExport: React.FC = () => {
                                 onChange={(e) => handleFilterFieldChange(e.target.value)}
                                 disabled={isFilterProductSaving}
                             >
-                                {filterFields.map((field) => (
+                                {filterFields.filter(isAssignableProductFilter).map((field) => (
                                     <option
                                         key={getFilterInstanceKey(field)}
                                         value={getFilterInstanceKey(field)}

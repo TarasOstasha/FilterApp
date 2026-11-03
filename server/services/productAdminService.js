@@ -1,6 +1,7 @@
 const createHttpError = require('http-errors');
 const pool = require('../config/dbConfig');
 const db = require('../models');
+const { isProductPriceFieldName } = require('../utils/productPriceField');
 
 const Product = db.Product;
 
@@ -363,6 +364,11 @@ async function getProductFiltersByCode(productCode) {
   const filters = [];
 
   for (const field of fieldsResult.rows) {
+    // Product Price is managed via products.product_price + filter_fields breakpoints.
+    if (isProductPriceFieldName(field.field_name)) {
+      continue;
+    }
+
     const configuredValues = field.allowed_values
       ? field.allowed_values.split(',').map((v) => v.trim()).filter(Boolean)
       : [];
@@ -427,11 +433,17 @@ async function updateProductFilterByCode(productCode, payload) {
   const filterValue = String(payload?.filter_value ?? '').trim();
 
   const fieldResult = await pool.query(
-    'SELECT id FROM filter_fields WHERE id = $1',
+    'SELECT id, field_name FROM filter_fields WHERE id = $1',
     [filterFieldId]
   );
   if (!fieldResult.rows[0]) {
     throw createHttpError(404, 'Filter field not found');
+  }
+  if (isProductPriceFieldName(fieldResult.rows[0].field_name)) {
+    throw createHttpError(
+      400,
+      'Product Price is managed via the product product_price field, not product_filters assignments'
+    );
   }
 
   const client = await pool.connect();

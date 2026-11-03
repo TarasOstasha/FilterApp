@@ -113,15 +113,15 @@ const AllowedFilenamesNote: React.FC<NoteProps> = ({ file, open = false, onClose
                         <code>product_filters.csv</code>
                         <span className={styles.noteDesc}>
                             for uploading product filters — <code>product_code</code> required;{' '}
-                            <code>product_id</code> optional
+                            <code>product_id</code> optional. Product Price columns are ignored
+                            (numeric price uses <code>products.product_price</code>; slider
+                            breakpoints live on <code>filter_fields</code>).
                         </span>
                         <table className="table table-striped table-bordered table-hover align-middle text-center">
                             <thead className="table-dark">
                                 <tr>
                                     <th scope="col">product_id</th>
                                     <th scope="col">product_code</th>
-                                    <th scope="col">filter_field_id_1</th>
-                                    <th scope="col">Product Price</th>
                                     <th scope="col">filter_field_id_2</th>
                                     <th scope="col">Product Type</th>
                                     <th scope="col">filter_field_id_4</th>
@@ -164,8 +164,6 @@ const AllowedFilenamesNote: React.FC<NoteProps> = ({ file, open = false, onClose
                                 <tr>
                                     <td>28</td>
                                     <td>MK3200</td>
-                                    <td>1</td>
-                                    <td>10000</td>
                                     <td>2</td>
                                     <td>Backdrop, Trade Show Booth</td>
                                     <td>4</td>

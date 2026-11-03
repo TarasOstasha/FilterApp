@@ -5,15 +5,32 @@ const chalk = require('chalk');
 const { DISTINCT_FILTER_VALUE_SQL } = require('../utils/filterQuery');
 const { normalizeFilterResultsSortOrder } = require('../utils/filterFieldOrder');
 const { VISIBLE_PRODUCT_SQL_AND } = require('../utils/productVisibility');
+const { isProductPriceFieldName } = require('../utils/productPriceField');
+const { parsePriceBreakpoints } = require('../utils/priceBreakpoints');
+
+/** Sidebar entry for Product Price — breakpoints from filter_fields, not product_filters. */
+function buildProductPriceSidebarField(field) {
+  const breakpoints = parsePriceBreakpoints(field.allowed_values);
+  if (!breakpoints.length) return null;
+  return {
+    id: field.id,
+    field_name: field.field_name,
+    field_type: field.field_type,
+    sort_order: field.sort_order,
+    allowed_values: breakpoints.map(String),
+  };
+}
+
+module.exports.buildProductPriceSidebarField = buildProductPriceSidebarField;
 
 module.exports.getAllFilterFields = async (req, res, next) => {
   try {
     const catId = req.query.catId ? Number(req.query.catId) : null;
     console.log(chalk.blue('getAllFilterFields catId:'), catId);
 
-    // Load all filter fields
+    // Load all filter fields (allowed_values needed for Product Price breakpoints)
     const allFilterFields = await FilterField.findAll({
-      attributes: ['id', 'field_name', 'field_type', 'sort_order'],
+      attributes: ['id', 'field_name', 'field_type', 'sort_order', 'allowed_values'],
       order: [['sort_order', 'ASC']],
       raw: true,
     });
@@ -35,6 +52,13 @@ module.exports.getAllFilterFields = async (req, res, next) => {
     const results = [];
 
     for (const field of allFilterFields) {
+      // Product Price slider uses filter_fields.allowed_values breakpoints + products.product_price
+      if (isProductPriceFieldName(field.field_name)) {
+        const priceField = buildProductPriceSidebarField(field);
+        if (priceField) results.push(priceField);
+        continue;
+      }
+
       const sql = `
         WITH base_products AS (
           SELECT DISTINCT p.id

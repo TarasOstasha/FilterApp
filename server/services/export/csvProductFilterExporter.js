@@ -3,34 +3,10 @@ const fs = require('fs');
 const path = require('path');
 const { sequelize } = require('../../models');
 const manageExportedFiles = require('./manageExportedFiles');
-
-function normalizePriceValues(raw) {
-  if (!raw) return [];
-  const s = String(raw).trim();
-
-  if (/^\d+(,\d+)+$/.test(s)) {
-    return s.split(',').map((v) => v.trim()).filter(Boolean);
-  }
-
-  if (/^\d{2},\d{3},\d{3}$/.test(s)) {
-    const digits = s.replace(/,/g, '');
-    return [digits.slice(0, 4), digits.slice(4)];
-  }
-
-  if (/^\d{1},\d{3},\d{3}$/.test(s)) {
-    const digits = s.replace(/,/g, '');
-    return [digits.slice(0, digits.length - 3), digits.slice(-3)];
-  }
-
-  if (/^\d{1,3}(,\d{3})+(\.\d+)?$/.test(s)) {
-    return [s.replace(/,/g, '')];
-  }
-
-  return s
-    .split(/[,|\s]+/)
-    .map((v) => v.trim().replace(/[^\d.]/g, ''))
-    .filter(Boolean);
-}
+const {
+  isProductPriceFieldName,
+  filterFieldsForProductFilterIo,
+} = require('../../utils/productPriceField');
 
 const escapeXml = (value) => {
   if (value == null) return '';
@@ -63,8 +39,11 @@ const buildProductFilterPivotData = async () => {
     ORDER BY id
   `);
 
-  const sortedFieldIds = allFields.map((f) => f.id);
-  const fieldMeta = new Map(allFields.map((f) => [f.id, f.field_name]));
+  // Product Price assignments are legacy — numeric price lives on products.product_price.
+  const exportFields = filterFieldsForProductFilterIo(allFields);
+  const sortedFieldIds = exportFields.map((f) => f.id);
+  const fieldMeta = new Map(exportFields.map((f) => [f.id, f.field_name]));
+  const exportFieldIdSet = new Set(sortedFieldIds);
 
   const [rows] = await sequelize.query(`
     SELECT 
@@ -83,6 +62,9 @@ const buildProductFilterPivotData = async () => {
 
   for (const r of rows) {
     const fieldId = r.filter_field_id;
+    if (!exportFieldIdSet.has(fieldId) || isProductPriceFieldName(r.filter_field_name)) {
+      continue;
+    }
 
     if (!byProduct.has(r.product_id)) {
       byProduct.set(r.product_id, {
@@ -95,23 +77,12 @@ const buildProductFilterPivotData = async () => {
     const colKey = String(fieldId);
     if (rowObj[colKey] === undefined) rowObj[colKey] = '';
 
-    if (fieldId === 1) {
-      const normList = normalizePriceValues(r.filter_value);
-      if (normList.length) {
-        const existing = rowObj[colKey] ? rowObj[colKey].split(',') : [];
-        for (const v of normList) {
-          if (!existing.includes(v)) existing.push(v);
-        }
+    const v = (r.filter_value ?? '').toString().trim();
+    if (v) {
+      const existing = rowObj[colKey] ? rowObj[colKey].split(',') : [];
+      if (!existing.includes(v)) {
+        existing.push(v);
         rowObj[colKey] = existing.join(',');
-      }
-    } else {
-      const v = (r.filter_value ?? '').toString().trim();
-      if (v) {
-        const existing = rowObj[colKey] ? rowObj[colKey].split(',') : [];
-        if (!existing.includes(v)) {
-          existing.push(v);
-          rowObj[colKey] = existing.join(',');
-        }
       }
     }
   }
@@ -179,3 +150,6 @@ const exportProductFilterDataToXML = async () => {
 };
 
 module.exports = exportProductFilterDataToXML;
+module.exports.buildProductFilterPivotData = buildProductFilterPivotData;
+module.exports.pivotDataToXml = pivotDataToXml;
+module.exports.headerToXmlTag = headerToXmlTag;

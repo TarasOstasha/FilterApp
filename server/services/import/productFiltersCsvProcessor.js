@@ -4,36 +4,9 @@ const csv = require('csv-parser');
 const { Op } = require('sequelize');
 const db = require('../../models');
 const pool = require('../../config/dbConfig');
+const { isProductPriceFieldName } = require('../../utils/productPriceField');
 
 const INSERT_CHUNK_SIZE = 500;
-
-function normalizePriceValues(raw) {
-  if (!raw) return [];
-  const s = String(raw).trim();
-
-  if (/^\d+(,\d+)+$/.test(s)) {
-    return s.split(',').map((v) => v.trim()).filter(Boolean);
-  }
-
-  if (/^\d{2},\d{3},\d{3}$/.test(s)) {
-    const digits = s.replace(/,/g, '');
-    return [digits.slice(0, 4), digits.slice(4)];
-  }
-
-  if (/^\d{1},\d{3},\d{3}$/.test(s)) {
-    const digits = s.replace(/,/g, '');
-    return [digits.slice(0, digits.length - 3), digits.slice(-3)];
-  }
-
-  if (/^\d{1,3}(,\d{3})+(\.\d+)?$/.test(s)) {
-    return [s.replace(/,/g, '')];
-  }
-
-  return s
-    .split(/[,|\s]+/)
-    .map((v) => v.trim().replace(/[^\d.]/g, ''))
-    .filter(Boolean);
-}
 
 const getProductIdKey = (row) =>
   Object.keys(row).find((k) => k.trim() === 'product_id' || k.trim().endsWith('product_id'));
@@ -167,6 +140,15 @@ const collectFilterValuesForRow = (row, product_id, idToValueCol, filterFieldMap
       filter_field_id = idNumber;
     }
 
+    const fieldInfo = filterFieldMap.get(filter_field_id);
+    // Legacy Product Price columns are ignored — numeric price lives on products.product_price.
+    if (
+      isProductPriceFieldName(valueCol) ||
+      isProductPriceFieldName(fieldInfo?.field_name)
+    ) {
+      continue;
+    }
+
     const rawValue = String(row[valueCol] ?? '').trim();
 
     if (!rawValue) {
@@ -174,14 +156,8 @@ const collectFilterValuesForRow = (row, product_id, idToValueCol, filterFieldMap
       continue;
     }
 
-    let values = [];
-    if (filter_field_id === 1) {
-      values = normalizePriceValues(rawValue);
-    } else {
-      values = rawValue.split(',').map((v) => v.trim()).filter(Boolean);
-    }
+    const values = rawValue.split(',').map((v) => v.trim()).filter(Boolean);
 
-    const fieldInfo = filterFieldMap.get(filter_field_id);
     if (!fieldInfo) {
       const errorMsg = `Filter field ID ${filter_field_id} does not exist in filter_fields table.`;
       validationErrors.push({
@@ -200,7 +176,7 @@ const collectFilterValuesForRow = (row, product_id, idToValueCol, filterFieldMap
       if (seenValues.has(val)) continue;
       seenValues.add(val);
 
-      if (fieldInfo.allowed_values_set.size > 0 && filter_field_id !== 1) {
+      if (fieldInfo.allowed_values_set.size > 0) {
         const normalizedVal = val.toLowerCase();
         if (!fieldInfo.allowed_values_set.has(normalizedVal)) {
           const errorMsg = `Value "${val}" not found in filter_fields allowed_values for field "${fieldInfo.field_name}" (ID: ${filter_field_id}). Please add it to filter_fields first, then try again.`;
@@ -337,7 +313,20 @@ const processProductFiltersCsvFile = (csvFilePath) => {
                     console.warn(chalk.yellow(`No value column after ${h}; skipping this field id.`));
                     continue;
                   }
-                  idToValueCol.push({ idCol: h, valueCol, idNumber: parseInt(m[1], 10) });
+                  const idNumber = parseInt(m[1], 10);
+                  const fieldInfo = filterFieldMap.get(idNumber);
+                  if (
+                    isProductPriceFieldName(valueCol) ||
+                    isProductPriceFieldName(fieldInfo?.field_name)
+                  ) {
+                    console.log(
+                      chalk.gray(
+                        `Skipping Product Price column (${h}) — price filtering uses products.product_price.`
+                      )
+                    );
+                    continue;
+                  }
+                  idToValueCol.push({ idCol: h, valueCol, idNumber });
                 }
               }
 

@@ -3,6 +3,7 @@
   "timeout": 120000,
   "recursive": true,
   "spec": [
+    "qa-tests/unit/**/*.test.js",
     "qa-tests/api/**/*.test.js",
     "qa-tests/integration/**/*.test.js"
   ],
