@@ -17,8 +17,23 @@ import {
   SidebarFilterField,
 } from '../../utils/filterParams';
 import { FilterRangeRails } from '../../utils/hasActiveFilters';
+import {
+  DIMENSION_INPUT_COMMIT_MS,
+  dimensionInchPairsEqual,
+  dimensionSliderStep,
+  finalizeDimensionInputText,
+  formatFeetFromInches,
+  inchesToUiValue,
+  isDimensionDraftTextAllowed,
+  normalizeDimensionInchPair,
+  shouldSkipDimensionCommit,
+  syncDimensionBoundPair,
+  uiValueToInches,
+} from '../../utils/dimensionUnits';
 
 type FilterField = SidebarFilterField & { allowed_values: any };
+
+type DimensionDraftKey = 'widthMin' | 'widthMax' | 'heightMin' | 'heightMax';
 
 interface FilterSidebarProps {
   onFilterChange: (filter: { field: string; value: any }) => void;
@@ -207,6 +222,31 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
   const [unitSelections, setUnitSelections] = useState<{ [k: string]: 'ft' | 'in' }>(
     { 'Display Width': 'in', 'Display Height': 'in' }
   );
+  /** Local draft text while editing — never reformatted until editing ends. */
+  const [dimensionDrafts, setDimensionDrafts] = useState<
+    Partial<Record<DimensionDraftKey, string>>
+  >({});
+  const dimensionDraftsRef = useRef(dimensionDrafts);
+  dimensionDraftsRef.current = dimensionDrafts;
+  const dimensionCommitTimeouts = useRef<Partial<Record<DimensionDraftKey, number>>>({});
+  /** Latest inch bounds for commit (avoids stale closures on debounce). */
+  const dimensionSelInchesRef = useRef({
+    widthMin: 0,
+    widthMax: 0,
+    heightMin: 0,
+    heightMax: 0,
+  });
+  const dimensionUnitRef = useRef<{ width: 'ft' | 'in'; height: 'ft' | 'in' }>({
+    width: 'in',
+    height: 'in',
+  });
+  const selectedFiltersRef = useRef(selectedFilters);
+  selectedFiltersRef.current = selectedFilters;
+  /** Full rail inches used when no dimension filter is committed. */
+  const dimensionRailRef = useRef({
+    width: [0, 0] as [number, number],
+    height: [0, 0] as [number, number],
+  });
 
   const [priceMin, setPriceMin] = useState(0);
   const [priceMax, setPriceMax] = useState(0);
@@ -333,29 +373,75 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
     });
   };
 
-  // Debounced handler for dimension text inputs
+  const getDimensionFallbackRail = useCallback((
+    fieldName: 'Display Width' | 'Display Height',
+  ): [number, number] => {
+    return fieldName === 'Display Width'
+      ? dimensionRailRef.current.width
+      : dimensionRailRef.current.height;
+  }, []);
+
+  const getDimensionLivePair = useCallback((
+    fieldName: 'Display Width' | 'Display Height',
+  ): [number, number] => {
+    const sel = dimensionSelInchesRef.current;
+    return fieldName === 'Display Width'
+      ? [sel.widthMin, sel.widthMax]
+      : [sel.heightMin, sel.heightMax];
+  }, []);
+
+  // Debounced handler for dimension text inputs / bound commits
   const handleRangeSliderChange = useCallback((fieldName: string, sliderValue: number | number[]) => {
     if (!Array.isArray(sliderValue) || sliderValue.length !== 2) return;
+    if (fieldName !== 'Display Width' && fieldName !== 'Display Height') return;
+
+    const pair = normalizeDimensionInchPair([sliderValue[0], sliderValue[1]]);
+    const selectedRaw = selectedFiltersRef.current[fieldName]?.[0];
+    const fallback = getDimensionFallbackRail(fieldName);
+    const live = getDimensionLivePair(fieldName);
+
+    // Unchanged vs committed filter/rail, or already applied live → no updates / API
+    if (shouldSkipDimensionCommit(pair, selectedRaw, fallback, live)) {
+      return;
+    }
+
+    // Sync live sel ref immediately so a follow-up blur/Enter sees the new pair
     if (fieldName === 'Display Width') {
-      setDebouncedWidthRange([sliderValue[0], sliderValue[1]]);
+      dimensionSelInchesRef.current.widthMin = pair[0];
+      dimensionSelInchesRef.current.widthMax = pair[1];
+      setDebouncedWidthRange((prev) =>
+        prev && dimensionInchPairsEqual(prev, pair) ? prev : pair
+      );
       window.clearTimeout(widthDebounceTimeout.current);
       widthDebounceTimeout.current = window.setTimeout(() => {
+        const latestRaw = selectedFiltersRef.current[fieldName]?.[0];
+        if (shouldSkipDimensionCommit(pair, latestRaw, getDimensionFallbackRail(fieldName))) {
+          return;
+        }
         onFilterChange({
           field: fieldName,
-          value: `${sliderValue[0]},${sliderValue[1]}`
+          value: `${pair[0]},${pair[1]}`,
         });
       }, 500);
-    } else if (fieldName === 'Display Height') {
-      setDebouncedHeightRange([sliderValue[0], sliderValue[1]]);
+    } else {
+      dimensionSelInchesRef.current.heightMin = pair[0];
+      dimensionSelInchesRef.current.heightMax = pair[1];
+      setDebouncedHeightRange((prev) =>
+        prev && dimensionInchPairsEqual(prev, pair) ? prev : pair
+      );
       window.clearTimeout(heightDebounceTimeout.current);
       heightDebounceTimeout.current = window.setTimeout(() => {
+        const latestRaw = selectedFiltersRef.current[fieldName]?.[0];
+        if (shouldSkipDimensionCommit(pair, latestRaw, getDimensionFallbackRail(fieldName))) {
+          return;
+        }
         onFilterChange({
           field: fieldName,
-          value: `${sliderValue[0]},${sliderValue[1]}`
+          value: `${pair[0]},${pair[1]}`,
         });
       }, 500);
     }
-  }, [onFilterChange]);
+  }, [onFilterChange, getDimensionFallbackRail, getDimensionLivePair]);
 
   const setLivePriceRange = useCallback((range: [number, number]) => {
     setDebouncedPriceRange(range);
@@ -385,9 +471,28 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
     fieldName: 'Display Width' | 'Display Height',
     range: [number, number],
   ) => {
-    if (fieldName === 'Display Width') setDebouncedWidthRange(range);
-    else setDebouncedHeightRange(range);
-  }, []);
+    const normalized = normalizeDimensionInchPair(range);
+    const selectedRaw = selectedFiltersRef.current[fieldName]?.[0];
+    const fallback = getDimensionFallbackRail(fieldName);
+    const live = getDimensionLivePair(fieldName);
+    if (shouldSkipDimensionCommit(normalized, selectedRaw, fallback, live)) {
+      return;
+    }
+
+    if (fieldName === 'Display Width') {
+      dimensionSelInchesRef.current.widthMin = normalized[0];
+      dimensionSelInchesRef.current.widthMax = normalized[1];
+      setDebouncedWidthRange((prev) =>
+        prev && dimensionInchPairsEqual(prev, normalized) ? prev : normalized
+      );
+    } else {
+      dimensionSelInchesRef.current.heightMin = normalized[0];
+      dimensionSelInchesRef.current.heightMax = normalized[1];
+      setDebouncedHeightRange((prev) =>
+        prev && dimensionInchPairsEqual(prev, normalized) ? prev : normalized
+      );
+    }
+  }, [getDimensionFallbackRail, getDimensionLivePair]);
 
   const commitDimensionRange = useCallback((
     fieldName: 'Display Width' | 'Display Height',
@@ -397,19 +502,29 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
     const timeoutRef = fieldName === 'Display Width' ? widthDebounceTimeout : heightDebounceTimeout;
     window.clearTimeout(timeoutRef.current);
 
-    const [minIn, maxIn] = range;
-    const near = (x: number, y: number) => Math.abs(x - y) < 1e-6;
-    const current = selectedFilters[fieldName]?.[0];
+    const normalized = normalizeDimensionInchPair(range);
+    const selectedRaw = selectedFiltersRef.current[fieldName]?.[0];
+    // Prefer explicit fullRange rail from slider; keep ref in sync
+    if (fieldName === 'Display Width') {
+      dimensionRailRef.current.width = fullRange;
+    } else {
+      dimensionRailRef.current.height = fullRange;
+    }
 
-    if (current) {
-      const [curMin, curMax] = current.split(',').map(Number);
-      if (near(curMin, minIn) && near(curMax, maxIn)) return;
-    } else if (near(minIn, fullRange[0]) && near(maxIn, fullRange[1])) {
+    if (shouldSkipDimensionCommit(normalized, selectedRaw, fullRange)) {
       return;
     }
 
-    onFilterChange({ field: fieldName, value: `${minIn},${maxIn}` });
-  }, [onFilterChange, selectedFilters]);
+    onFilterChange({ field: fieldName, value: `${normalized[0]},${normalized[1]}` });
+  }, [onFilterChange]);
+
+  // Keep unit ref in sync for debounced commits
+  useEffect(() => {
+    dimensionUnitRef.current = {
+      width: unitSelections['Display Width'] || 'in',
+      height: unitSelections['Display Height'] || 'in',
+    };
+  }, [unitSelections]);
 
   // Cleanup timeouts on unmount
   useEffect(() => {
@@ -417,6 +532,9 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
       window.clearTimeout(priceDebounceTimeout.current);
       window.clearTimeout(widthDebounceTimeout.current);
       window.clearTimeout(heightDebounceTimeout.current);
+      Object.values(dimensionCommitTimeouts.current).forEach((id) => {
+        if (id != null) window.clearTimeout(id);
+      });
     };
   }, []);
 
@@ -425,7 +543,167 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
     // Just update the unit selection - don't change the filter values
     // The selected filter values remain in inches internally, only the display changes
     setUnitSelections((prev) => ({ ...prev, [fieldName]: next }));
+    const keys: DimensionDraftKey[] =
+      fieldName === 'Display Width'
+        ? ['widthMin', 'widthMax']
+        : fieldName === 'Display Height'
+          ? ['heightMin', 'heightMax']
+          : [];
+    keys.forEach((key) => {
+      window.clearTimeout(dimensionCommitTimeouts.current[key]);
+      delete dimensionCommitTimeouts.current[key];
+    });
+    setDimensionDrafts((prev) => {
+      if (fieldName === 'Display Width') {
+        const { widthMin: _a, widthMax: _b, ...rest } = prev;
+        return rest;
+      }
+      if (fieldName === 'Display Height') {
+        const { heightMin: _a, heightMax: _b, ...rest } = prev;
+        return rest;
+      }
+      return prev;
+    });
   }
+
+  const clearDimensionDraft = useCallback((key: DimensionDraftKey) => {
+    setDimensionDrafts((prev) => {
+      if (prev[key] === undefined) return prev;
+      const next = { ...prev };
+      delete next[key];
+      return next;
+    });
+  }, []);
+
+  const applyDimensionBoundCommit = useCallback((
+    fieldName: 'Display Width' | 'Display Height',
+    bound: 'min' | 'max',
+    draftKey: DimensionDraftKey,
+    uiValue: number,
+    unit: 'ft' | 'in',
+  ) => {
+    const sel = dimensionSelInchesRef.current;
+    const otherBoundInches =
+      fieldName === 'Display Width'
+        ? (bound === 'min' ? sel.widthMax : sel.widthMin)
+        : (bound === 'min' ? sel.heightMax : sel.heightMin);
+
+    const inchValue = uiValueToInches(uiValue, unit);
+    const pair = syncDimensionBoundPair(bound, inchValue, otherBoundInches);
+
+    const selectedRaw = selectedFiltersRef.current[fieldName]?.[0];
+    const fallback = getDimensionFallbackRail(fieldName);
+    const live = getDimensionLivePair(fieldName);
+    if (shouldSkipDimensionCommit(pair, selectedRaw, fallback, live)) {
+      return;
+    }
+
+    if (fieldName === 'Display Width') {
+      if (bound === 'min') lastManualInputRef.current.widthMin = inchValue;
+      else lastManualInputRef.current.widthMax = inchValue;
+    } else if (bound === 'min') {
+      lastManualInputRef.current.heightMin = inchValue;
+    } else {
+      lastManualInputRef.current.heightMax = inchValue;
+    }
+
+    // Keep updatingFromInputRef true while drafts exist (set on keystroke, cleared on blur)
+    handleRangeSliderChange(fieldName, pair);
+  }, [handleRangeSliderChange, getDimensionFallbackRail, getDimensionLivePair]);
+
+  const commitDimensionDraft = useCallback((
+    draftKey: DimensionDraftKey,
+    fieldName: 'Display Width' | 'Display Height',
+    bound: 'min' | 'max',
+    options?: { finalizePartial?: boolean; clearDraft?: boolean },
+  ) => {
+    const text = dimensionDraftsRef.current[draftKey];
+    if (text === undefined) return;
+
+    const unit =
+      fieldName === 'Display Width'
+        ? dimensionUnitRef.current.width
+        : dimensionUnitRef.current.height;
+
+    const finalized = options?.finalizePartial
+      ? finalizeDimensionInputText(text)
+      : (() => {
+          const allowed = isDimensionDraftTextAllowed(text);
+          if (!allowed) return { ok: false as const };
+          const f = finalizeDimensionInputText(text);
+          // Debounced commit only for complete numbers (not trailing ".")
+          if (!f.ok) return { ok: false as const };
+          if (text.trim().endsWith('.') && text.trim() !== '.') return { ok: false as const };
+          return f;
+        })();
+
+    if (finalized.ok) {
+      applyDimensionBoundCommit(fieldName, bound, draftKey, finalized.value, unit);
+    }
+
+    if (options?.clearDraft) {
+      clearDimensionDraft(draftKey);
+    }
+  }, [applyDimensionBoundCommit, clearDimensionDraft]);
+
+  const scheduleDimensionDraftCommit = useCallback((
+    draftKey: DimensionDraftKey,
+    fieldName: 'Display Width' | 'Display Height',
+    bound: 'min' | 'max',
+  ) => {
+    window.clearTimeout(dimensionCommitTimeouts.current[draftKey]);
+    dimensionCommitTimeouts.current[draftKey] = window.setTimeout(() => {
+      commitDimensionDraft(draftKey, fieldName, bound, { finalizePartial: false });
+    }, DIMENSION_INPUT_COMMIT_MS);
+  }, [commitDimensionDraft]);
+
+  /** Typing: update draft only — never reformat or commit immediately. */
+  const handleDimensionBoundInput = useCallback((
+    fieldName: 'Display Width' | 'Display Height',
+    bound: 'min' | 'max',
+    draftKey: DimensionDraftKey,
+    text: string,
+  ) => {
+    if (!isDimensionDraftTextAllowed(text)) return;
+
+    updatingFromInputRef.current = true;
+    setDimensionDrafts((prev) => ({
+      ...prev,
+      [draftKey]: text,
+    }));
+    scheduleDimensionDraftCommit(draftKey, fieldName, bound);
+  }, [scheduleDimensionDraftCommit]);
+
+  const handleDimensionBoundBlur = useCallback((
+    fieldName: 'Display Width' | 'Display Height',
+    bound: 'min' | 'max',
+    draftKey: DimensionDraftKey,
+  ) => {
+    window.clearTimeout(dimensionCommitTimeouts.current[draftKey]);
+    delete dimensionCommitTimeouts.current[draftKey];
+    commitDimensionDraft(draftKey, fieldName, bound, {
+      finalizePartial: true,
+      clearDraft: true,
+    });
+    updatingFromInputRef.current = false;
+  }, [commitDimensionDraft]);
+
+  const handleDimensionBoundKeyDown = useCallback((
+    e: React.KeyboardEvent<HTMLInputElement>,
+    fieldName: 'Display Width' | 'Display Height',
+    bound: 'min' | 'max',
+    draftKey: DimensionDraftKey,
+  ) => {
+    if (e.key !== 'Enter') return;
+    e.preventDefault();
+    window.clearTimeout(dimensionCommitTimeouts.current[draftKey]);
+    delete dimensionCommitTimeouts.current[draftKey];
+    commitDimensionDraft(draftKey, fieldName, bound, {
+      finalizePartial: true,
+      clearDraft: true,
+    });
+    (e.target as HTMLInputElement).blur();
+  }, [commitDimensionDraft]);
 
   // ----- INITIAL GLOBAL DEFAULTS -----
   useEffect(() => {
@@ -970,14 +1248,13 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
           // ---------- Display Width ----------
           if (fn === 'Display Width') {
             const unit = unitSelections[fn] || 'in';
-            const factor = unit === 'ft' ? 12 : 1;
-
-            const toUi = (inch: number) =>
-              unit === 'in' ? inch : Math.max(1, Math.round(inch / factor));
-            const fromUi = (ui: number) => ui * factor;
+            const toUi = (inch: number) => inchesToUiValue(inch, unit);
+            const fromUi = (ui: number) => uiValueToInches(ui, unit);
+            const sliderStep = dimensionSliderStep(unit);
 
             const railMinIn = widthMin || globalMinWidth;
             const railMaxIn = widthMax || globalMaxWidth;
+            dimensionRailRef.current.width = [railMinIn, railMaxIn];
 
             const uiMin = toUi(railMinIn);
             const uiMax = toUi(railMaxIn);
@@ -987,14 +1264,30 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
             let selMinIn = Number.isFinite(curMinRaw) ? curMinRaw : railMinIn;
             let selMaxIn = Number.isFinite(curMaxRaw) ? curMaxRaw : railMaxIn;
 
-            // Use debounced values if available for immediate UI feedback
             if (debouncedWidthRange) {
               selMinIn = debouncedWidthRange[0];
               selMaxIn = debouncedWidthRange[1];
             }
 
+            dimensionSelInchesRef.current.widthMin = selMinIn;
+            dimensionSelInchesRef.current.widthMax = selMaxIn;
+
             const lo = clamp(toUi(selMinIn), uiMin, uiMax);
             const hi = clamp(toUi(selMaxIn), uiMin, uiMax);
+
+            // Draft while editing; auto 1-dp feet format only when not editing
+            const displayMin =
+              dimensionDrafts.widthMin !== undefined
+                ? dimensionDrafts.widthMin
+                : unit === 'ft'
+                  ? formatFeetFromInches(selMinIn)
+                  : String(Math.round(selMinIn));
+            const displayMax =
+              dimensionDrafts.widthMax !== undefined
+                ? dimensionDrafts.widthMax
+                : unit === 'ft'
+                  ? formatFeetFromInches(selMaxIn)
+                  : String(Math.round(selMaxIn));
 
             const inchPairFromSlider = (vals: number | number[]): [number, number] | null => {
               if (!Array.isArray(vals)) return null;
@@ -1024,13 +1317,14 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
                   trackClassName={styles['range-slider-track']}
                   min={uiMin}
                   max={uiMax}
-                  step={1}
+                  step={sliderStep}
                   value={[lo, hi]}
                   disabled={isFrozen}
                   pearling={false}
                   withTracks
-                  minDistance={isFrozen ? 0 : 1}
+                  minDistance={isFrozen ? 0 : sliderStep}
                   onChange={(vals) => {
+                    // Ignore prop-sync noise while typing; do not clear drafts here
                     if (updatingFromInputRef.current) return;
                     if (isFrozen) return;
                     const pair = inchPairFromSlider(vals);
@@ -1042,6 +1336,10 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
                     if (isFrozen) return;
                     const pair = inchPairFromSlider(vals);
                     if (!pair) return;
+                    window.clearTimeout(dimensionCommitTimeouts.current.widthMin);
+                    window.clearTimeout(dimensionCommitTimeouts.current.widthMax);
+                    clearDimensionDraft('widthMin');
+                    clearDimensionDraft('widthMax');
                     setLiveDimensionRange(fn, pair);
                     commitDimensionRange(fn, pair, [fromUi(uiMin), fromUi(uiMax)]);
                   }}
@@ -1049,62 +1347,34 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
                 <div className={styles['range-values']}>
                   <input
                     type="text"
-                    value={unit === 'ft' ? lo : Math.round(selMinIn)}
+                    inputMode="decimal"
+                    value={displayMin}
                     disabled={isFrozen}
                     onChange={(e) => {
                       if (isFrozen) return;
-                      updatingFromInputRef.current = true;
-                      const raw = Number(e.target.value);
-                      if (Number.isNaN(raw) || raw < 0) {
-                        updatingFromInputRef.current = false;
-                        return;
-                      }
-                      // Accept any positive value the user types
-                      if (unit === 'ft') {
-                        const inchValue = fromUi(raw);
-                        lastManualInputRef.current.widthMin = inchValue;
-                        handleRangeSliderChange(fn, [inchValue, fromUi(hi)]);
-                      } else {
-                        // In inches mode, accept the raw value directly
-                        lastManualInputRef.current.widthMin = raw;
-                        const currentMax = debouncedWidthRange ? debouncedWidthRange[1] : selMaxIn;
-                        handleRangeSliderChange(fn, [raw, currentMax]);
-                      }
-                      setTimeout(() => { updatingFromInputRef.current = false; }, 200);
+                      handleDimensionBoundInput(fn, 'min', 'widthMin', e.target.value);
                     }}
+                    onBlur={() => handleDimensionBoundBlur(fn, 'min', 'widthMin')}
+                    onKeyDown={(e) => handleDimensionBoundKeyDown(e, fn, 'min', 'widthMin')}
                     style={{ width: 80, marginRight: 8 }}
                   />
                   <input
                     type="text"
-                    value={unit === 'ft' ? hi : Math.round(selMaxIn)}
+                    inputMode="decimal"
+                    value={displayMax}
                     disabled={isFrozen}
                     onChange={(e) => {
                       if (isFrozen) return;
-                      updatingFromInputRef.current = true;
-                      const raw = Number(e.target.value);
-                      if (Number.isNaN(raw) || raw < 0) {
-                        updatingFromInputRef.current = false;
-                        return;
-                      }
-                      // Accept any positive value the user types
-                      if (unit === 'ft') {
-                        const inchValue = fromUi(raw);
-                        lastManualInputRef.current.widthMax = inchValue;
-                        handleRangeSliderChange(fn, [fromUi(lo), inchValue]);
-                      } else {
-                        // In inches mode, accept the raw value directly
-                        lastManualInputRef.current.widthMax = raw;
-                        const currentMin = debouncedWidthRange ? debouncedWidthRange[0] : selMinIn;
-                        handleRangeSliderChange(fn, [currentMin, raw]);
-                      }
-                      setTimeout(() => { updatingFromInputRef.current = false; }, 200);
+                      handleDimensionBoundInput(fn, 'max', 'widthMax', e.target.value);
                     }}
+                    onBlur={() => handleDimensionBoundBlur(fn, 'max', 'widthMax')}
+                    onKeyDown={(e) => handleDimensionBoundKeyDown(e, fn, 'max', 'widthMax')}
                     style={{ width: 80 }}
                   />
                 </div>
                 {isFrozen && (
                   <div className={styles['frozenHint']}>
-                    Only products at width {unit === 'ft' ? `${uiMin} ft` : `${railMinIn} in`} match other filters.
+                    Only products at width {unit === 'ft' ? `${formatFeetFromInches(railMinIn)} ft` : `${railMinIn} in`} match other filters.
                   </div>
                 )}
               </FilterAccordionSection>
@@ -1114,14 +1384,13 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
           // ---------- Display Height ----------
           if (fn === 'Display Height') {
             const unit = unitSelections[fn] || 'in';
-            const factor = unit === 'ft' ? 12 : 1;
-
-            const toUi = (inch: number) =>
-              unit === 'in' ? inch : Math.max(1, Math.round(inch / factor));
-            const fromUi = (ui: number) => ui * factor;
+            const toUi = (inch: number) => inchesToUiValue(inch, unit);
+            const fromUi = (ui: number) => uiValueToInches(ui, unit);
+            const sliderStep = dimensionSliderStep(unit);
 
             const railMinIn = heightMin || globalMinHeight;
             const railMaxIn = heightMax || globalMaxHeight;
+            dimensionRailRef.current.height = [railMinIn, railMaxIn];
 
             const minUi = toUi(railMinIn);
             const maxUi = toUi(railMaxIn);
@@ -1131,14 +1400,29 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
             let selMinIn = Number.isFinite(curMinRaw) ? curMinRaw : railMinIn;
             let selMaxIn = Number.isFinite(curMaxRaw) ? curMaxRaw : railMaxIn;
 
-            // Use debounced values if available for immediate UI feedback
             if (debouncedHeightRange) {
               selMinIn = debouncedHeightRange[0];
               selMaxIn = debouncedHeightRange[1];
             }
 
+            dimensionSelInchesRef.current.heightMin = selMinIn;
+            dimensionSelInchesRef.current.heightMax = selMaxIn;
+
             const lo = clamp(toUi(selMinIn), minUi, maxUi);
             const hi = clamp(toUi(selMaxIn), minUi, maxUi);
+
+            const displayMin =
+              dimensionDrafts.heightMin !== undefined
+                ? dimensionDrafts.heightMin
+                : unit === 'ft'
+                  ? formatFeetFromInches(selMinIn)
+                  : String(Math.round(selMinIn));
+            const displayMax =
+              dimensionDrafts.heightMax !== undefined
+                ? dimensionDrafts.heightMax
+                : unit === 'ft'
+                  ? formatFeetFromInches(selMaxIn)
+                  : String(Math.round(selMaxIn));
 
             const inchPairFromSlider = (vals: number | number[]): [number, number] | null => {
               if (!Array.isArray(vals)) return null;
@@ -1157,7 +1441,7 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
                 selectedCount={getFilterSelectedCount(fn, ft, selectedFilters)}
               >
                 <div className={styles['unit-switcher']}>
-                  <span>Now showing</span> {unit === 'ft' ? 'feet' : 'inches'}&nbsp; 
+                  <span>Now showing</span> {unit === 'ft' ? 'feet' : 'inches'}&nbsp;
                   <button type="button" onClick={() => handleUnitSwitch(fn)}>
                     Switch to {unit === 'ft' ? 'inches' : 'feet'}
                   </button>
@@ -1168,12 +1452,12 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
                   trackClassName={styles['range-slider-track']}
                   min={minUi}
                   max={maxUi}
-                  step={1}
+                  step={sliderStep}
                   value={[lo, hi]}
                   disabled={isFrozen}
                   pearling={false}
                   withTracks
-                  minDistance={isFrozen ? 0 : 1}
+                  minDistance={isFrozen ? 0 : sliderStep}
                   onChange={(vals) => {
                     if (updatingFromInputRef.current) return;
                     if (isFrozen) return;
@@ -1186,6 +1470,10 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
                     if (isFrozen) return;
                     const pair = inchPairFromSlider(vals);
                     if (!pair) return;
+                    window.clearTimeout(dimensionCommitTimeouts.current.heightMin);
+                    window.clearTimeout(dimensionCommitTimeouts.current.heightMax);
+                    clearDimensionDraft('heightMin');
+                    clearDimensionDraft('heightMax');
                     setLiveDimensionRange(fn, pair);
                     commitDimensionRange(fn, pair, [fromUi(minUi), fromUi(maxUi)]);
                   }}
@@ -1193,62 +1481,34 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
                 <div className={styles['range-values']}>
                   <input
                     type="text"
-                    value={unit === 'ft' ? lo : Math.round(selMinIn)}
+                    inputMode="decimal"
+                    value={displayMin}
                     disabled={isFrozen}
-                    onChange={e => {
+                    onChange={(e) => {
                       if (isFrozen) return;
-                      updatingFromInputRef.current = true;
-                      const raw = Number(e.target.value);
-                      if (Number.isNaN(raw) || raw < 0) {
-                        updatingFromInputRef.current = false;
-                        return;
-                      }
-                      // Accept any positive value the user types
-                      if (unit === 'ft') {
-                        const inchValue = fromUi(raw);
-                        lastManualInputRef.current.heightMin = inchValue;
-                        handleRangeSliderChange(fn, [inchValue, fromUi(hi)]);
-                      } else {
-                        // In inches mode, accept the raw value directly
-                        lastManualInputRef.current.heightMin = raw;
-                        const currentMax = debouncedHeightRange ? debouncedHeightRange[1] : selMaxIn;
-                        handleRangeSliderChange(fn, [raw, currentMax]);
-                      }
-                      setTimeout(() => { updatingFromInputRef.current = false; }, 200);
+                      handleDimensionBoundInput(fn, 'min', 'heightMin', e.target.value);
                     }}
+                    onBlur={() => handleDimensionBoundBlur(fn, 'min', 'heightMin')}
+                    onKeyDown={(e) => handleDimensionBoundKeyDown(e, fn, 'min', 'heightMin')}
                     style={{ width: 80, marginRight: 8 }}
                   />
                   <input
                     type="text"
-                    value={unit === 'ft' ? hi : Math.round(selMaxIn)}
+                    inputMode="decimal"
+                    value={displayMax}
                     disabled={isFrozen}
-                    onChange={e => {
+                    onChange={(e) => {
                       if (isFrozen) return;
-                      updatingFromInputRef.current = true;
-                      const raw = Number(e.target.value);
-                      if (Number.isNaN(raw) || raw < 0) {
-                        updatingFromInputRef.current = false;
-                        return;
-                      }
-                      // Accept any positive value the user types
-                      if (unit === 'ft') {
-                        const inchValue = fromUi(raw);
-                        lastManualInputRef.current.heightMax = inchValue;
-                        handleRangeSliderChange(fn, [fromUi(lo), inchValue]);
-                      } else {
-                        // In inches mode, accept the raw value directly
-                        lastManualInputRef.current.heightMax = raw;
-                        const currentMin = debouncedHeightRange ? debouncedHeightRange[0] : selMinIn;
-                        handleRangeSliderChange(fn, [currentMin, raw]);
-                      }
-                      setTimeout(() => { updatingFromInputRef.current = false; }, 200);
+                      handleDimensionBoundInput(fn, 'max', 'heightMax', e.target.value);
                     }}
+                    onBlur={() => handleDimensionBoundBlur(fn, 'max', 'heightMax')}
+                    onKeyDown={(e) => handleDimensionBoundKeyDown(e, fn, 'max', 'heightMax')}
                     style={{ width: 80 }}
                   />
                 </div>
                 {isFrozen && (
                   <div className={styles['frozenHint']}>
-                    Only products at height {unit === 'ft' ? `${minUi} ft` : `${railMinIn} in`} match other filters.
+                    Only products at height {unit === 'ft' ? `${formatFeetFromInches(railMinIn)} ft` : `${railMinIn} in`} match other filters.
                   </div>
                 )}
               </FilterAccordionSection>
