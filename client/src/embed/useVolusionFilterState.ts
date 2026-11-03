@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { fetchProductsFromAPI } from '../api';
 import {
   RANGE_FILTER_KEYS,
+  SEARCH_COMMIT_DEBOUNCE_MS,
   appendFilterValues,
   buildProductQueryParams,
   parseFiltersFromSearch,
@@ -47,6 +48,8 @@ export function useVolusionFilterState({
   const [totalProducts, setTotalProducts] = useState(0);
   const [loading, setLoading] = useState(false);
   const [sortBy, setSortBy] = useState<SortBy>('most_popular');
+  const [searchInput, setSearchInput] = useState('');
+  const [searchTerms, setSearchTerms] = useState('');
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [hasUsedLoadMore, setHasUsedLoadMore] = useState(false);
@@ -55,6 +58,13 @@ export function useVolusionFilterState({
   rangeRailsRef.current = rangeRails;
 
   const isLoadingMoreRef = useRef(false);
+  const fetchSeqRef = useRef(0);
+  const lastFetchKeyRef = useRef('');
+  const skipSearchDebounceRef = useRef(false);
+  const searchTermsRef = useRef(searchTerms);
+  searchTermsRef.current = searchTerms;
+  const selectedFiltersRef = useRef(selectedFilters);
+  selectedFiltersRef.current = selectedFilters;
 
   const offsetFrom = (page: number, limit: number) =>
     Math.max(0, (page - 1) * limit);
@@ -65,6 +75,7 @@ export function useVolusionFilterState({
       offset?: number;
       sortBy?: string;
       filters?: Record<string, string[]>;
+      searchTerms?: string;
     }) => {
       const sp = new URLSearchParams();
 
@@ -74,7 +85,13 @@ export function useVolusionFilterState({
 
       sp.delete('catId');
 
-      const currentFilters = next.filters ?? selectedFilters;
+      const term =
+        next.searchTerms !== undefined
+          ? next.searchTerms.trim()
+          : searchTermsRef.current.trim();
+      if (term) sp.set('searchTerms', term);
+
+      const currentFilters = next.filters ?? selectedFiltersRef.current;
       Object.entries(currentFilters).forEach(([k, arr]) => {
         if (Array.isArray(arr) && arr.length > 0) {
           appendFilterValues(sp, k, arr);
@@ -87,19 +104,26 @@ export function useVolusionFilterState({
         : window.location.pathname;
       window.history.replaceState({}, '', newUrl);
     },
-    [selectedFilters]
+    []
   );
 
   const hydrateFromUrl = useCallback(() => {
-    const { limit, offset, sortBy: urlSortRaw, filters } = parseFiltersFromSearch(
-      window.location.search
-    );
+    const {
+      limit,
+      offset,
+      sortBy: urlSortRaw,
+      filters,
+      searchTerms: urlSearch,
+    } = parseFiltersFromSearch(window.location.search);
     const urlSort: SortBy = isSortBy(urlSortRaw) ? urlSortRaw : 'most_popular';
 
+    skipSearchDebounceRef.current = true;
     setItemsPerPage(limit);
     setCurrentPage(Math.floor(offset / limit) + 1);
     setSortBy(urlSort);
     setSelectedFilters(filters);
+    setSearchInput(urlSearch);
+    setSearchTerms(urlSearch);
     isLoadingMoreRef.current = false;
     setIsLoadingMore(false);
     setHasUsedLoadMore(false);
@@ -119,43 +143,87 @@ export function useVolusionFilterState({
     return () => window.removeEventListener('popstate', onPopState);
   }, [hydrateFromUrl]);
 
-  const filtersActive = hasActiveFilters(selectedFilters, rangeRails);
+  // Debounce search input → committed searchTerms
+  useEffect(() => {
+    if (skipSearchDebounceRef.current) {
+      skipSearchDebounceRef.current = false;
+      return;
+    }
+    const t = window.setTimeout(() => {
+      const next = searchInput.trim();
+      setSearchTerms((prev) => {
+        if (prev === next) return prev;
+        setIsTransitioning(true);
+        isLoadingMoreRef.current = false;
+        setIsLoadingMore(false);
+        setHasUsedLoadMore(false);
+        setCurrentPage(1);
+        writeUrl({
+          limit: itemsPerPage,
+          offset: 0,
+          sortBy,
+          filters: selectedFiltersRef.current,
+          searchTerms: next,
+        });
+        return next;
+      });
+    }, SEARCH_COMMIT_DEBOUNCE_MS);
+    return () => window.clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchInput]);
+
+  const filtersActive =
+    hasActiveFilters(selectedFilters, rangeRails) || searchTerms.trim().length > 0;
 
   useEffect(() => {
     onActiveFiltersChange?.(filtersActive);
   }, [filtersActive, onActiveFiltersChange]);
 
   const fetchProducts = useCallback(async () => {
-    if (!hasActiveFilters(selectedFilters, rangeRailsRef.current)) {
+    if (
+      !hasActiveFilters(selectedFilters, rangeRailsRef.current) &&
+      !searchTerms.trim()
+    ) {
       setProducts([]);
       setTotalProducts(0);
       setLoading(false);
+      lastFetchKeyRef.current = '';
       return;
     }
 
     if (isLoadingMoreRef.current) return;
 
+    const qp = buildProductQueryParams({
+      limit: itemsPerPage,
+      offset: offsetFrom(currentPage, itemsPerPage),
+      sortBy: String(sortBy),
+      filters: selectedFilters,
+      searchTerms,
+    });
+
+    const catId = categoryId || getVolusionEmbedCategoryId();
+    const fetchKey = `${qp.toString()}|${catId}`;
+    if (fetchKey === lastFetchKeyRef.current) return;
+    lastFetchKeyRef.current = fetchKey;
+
+    const seq = ++fetchSeqRef.current;
     setLoading(true);
     try {
-      const qp = buildProductQueryParams({
-        limit: itemsPerPage,
-        offset: offsetFrom(currentPage, itemsPerPage),
-        sortBy: String(sortBy),
-        filters: selectedFilters,
-      });
-
-      const catId = categoryId || getVolusionEmbedCategoryId();
       const response = await fetchProductsFromAPI(qp, catId);
+      if (seq !== fetchSeqRef.current) return;
       if (response?.data) {
         const newProducts: Product[] = response.data.products || [];
         setProducts(newProducts);
         setTotalProducts(response.data.totalProducts || 0);
       }
     } catch (err) {
+      if (seq !== fetchSeqRef.current) return;
       console.error('Error fetching products:', err);
     } finally {
-      setLoading(false);
-      setTimeout(() => setIsTransitioning(false), 120);
+      if (seq === fetchSeqRef.current) {
+        setLoading(false);
+        setTimeout(() => setIsTransitioning(false), 120);
+      }
     }
   }, [
     selectedFilters,
@@ -163,13 +231,24 @@ export function useVolusionFilterState({
     itemsPerPage,
     sortBy,
     categoryId,
+    searchTerms,
   ]);
 
   useEffect(() => {
     if (!filtersActive) return;
-    const t = setTimeout(fetchProducts, 300);
+    const t = setTimeout(() => {
+      void fetchProducts();
+    }, 300);
     return () => clearTimeout(t);
-  }, [selectedFilters, currentPage, itemsPerPage, sortBy, filtersActive, fetchProducts]);
+  }, [
+    selectedFilters,
+    currentPage,
+    itemsPerPage,
+    sortBy,
+    searchTerms,
+    filtersActive,
+    fetchProducts,
+  ]);
 
   const handleFilterChange = (filter: { field: string; value: string }) => {
     setIsTransitioning(true);
@@ -197,6 +276,7 @@ export function useVolusionFilterState({
         offset: 0,
         sortBy,
         filters: next,
+        searchTerms,
       });
 
       return next;
@@ -224,6 +304,7 @@ export function useVolusionFilterState({
         offset: 0,
         sortBy,
         filters: next,
+        searchTerms,
       });
       return next;
     });
@@ -243,6 +324,7 @@ export function useVolusionFilterState({
       offset: 0,
       sortBy: validSort,
       filters: selectedFilters,
+      searchTerms,
     });
     ensureCategoryPageAtTop();
   };
@@ -260,6 +342,7 @@ export function useVolusionFilterState({
       offset: 0,
       sortBy,
       filters: selectedFilters,
+      searchTerms,
     });
     ensureCategoryPageAtTop();
   };
@@ -276,6 +359,7 @@ export function useVolusionFilterState({
       offset: offsetFrom(page, itemsPerPage),
       sortBy,
       filters: selectedFilters,
+      searchTerms,
     });
   };
 
@@ -293,6 +377,7 @@ export function useVolusionFilterState({
         offset: nextOffset,
         sortBy: String(sortBy),
         filters: selectedFilters,
+        searchTerms,
       });
 
       const catId = categoryId || getVolusionEmbedCategoryId();
@@ -316,6 +401,25 @@ export function useVolusionFilterState({
     }
   };
 
+  const handleClearSearch = () => {
+    skipSearchDebounceRef.current = true;
+    setIsTransitioning(true);
+    isLoadingMoreRef.current = false;
+    setIsLoadingMore(false);
+    setHasUsedLoadMore(false);
+    setSearchInput('');
+    setSearchTerms('');
+    setCurrentPage(1);
+    writeUrl({
+      limit: itemsPerPage,
+      offset: 0,
+      sortBy,
+      filters: selectedFilters,
+      searchTerms: '',
+    });
+    ensureCategoryPageAtTop();
+  };
+
   const handleClearFilters = () => {
     setIsTransitioning(true);
     isLoadingMoreRef.current = false;
@@ -327,9 +431,22 @@ export function useVolusionFilterState({
     setSortBy('most_popular');
     setProducts([]);
     setTotalProducts(0);
-    // Volusion category pages: return to the native category URL with no query params.
-    // pushState keeps the filtered URL in history so Back restores prior filter state.
-    window.history.pushState({}, '', window.location.pathname);
+    // Preserve search when clearing sidebar filters (search has its own clear control).
+    // If search is also empty, return to the native category URL.
+    if (!searchTerms.trim()) {
+      skipSearchDebounceRef.current = true;
+      setSearchInput('');
+      setSearchTerms('');
+      window.history.pushState({}, '', window.location.pathname);
+    } else {
+      writeUrl({
+        limit: 27,
+        offset: 0,
+        sortBy: 'most_popular',
+        filters: {},
+        searchTerms,
+      });
+    }
     ensureCategoryPageAtTop();
     setTimeout(() => setIsTransitioning(false), 120);
   };
@@ -344,6 +461,8 @@ export function useVolusionFilterState({
     totalProducts,
     loading,
     sortBy,
+    searchInput,
+    searchTerms,
     isTransitioning,
     isLoadingMore,
     hasUsedLoadMore,
@@ -356,5 +475,7 @@ export function useVolusionFilterState({
     handlePageChange,
     handleLoadMore,
     handleClearFilters,
+    handleClearSearch,
+    setSearchInput,
   };
 }

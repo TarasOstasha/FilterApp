@@ -1,5 +1,5 @@
-/** Query keys that are pagination/sort/category, not product filters. */
-const META_QUERY_KEYS = new Set(['limit', 'offset', 'sortBy', 'catId']);
+/** Query keys that are pagination/sort/category/search, not product filters. */
+const META_QUERY_KEYS = new Set(['limit', 'offset', 'sortBy', 'catId', 'searchTerms']);
 
 /** Strip meta keys; return only filter field entries from req.query. */
 function extractFiltersFromQuery(query) {
@@ -10,6 +10,37 @@ function extractFiltersFromQuery(query) {
     filters[key] = raw;
   }
   return filters;
+}
+
+/**
+ * Split searchTerms into words (same rules as legacy mega filter).
+ * @param {unknown} searchTerms
+ * @returns {string[]}
+ */
+function parseSearchWords(searchTerms) {
+  if (searchTerms == null || searchTerms === '') return [];
+  const raw = Array.isArray(searchTerms) ? searchTerms.join(' ') : String(searchTerms);
+  return raw.split(' ').filter(Boolean);
+}
+
+/**
+ * Append multi-word AND search on product_name / product_code (ILIKE).
+ * Mutates replacements; returns updated whereClauses string.
+ * @param {string} whereClauses
+ * @param {Record<string, unknown>} replacements
+ * @param {unknown} searchTerms
+ * @param {string} [tableAlias='p']
+ * @returns {string}
+ */
+function appendSearchTermsSql(whereClauses, replacements, searchTerms, tableAlias = 'p') {
+  const words = parseSearchWords(searchTerms);
+  let clauses = whereClauses;
+  words.forEach((word, index) => {
+    const key = `searchWord${index}`;
+    replacements[key] = `%${word}%`;
+    clauses += ` AND (${tableAlias}.product_name ILIKE :${key} OR ${tableAlias}.product_code ILIKE :${key})`;
+  });
+  return clauses;
 }
 
 /**
@@ -180,6 +211,8 @@ function buildFilterJoins({ filters, allFilterFields, fieldIdMap, excludeFieldNa
 module.exports = {
   META_QUERY_KEYS,
   extractFiltersFromQuery,
+  parseSearchWords,
+  appendSearchTermsSql,
   parseCheckboxFilterValues,
   parseProductPriceRange,
   assertSqlReplacements,

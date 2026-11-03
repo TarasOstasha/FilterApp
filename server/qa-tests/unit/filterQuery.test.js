@@ -1,9 +1,55 @@
 const { expect } = require('chai');
 const {
+  META_QUERY_KEYS,
+  extractFiltersFromQuery,
   buildFilterJoins,
   parseProductPriceRange,
+  parseSearchWords,
+  appendSearchTermsSql,
   assertSqlReplacements,
 } = require('../../utils/filterQuery');
+
+describe('searchTerms meta parsing', function () {
+  it('excludes searchTerms from filter-field extraction', function () {
+    expect(META_QUERY_KEYS.has('searchTerms')).to.equal(true);
+    const filters = extractFiltersFromQuery({
+      searchTerms: 'banner stand',
+      'Product Type': 'Retractable',
+      catId: '51',
+      sortBy: 'price_asc',
+    });
+    expect(filters).to.deep.equal({ 'Product Type': 'Retractable' });
+    expect(filters).to.not.have.property('searchTerms');
+  });
+
+  it('parses multi-word search the same as mega filter', function () {
+    expect(parseSearchWords('banner stand')).to.deep.equal(['banner', 'stand']);
+    expect(parseSearchWords('  one   two  ')).to.deep.equal(['one', 'two']);
+    expect(parseSearchWords('')).to.deep.equal([]);
+    expect(parseSearchWords(null)).to.deep.equal([]);
+  });
+
+  it('appends AND ILIKE clauses for each word on name and code', function () {
+    const replacements = {};
+    const where = appendSearchTermsSql('', replacements, 'foo bar');
+    expect(where).to.include('p.product_name ILIKE :searchWord0');
+    expect(where).to.include('p.product_code ILIKE :searchWord0');
+    expect(where).to.include('p.product_name ILIKE :searchWord1');
+    expect(where).to.include(':searchWord0');
+    expect(where).to.include(':searchWord1');
+    expect(replacements.searchWord0).to.equal('%foo%');
+    expect(replacements.searchWord1).to.equal('%bar%');
+    expect(() =>
+      assertSqlReplacements(`SELECT 1 FROM products p WHERE 1=1 ${where}`, replacements)
+    ).to.not.throw();
+  });
+
+  it('is a no-op when searchTerms is empty', function () {
+    const replacements = {};
+    expect(appendSearchTermsSql(' AND x=1', replacements, '   ')).to.equal(' AND x=1');
+    expect(replacements).to.deep.equal({});
+  });
+});
 
 describe('parseProductPriceRange', function () {
   it('parses min,max pair', function () {

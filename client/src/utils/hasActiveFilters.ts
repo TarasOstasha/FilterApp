@@ -16,6 +16,7 @@ const EXTRA_META_KEYS = [
   'q',
   'query',
   'search',
+  'searchTerms',
   'categoryId',
 ];
 

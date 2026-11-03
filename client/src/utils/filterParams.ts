@@ -3,11 +3,15 @@ export const URL_META_KEYS = new Set([
   'offset',
   'sortBy',
   'catId',
+  'searchTerms',
   // Volusion Refine() query keys — not sidebar filters
   'searching',
   'cat',
   'show',
 ]);
+
+/** Debounce for committing product search terms into shared filter queries. */
+export const SEARCH_COMMIT_DEBOUNCE_MS = 400;
 
 export interface SidebarFilterField {
   id: number;
@@ -57,6 +61,7 @@ export function parseFiltersFromSearch(search: string): {
   limit: number;
   offset: number;
   sortBy: string;
+  searchTerms: string;
   filters: Record<string, string[]>;
 } {
   const sp = new URLSearchParams(search);
@@ -67,6 +72,7 @@ export function parseFiltersFromSearch(search: string): {
   const offset = Number.isFinite(urlOffset) && urlOffset >= 0 ? urlOffset : 0;
 
   const sortBy = sp.get('sortBy') || 'most_popular';
+  const searchTerms = (sp.get('searchTerms') || '').trim();
 
   const filters: Record<string, string[]> = {};
   for (const rawKey of Array.from(sp.keys())) {
@@ -80,7 +86,7 @@ export function parseFiltersFromSearch(search: string): {
     }
   }
 
-  return { limit, offset, sortBy, filters };
+  return { limit, offset, sortBy, searchTerms, filters };
 }
 
 /** Build URLSearchParams for product/filter API calls from selectedFilters. */
@@ -89,13 +95,26 @@ export function buildProductQueryParams(options: {
   offset: number;
   sortBy: string;
   filters: Record<string, string[]>;
+  searchTerms?: string;
 }): URLSearchParams {
   const qp = new URLSearchParams();
   qp.set('limit', String(options.limit));
   qp.set('offset', String(options.offset));
   qp.set('sortBy', options.sortBy);
+  const term = (options.searchTerms || '').trim();
+  if (term) qp.set('searchTerms', term);
   Object.entries(options.filters).forEach(([key, values]) => {
     if (values?.length) appendFilterValues(qp, key, values);
   });
   return qp;
+}
+
+/** Merge committed searchTerms into sidebar/range API params (meta, not a filter field). */
+export function withSearchTermsParam(
+  params: Record<string, string | string[]>,
+  searchTerms?: string
+): Record<string, string | string[]> {
+  const term = (searchTerms || '').trim();
+  if (!term) return params;
+  return { ...params, searchTerms: term };
 }

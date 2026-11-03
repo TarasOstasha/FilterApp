@@ -4,6 +4,7 @@ const {
   extractFiltersFromQuery,
   DISTINCT_FILTER_VALUE_SQL,
   buildFilterJoins,
+  appendSearchTermsSql,
 } = require('../../utils/filterQuery');
 const { VISIBLE_PRODUCT_SQL_AND } = require('../../utils/productVisibility');
 const { API_FIELD_MAP } = require('./filterTestUtils');
@@ -75,6 +76,11 @@ async function expectedCheckboxFacetsLikeApi(
       fieldIdMap,
     });
     if (catId) built.replacements.catId = catId;
+    built.whereClauses = appendSearchTermsSql(
+      built.whereClauses,
+      built.replacements,
+      filterQuery.searchTerms
+    );
     return built;
   };
 

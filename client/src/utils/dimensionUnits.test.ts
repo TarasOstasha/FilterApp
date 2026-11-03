@@ -16,6 +16,8 @@ import {
   dimensionInchesNearEqual,
   dimensionInchPairsEqual,
   parseDimensionFilterInches,
+  formatInchesForDisplay,
+  formatDimensionRangeChipLabel,
   resolveCommittedDimensionInches,
   shouldSkipDimensionCommit,
 } from './dimensionUnits';
@@ -179,6 +181,43 @@ describe('dimensionUnits — min/max synchronization', () => {
     const [minIn, maxIn] = syncDimensionBoundPair('min', editedMinIn, otherMaxIn);
     expect(minIn).toBeCloseTo(85.2, 10);
     expect(maxIn).toBe(otherMaxIn);
+  });
+});
+
+describe('dimensionUnits — active filter chip labels', () => {
+  it('formats feet chips with max 1 decimal and en-dash + unit', () => {
+    // 82.95996 in ≈ 6.91333 ft → 6.9; 124.35996 in ≈ 10.36333 ft → 10.4
+    expect(
+      formatDimensionRangeChipLabel(
+        'Display Width',
+        '82.95996,124.35996',
+        'ft'
+      )
+    ).toBe('Display Width: 6.9-10.4 ft');
+  });
+
+  it('formats inches chips with clean rounded integers', () => {
+    expect(
+      formatDimensionRangeChipLabel(
+        'Display Height',
+        '82.95996,124.35996',
+        'in'
+      )
+    ).toBe('Display Height: 83-124 in');
+    expect(formatInchesForDisplay(90)).toBe('90');
+    expect(formatInchesForDisplay(82.95996)).toBe('83');
+  });
+
+  it('does not alter the raw inch pair used for filtering/URL', () => {
+    const raw = '82.95996,124.35996';
+    formatDimensionRangeChipLabel('Display Width', raw, 'ft');
+    expect(parseDimensionFilterInches(raw)).toEqual([82.95996, 124.35996]);
+  });
+
+  it('falls back when raw value is not a min,max pair', () => {
+    expect(formatDimensionRangeChipLabel('Display Width', 'oops', 'ft')).toBe(
+      'Display Width: oops'
+    );
   });
 });
 

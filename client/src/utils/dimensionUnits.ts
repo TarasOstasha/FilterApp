@@ -24,6 +24,14 @@ export function formatFeetFromInches(inches: number): string {
   return rounded.toFixed(1);
 }
 
+/** Clean inch display (matches sidebar inputs — no float artifacts). */
+export function formatInchesForDisplay(inches: number): string {
+  if (!Number.isFinite(inches)) return '';
+  return String(Math.round(inches));
+}
+
+export type DimensionUnit = 'ft' | 'in';
+
 /**
  * Slider step: hundredths of a foot in feet UI (supports 7.1, 7.25, 7.5),
  * 1 inch in inches UI (existing behavior).
@@ -169,6 +177,25 @@ export function parseDimensionFilterInches(
   const [min, max] = String(raw).split(',').map((v) => parseFloat(v));
   if (!Number.isFinite(min) || !Number.isFinite(max)) return null;
   return [min, max];
+}
+
+/**
+ * Active-filter chip label for Display Width / Height.
+ * Formats stored inch "min,max" for the current UI unit; does not alter stored values.
+ * Example: "Display Width: 6.9-10.4 ft"
+ */
+export function formatDimensionRangeChipLabel(
+  fieldName: string,
+  rawInchPair: string,
+  unit: DimensionUnit = 'in'
+): string {
+  const pair = parseDimensionFilterInches(rawInchPair);
+  if (!pair) return `${fieldName}: ${rawInchPair}`;
+  const [minIn, maxIn] = pair;
+  if (unit === 'ft') {
+    return `${fieldName}: ${formatFeetFromInches(minIn)}-${formatFeetFromInches(maxIn)} ft`;
+  }
+  return `${fieldName}: ${formatInchesForDisplay(minIn)}-${formatInchesForDisplay(maxIn)} in`;
 }
 
 /**

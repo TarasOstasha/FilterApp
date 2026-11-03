@@ -5,6 +5,8 @@ const {
   extractFiltersFromQuery,
   DISTINCT_FILTER_VALUE_SQL,
   buildFilterJoins,
+  appendSearchTermsSql,
+  parseSearchWords,
   assertSqlReplacements,
 } = require('../utils/filterQuery');
 const { normalizeFilterResultsSortOrder } = require('../utils/filterFieldOrder');
@@ -19,8 +21,9 @@ module.exports.getDynamicFilters = async (req, res, next) => {
     const filterKeys = Object.keys(filters);
     console.log(chalk.blue('getDynamicFilters trigger'), { catId, filterKeys });
 
-    if (!filterKeys.length && !catId) {
-      return res.status(400).json({ error: 'At least one filter or catId is required' });
+    const hasSearch = parseSearchWords(req.query.searchTerms).length > 0;
+    if (!filterKeys.length && !catId && !hasSearch) {
+      return res.status(400).json({ error: 'At least one filter, catId, or searchTerms is required' });
     }
 
     // Load all filter fields (same as getProducts)
@@ -51,9 +54,14 @@ module.exports.getDynamicFilters = async (req, res, next) => {
         fieldIdMap,
       });
       if (catId) built.replacements.catId = catId;
+      const whereClauses = appendSearchTermsSql(
+        built.whereClauses,
+        built.replacements,
+        req.query.searchTerms
+      );
       return {
         joinClauses: categoryJoin + built.joinClauses,
-        whereClauses: built.whereClauses,
+        whereClauses,
         replacements: built.replacements,
       };
     };

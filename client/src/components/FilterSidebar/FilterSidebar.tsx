@@ -14,6 +14,7 @@ import { getCategoryIdFromPath } from '../../utils/helpers';
 import {
   filtersToQueryParams,
   normalizeFilterFieldsOrder,
+  withSearchTermsParam,
   SidebarFilterField,
 } from '../../utils/filterParams';
 import { FilterRangeRails } from '../../utils/hasActiveFilters';
@@ -41,7 +42,14 @@ interface FilterSidebarProps {
   isClearingFilters?: boolean;
   loading?: boolean;
   categoryId?: string;
+  /** Committed product search — scopes dynamic facets and range rails. */
+  searchTerms?: string;
   onRangeRailsChange?: (rails: FilterRangeRails) => void;
+  /** Notify parent of ft/in unit (display-only; does not change filter values). */
+  onDimensionUnitsChange?: (units: {
+    'Display Width': 'ft' | 'in';
+    'Display Height': 'ft' | 'in';
+  }) => void;
 }
 
 function parseRangeValue(
@@ -121,7 +129,7 @@ const parsePriceBreakpointsFromField = (allowedValues: unknown): number[] => {
 // Non-filter query keys we should ignore when building params
 const NON_FILTER_QUERY_KEYS = new Set([
   'limit', 'offset', 'page', 'itemsPerPage', 'items',
-  'sort', 'sortBy', 'order', 'dir', 'q', 'query', 'search'
+  'sort', 'sortBy', 'order', 'dir', 'q', 'query', 'search', 'searchTerms',
 ]);
 
 function sanitizeFilters(raw: Record<string, string[] | undefined> = {}) {
@@ -211,7 +219,9 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
   isClearingFilters = false,
   loading = false,
   categoryId: categoryIdProp,
+  searchTerms = '',
   onRangeRailsChange,
+  onDimensionUnitsChange,
 }) => {
   const resolveCategoryId = () => categoryIdProp ?? getCategoryIdFromPath();
   const [filterFields, setFilterFields] = useState<FilterField[]>([]);
@@ -518,13 +528,16 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
     onFilterChange({ field: fieldName, value: `${normalized[0]},${normalized[1]}` });
   }, [onFilterChange]);
 
-  // Keep unit ref in sync for debounced commits
+  // Keep unit ref in sync for debounced commits; notify chip formatting
   useEffect(() => {
-    dimensionUnitRef.current = {
-      width: unitSelections['Display Width'] || 'in',
-      height: unitSelections['Display Height'] || 'in',
-    };
-  }, [unitSelections]);
+    const width = unitSelections['Display Width'] || 'in';
+    const height = unitSelections['Display Height'] || 'in';
+    dimensionUnitRef.current = { width, height };
+    onDimensionUnitsChange?.({
+      'Display Width': width,
+      'Display Height': height,
+    });
+  }, [unitSelections, onDimensionUnitsChange]);
 
   // Cleanup timeouts on unmount
   useEffect(() => {
@@ -771,11 +784,15 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
       
       const safeFilters = sanitizeFilters(selectedFilters);
       const hasFilters = Object.keys(safeFilters).length > 0;
-      if (!hasFilters) return; // Don't fetch on initial load
+      const hasSearch = searchTerms.trim().length > 0;
+      if (!hasFilters && !hasSearch) return;
       
       (async () => {
         try {
-          const params = buildParams(selectedFilters, 'Display Width');
+          const params = withSearchTermsParam(
+            buildParams(selectedFilters, 'Display Width'),
+            searchTerms
+          );
           const catId = resolveCategoryId();
           const res = await fetchWidthRange(params, catId);
           const mn = res?.data?.min ?? 0;
@@ -787,7 +804,7 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
         }
       })();
     },
-    [selectedFilters],
+    [selectedFilters, searchTerms],
     1500
   );
 
@@ -802,11 +819,15 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
       
       const safeFilters = sanitizeFilters(selectedFilters);
       const hasFilters = Object.keys(safeFilters).length > 0;
-      if (!hasFilters) return; // Don't fetch on initial load
+      const hasSearch = searchTerms.trim().length > 0;
+      if (!hasFilters && !hasSearch) return;
       
       (async () => {
         try {
-          const params = buildParams(selectedFilters, 'Display Height');
+          const params = withSearchTermsParam(
+            buildParams(selectedFilters, 'Display Height'),
+            searchTerms
+          );
           const catId = resolveCategoryId();
           const res = await fetchHeightRange(params, catId);
           const mn = res?.data?.min ?? 0;
@@ -818,7 +839,7 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
         }
       })();
     },
-    [selectedFilters],
+    [selectedFilters, searchTerms],
     1500
   );
 
@@ -865,6 +886,7 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
 
     const keys = Object.keys(normalized);
     const nonPrice = keys.filter((k) => k !== 'Product Price');
+    const hasSearch = searchTerms.trim().length > 0;
 
     window.clearTimeout(priceFetchTimeout.current);
     priceFetchTimeout.current = window.setTimeout(() => {
@@ -872,7 +894,7 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
       // Also fetch when we only have price filter and no other filters
       const onlyHasPriceFilter = keys.length === 1 && keys[0] === 'Product Price' && nonPrice.length === 0;
       
-      if (keys.length === 0 || onlyHasPriceFilter) {
+      if ((keys.length === 0 || onlyHasPriceFilter) && !hasSearch) {
         const catId = resolveCategoryId();
         fetchFilterSidebarData(catId)
           .then((r) => {
@@ -901,10 +923,13 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
             console.warn('Static reload failed:', err);
             // Don't clear filterFields on error - keep existing state
           });
-      } else if (nonPrice.length > 0) {
+      } else if (nonPrice.length > 0 || hasSearch) {
         setIsLoadingFilters(true);
-        const params = filtersToQueryParams(
-          Object.fromEntries(nonPrice.map((k) => [k, normalized[k]]))
+        const params = withSearchTermsParam(
+          filtersToQueryParams(
+            Object.fromEntries(nonPrice.map((k) => [k, normalized[k]]))
+          ),
+          searchTerms
         );
         const catId = resolveCategoryId();
         fetchDynamicFilters(params, catId)
@@ -961,13 +986,24 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
           });
       }
 
-      // Price range (driven by non-price filters)
-      if (noFiltersAtAll || initializedFromFilterFields.current || nonPrice.length > 0) {
-        const priceParams = nonPrice.length > 0
-          ? filtersToQueryParams(
-              Object.fromEntries(nonPrice.map((k) => [k, normalized[k]]))
-            )
-          : undefined;
+      // Price range (driven by non-price filters and/or search)
+      if (
+        noFiltersAtAll ||
+        initializedFromFilterFields.current ||
+        nonPrice.length > 0 ||
+        hasSearch
+      ) {
+        const basePriceParams =
+          nonPrice.length > 0
+            ? filtersToQueryParams(
+                Object.fromEntries(nonPrice.map((k) => [k, normalized[k]]))
+              )
+            : {};
+        const priceParams = hasSearch
+          ? withSearchTermsParam(basePriceParams, searchTerms)
+          : nonPrice.length > 0
+            ? basePriceParams
+            : undefined;
 
         const catId = resolveCategoryId();
         fetchPriceRange(priceParams, catId)
@@ -987,7 +1023,7 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
     }, 300); // Reduced timeout for faster response
 
     return () => window.clearTimeout(priceFetchTimeout.current);
-  }, [selectedFilters]); // Simplified dependencies to prevent infinite loops
+  }, [selectedFilters, searchTerms]); // Simplified dependencies to prevent infinite loops
 
   const isLoading = isLoadingFilters || isClearingFilters || loading;
 

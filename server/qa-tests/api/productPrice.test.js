@@ -44,7 +44,7 @@ describe('GET /api/products — Product Price (products.product_price BETWEEN)',
     // eslint-disable-next-line no-console
     console.log(`Visible priced products: ${catalog.length}`);
     // eslint-disable-next-line no-console
-    console.log(`Price range: ${minPrice} – ${maxPrice}`);
+    console.log(`Price range: ${minPrice} - ${maxPrice}`);
     // eslint-disable-next-line no-console
     console.log(
       `Buckets to run: ${buildPriceRangeBucketsFromCatalog(catalog).map((b) => b.label).join(', ')}`

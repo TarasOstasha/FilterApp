@@ -9,6 +9,7 @@ const {
   appendCheckboxFilterJoins,
   buildFilterJoins,
   parseProductPriceRange,
+  appendSearchTermsSql,
   assertSqlReplacements,
 } = require('../utils/filterQuery');
 const { visibleProductWhere, visibleProductSql, VISIBLE_PRODUCT_SQL_AND } = require('../utils/productVisibility');
@@ -211,9 +212,14 @@ module.exports.getPriceRange = async (req, res, next) => {
     // console.log(chalk.yellow('Replacements:'), replacements);
 
     const visibilityCondition = `WHERE ${visibleProductSql('p')}`;
-    const filteredProductsWhere = productPriceCondition
+    let filteredProductsWhere = productPriceCondition
       ? `${productPriceCondition} AND ${visibleProductSql('p')}`
       : visibilityCondition;
+    filteredProductsWhere = appendSearchTermsSql(
+      filteredProductsWhere,
+      replacements,
+      req.query.searchTerms
+    );
 
     const priceRangeSql = `
       WITH filtered_products AS (
@@ -325,6 +331,12 @@ module.exports.getProducts = async (req, res, next) => {
       ` + joinClauses;
       replacements.catId = catId;
     }
+
+    whereClauses = appendSearchTermsSql(
+      whereClauses,
+      replacements,
+      req.query.searchTerms
+    );
 
     const sql = `
       WITH filtered_product_ids AS (
@@ -567,6 +579,10 @@ module.exports.getWidthRange = async (req, res, next) => {
 
     const widthField = filterMap['Display Width'];
     if (!widthField) throw new Error('Display Width filter field not found');
+
+    let widthWhere = `WHERE ${visibleProductSql('p')}`;
+    widthWhere = appendSearchTermsSql(widthWhere, replacements, req.query.searchTerms);
+
     // get filteredRow
     const [filteredRow] = await sequelize.query(
       `
@@ -574,7 +590,7 @@ module.exports.getWidthRange = async (req, res, next) => {
         SELECT DISTINCT p.id
         FROM products p
         ${joins}
-        WHERE ${visibleProductSql('p')}
+        ${widthWhere}
       )
       SELECT 
         MIN(CAST(regexp_replace(pf.filter_value, '[^0-9\\.]', '', 'g') AS double precision)) AS min,
@@ -687,13 +703,16 @@ module.exports.getHeightRange = async (req, res, next) => {
     const heightField = filterMap['Display Height'];
     if (!heightField) throw new Error('Display Height filter field not found');
 
+    let heightWhere = `WHERE ${visibleProductSql('p')}`;
+    heightWhere = appendSearchTermsSql(heightWhere, replacements, req.query.searchTerms);
+
     const [filteredRow] = await sequelize.query(
       `
       WITH filtered_products AS (
         SELECT DISTINCT p.id
         FROM products p
         ${joins}
-        WHERE ${visibleProductSql('p')}
+        ${heightWhere}
       )
       SELECT 
         MIN(CAST(regexp_replace(pf.filter_value, '[^0-9\\.]', '', 'g') AS double precision)) AS min,

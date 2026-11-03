@@ -5,6 +5,7 @@ const {
   parseCheckboxFilterValues,
   appendCheckboxFilterJoins,
   parseProductPriceRange,
+  appendSearchTermsSql,
 } = require('../../utils/filterQuery');
 const { visibleProductSql } = require('../../utils/productVisibility');
 const {
@@ -158,9 +159,14 @@ async function expectedPriceRangeLikeApi(categoryId, filterQuery = {}) {
   );
 
   const visibilityCondition = `WHERE ${visibleProductSql('p')}`;
-  const filteredProductsWhere = productPriceCondition
+  let filteredProductsWhere = productPriceCondition
     ? `${productPriceCondition} AND ${visibleProductSql('p')}`
     : visibilityCondition;
+  filteredProductsWhere = appendSearchTermsSql(
+    filteredProductsWhere,
+    replacements,
+    query.searchTerms
+  );
 
   const sequelize = createSequelize();
   try {
@@ -225,6 +231,9 @@ async function expectedDimensionRangeLikeApi(fieldName, categoryId, filterQuery 
   const builder = buildRangeEndpointJoins(query, { skipRangeField: fieldName });
   const { joins, replacements } = builder.applyProductPriceFromQuery(allFilterFields);
 
+  let dimWhere = `WHERE ${visibleProductSql('p')}`;
+  dimWhere = appendSearchTermsSql(dimWhere, replacements, query.searchTerms);
+
   const sequelize = createSequelize();
   try {
     const [filteredRow] = await sequelize.query(
@@ -233,7 +242,7 @@ async function expectedDimensionRangeLikeApi(fieldName, categoryId, filterQuery 
         SELECT DISTINCT p.id
         FROM products p
         ${joins}
-        WHERE ${visibleProductSql('p')}
+        ${dimWhere}
       )
       SELECT
         MIN(CAST(regexp_replace(pf.filter_value, '[^0-9\\.]', '', 'g') AS double precision)) AS min,

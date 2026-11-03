@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import FilterSidebar from '../../components/FilterSidebar/FilterSidebar';
 import ProductList from '../../components/ProductList/ProductList';
 import SortDropdown from '../../components/SortDropdown/SortDropdown';
@@ -6,7 +6,9 @@ import ItemsPerPageDropdown from '../../components/ItemsPerPageDropdown/ItemsPer
 import PaginationControls from '../../components/PaginationControls/PaginationControls';
 import { fetchProductsFromAPI } from '../../api';
 import MegaFilter from '../../components/MegaFilter/MegaFilter';
-import ActiveFilters from '../../components/ActiveFilters/ActiveFilters';
+import ActiveFilters, {
+  DimensionUnitSelections,
+} from '../../components/ActiveFilters/ActiveFilters';
 import CategoryTester from '../../components/CategoryTester/CategoryTester';
 import styles from './Home.module.scss';
 import {
@@ -15,6 +17,7 @@ import {
 } from '../../utils/helpers';
 import {
   RANGE_FILTER_KEYS,
+  SEARCH_COMMIT_DEBOUNCE_MS,
   appendFilterValues,
   parseFiltersFromSearch,
   buildProductQueryParams,
@@ -45,14 +48,28 @@ const Home: React.FC = () => {
   const [totalProducts, setTotalProducts] = useState(0);
   const [loading, setLoading] = useState(false);
   const [sortBy, setSortBy] = useState<SortBy>('most_popular');
-  const [megaSearchResultIds, setMegaSearchResultIds] = useState<number[]>([]);
+  /** Immediate input value (free typing). */
+  const [searchInput, setSearchInput] = useState('');
+  /** Debounced committed search used by API / URL / sidebar. */
+  const [searchTerms, setSearchTerms] = useState('');
+  const [dimensionUnits, setDimensionUnits] = useState<DimensionUnitSelections>({
+    'Display Width': 'in',
+    'Display Height': 'in',
+  });
 
   // load-more - separate from pagination
   const [isLoadingMore, setIsLoadingMore] = useState(false);
-  const [loadedCount, setLoadedCount] = useState(0); // Track how many products loaded via "View More"
-  const [hasUsedLoadMore, setHasUsedLoadMore] = useState(false); // Track if "View More" has been used
+  const [loadedCount, setLoadedCount] = useState(0);
+  const [hasUsedLoadMore, setHasUsedLoadMore] = useState(false);
 
-  // —— helpers ——
+  const fetchSeqRef = useRef(0);
+  const lastFetchKeyRef = useRef('');
+  const searchTermsRef = useRef(searchTerms);
+  searchTermsRef.current = searchTerms;
+  const selectedFiltersRef = useRef(selectedFilters);
+  selectedFiltersRef.current = selectedFilters;
+  const skipSearchDebounceRef = useRef(false);
+
   const offsetFrom = (page: number, limit: number) => Math.max(0, (page - 1) * limit);
 
   const writeUrl = (next: {
@@ -60,6 +77,7 @@ const Home: React.FC = () => {
     offset?: number;
     sortBy?: string;
     filters?: { [k: string]: string[] };
+    searchTerms?: string;
     catId?: string;
   }) => {
     const sp = new URLSearchParams();
@@ -76,7 +94,13 @@ const Home: React.FC = () => {
       if (catId) sp.set('catId', catId);
     }
 
-    const currentFilters = next.filters || selectedFilters;
+    const term =
+      next.searchTerms !== undefined
+        ? next.searchTerms.trim()
+        : searchTermsRef.current.trim();
+    if (term) sp.set('searchTerms', term);
+
+    const currentFilters = next.filters || selectedFiltersRef.current;
     Object.entries(currentFilters).forEach(([k, arr]) => {
       if (Array.isArray(arr) && arr.length > 0) {
         appendFilterValues(sp, k, arr);
@@ -88,16 +112,23 @@ const Home: React.FC = () => {
   };
 
   const hydrateFromUrl = useCallback((options?: { syncCatIdToUrl?: boolean }) => {
-    const { limit, offset, sortBy: urlSortRaw, filters } = parseFiltersFromSearch(
-      window.location.search
-    );
+    const {
+      limit,
+      offset,
+      sortBy: urlSortRaw,
+      filters,
+      searchTerms: urlSearch,
+    } = parseFiltersFromSearch(window.location.search);
     const urlSort: SortBy = isSortBy(urlSortRaw) ? urlSortRaw : 'most_popular';
 
+    skipSearchDebounceRef.current = true;
     setItemsPerPage(limit);
     setCurrentPage(Math.floor(offset / limit) + 1);
     setLoadedCount(limit);
     setSortBy(urlSort);
     setSelectedFilters(filters);
+    setSearchInput(urlSearch);
+    setSearchTerms(urlSearch);
     setIsLoadingMore(false);
     setHasUsedLoadMore(false);
 
@@ -142,57 +173,86 @@ const Home: React.FC = () => {
     return () => window.removeEventListener('popstate', onPopState);
   }, [hydrateFromUrl]);
 
-  // —— FETCH PRODUCTS ——
-  const fetchProducts = async () => {
-    setLoading(true);
-    console.log(selectedFilters, 'selectedFilters');
-    try {
-      const qp = buildProductQueryParams({
-        limit: itemsPerPage,
-        offset: offsetFrom(currentPage, itemsPerPage),
-        sortBy: String(sortBy),
-        filters: selectedFilters,
+  // Debounce search input → committed searchTerms (page reset + URL)
+  useEffect(() => {
+    if (skipSearchDebounceRef.current) {
+      skipSearchDebounceRef.current = false;
+      return;
+    }
+    const t = window.setTimeout(() => {
+      const next = searchInput.trim();
+      setSearchTerms((prev) => {
+        if (prev === next) return prev;
+        setIsTransitioning(true);
+        setIsLoadingMore(false);
+        setHasUsedLoadMore(false);
+        setCurrentPage(1);
+        setLoadedCount(itemsPerPage);
+        writeUrl({
+          limit: itemsPerPage,
+          offset: 0,
+          sortBy,
+          filters: selectedFiltersRef.current,
+          searchTerms: next,
+        });
+        return next;
       });
+    }, SEARCH_COMMIT_DEBOUNCE_MS);
+    return () => window.clearTimeout(t);
+    // intentionally omit itemsPerPage/sortBy — only commit when input changes
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchInput]);
 
-      const catId = getCategoryIdFromPath();
+  const fetchProducts = useCallback(async () => {
+    const qp = buildProductQueryParams({
+      limit: itemsPerPage,
+      offset: offsetFrom(currentPage, itemsPerPage),
+      sortBy: String(sortBy),
+      filters: selectedFilters,
+      searchTerms,
+    });
+    const catId = getCategoryIdFromPath();
+    const fetchKey = `${qp.toString()}|${catId}`;
+    if (fetchKey === lastFetchKeyRef.current) {
+      return;
+    }
+    lastFetchKeyRef.current = fetchKey;
+
+    const seq = ++fetchSeqRef.current;
+    setLoading(true);
+    try {
       const response = await fetchProductsFromAPI(qp, catId);
+      if (seq !== fetchSeqRef.current) return;
       if (response?.data) {
-        const newProducts: Product[] = response.data.products || [];
-        if (isLoadingMore) {
-          // Filter out duplicates based on product ID before appending
-          setProducts((prev) => {
-            const existingIds = new Set(prev.map(p => p.id));
-            const uniqueNewProducts = newProducts.filter(p => !existingIds.has(p.id));
-            return [...prev, ...uniqueNewProducts];
-          });
-        } else {
-          setProducts(newProducts);
-        }
+        setProducts(response.data.products || []);
         setTotalProducts(response.data.totalProducts || 0);
       } else {
         console.error('No data received');
       }
     } catch (err) {
+      if (seq !== fetchSeqRef.current) return;
       console.error('Error fetching products:', err);
     } finally {
-      setLoading(false);
-      setIsLoadingMore(false);
-      // let images start loading, then fade in
-      setTimeout(() => setIsTransitioning(false), 120);
+      if (seq === fetchSeqRef.current) {
+        setLoading(false);
+        setIsLoadingMore(false);
+        setTimeout(() => setIsTransitioning(false), 120);
+      }
     }
-  };
+  }, [selectedFilters, currentPage, itemsPerPage, sortBy, searchTerms]);
 
-  // debounce fetch on key deps
+  // Search is already debounced before searchTerms updates; keep a short settle for filter churn.
   useEffect(() => {
-    const t = setTimeout(fetchProducts, 300);
+    const t = setTimeout(() => {
+      void fetchProducts();
+    }, 300);
     return () => clearTimeout(t);
-  }, [selectedFilters, currentPage, itemsPerPage, sortBy]);
+  }, [selectedFilters, currentPage, itemsPerPage, sortBy, searchTerms, fetchProducts]);
 
-  // —— handlers ——
   const handleFilterChange = (filter: { field: string; value: string }) => {
     setIsTransitioning(true);
     setIsLoadingMore(false);
-    setHasUsedLoadMore(false); // Reset when filter changes
+    setHasUsedLoadMore(false);
     const { field, value } = filter;
     setSelectedFilters((prev) => {
       const current = prev[field] || [];
@@ -215,6 +275,7 @@ const Home: React.FC = () => {
         offset: 0,
         sortBy,
         filters: next,
+        searchTerms,
       });
 
       return next;
@@ -242,6 +303,7 @@ const Home: React.FC = () => {
         offset: 0,
         sortBy,
         filters: next,
+        searchTerms,
       });
       return next;
     });
@@ -252,7 +314,7 @@ const Home: React.FC = () => {
     const validSort: SortBy = isSortBy(sortMethod) ? sortMethod : 'most_popular';
     setIsTransitioning(true);
     setIsLoadingMore(false);
-    setHasUsedLoadMore(false); // Reset when sort changes
+    setHasUsedLoadMore(false);
     setSortBy(validSort);
     setCurrentPage(1);
     setLoadedCount(itemsPerPage);
@@ -261,6 +323,7 @@ const Home: React.FC = () => {
       offset: 0,
       sortBy: validSort,
       filters: selectedFilters,
+      searchTerms,
     });
     window.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior });
   };
@@ -268,7 +331,7 @@ const Home: React.FC = () => {
   const handleItemsPerPageChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     setIsTransitioning(true);
     setIsLoadingMore(false);
-    setHasUsedLoadMore(false); // Reset when items per page changes
+    setHasUsedLoadMore(false);
     const next = Number(e.target.value);
     setItemsPerPage(next);
     setCurrentPage(1);
@@ -278,13 +341,14 @@ const Home: React.FC = () => {
       offset: 0,
       sortBy,
       filters: selectedFilters,
+      searchTerms,
     });
     window.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior });
   };
 
   const handlePageChange = (page: number) => {
     setIsTransitioning(true);
-    setHasUsedLoadMore(false); // Reset when navigating to new page
+    setHasUsedLoadMore(false);
     setIsLoadingMore(false);
     window.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior });
     setCurrentPage(page);
@@ -294,12 +358,13 @@ const Home: React.FC = () => {
       offset: nextOffset,
       sortBy,
       filters: selectedFilters,
+      searchTerms,
     });
   };
 
   const handleLoadMore = async () => {
     setIsLoadingMore(true);
-    setHasUsedLoadMore(true); // Mark that "View More" has been used
+    setHasUsedLoadMore(true);
 
     try {
       const baseOffset = offsetFrom(currentPage, itemsPerPage);
@@ -309,22 +374,22 @@ const Home: React.FC = () => {
         offset: nextOffset,
         sortBy: String(sortBy),
         filters: selectedFilters,
+        searchTerms,
       });
 
       const catId = getCategoryIdFromPath();
       const response = await fetchProductsFromAPI(qp, catId);
       if (response?.data) {
         const newProducts: Product[] = response.data.products || [];
-        // Filter out duplicates and append
         setProducts((prev) => {
-          const existingIds = new Set(prev.map(p => p.id));
-          const uniqueNewProducts = newProducts.filter(p => !existingIds.has(p.id));
+          const existingIds = new Set(prev.map((p) => p.id));
+          const uniqueNewProducts = newProducts.filter((p) => !existingIds.has(p.id));
           if (uniqueNewProducts.length === 0) {
             setTotalProducts(prev.length);
           }
           return [...prev, ...uniqueNewProducts];
         });
-        setLoadedCount(prev => prev + itemsPerPage);
+        setLoadedCount((prev) => prev + itemsPerPage);
       }
     } catch (err) {
       console.error('Error loading more products:', err);
@@ -333,20 +398,39 @@ const Home: React.FC = () => {
     }
   };
 
+  const handleClearSearch = () => {
+    skipSearchDebounceRef.current = true;
+    setIsTransitioning(true);
+    setIsLoadingMore(false);
+    setHasUsedLoadMore(false);
+    setSearchInput('');
+    setSearchTerms('');
+    setCurrentPage(1);
+    setLoadedCount(itemsPerPage);
+    writeUrl({
+      limit: itemsPerPage,
+      offset: 0,
+      sortBy,
+      filters: selectedFilters,
+      searchTerms: '',
+    });
+    window.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior });
+  };
+
   const handleClearFilters = () => {
     setIsTransitioning(true);
     setIsLoadingMore(false);
-    setHasUsedLoadMore(false); // Reset when clearing filters
+    setHasUsedLoadMore(false);
     setSelectedFilters({});
     setCurrentPage(1);
     setLoadedCount(itemsPerPage);
-    // Always reset to most_popular when clearing filters
     setSortBy('most_popular');
     writeUrl({
       limit: itemsPerPage,
       offset: 0,
       sortBy: 'most_popular',
       filters: {},
+      searchTerms,
     });
     window.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior });
   };
@@ -362,9 +446,11 @@ const Home: React.FC = () => {
       offset: 0,
       sortBy,
       filters: selectedFilters,
+      searchTerms,
       catId: getCategoryIdFromPath(),
     });
-    fetchProducts();
+    lastFetchKeyRef.current = '';
+    void fetchProducts();
   };
 
   const totalPages = Math.ceil(totalProducts / itemsPerPage);
@@ -382,6 +468,8 @@ const Home: React.FC = () => {
               onFilterChange={handleFilterChange}
               selectedFilters={selectedFilters}
               loading={loading}
+              searchTerms={searchTerms}
+              onDimensionUnitsChange={setDimensionUnits}
             />
           </div>
           <div className="col-md-9">
@@ -399,26 +487,23 @@ const Home: React.FC = () => {
             <br />
 
             <MegaFilter
-              sortBy={sortBy}
-              filters={selectedFilters}
-              loading={loading}
-              categoryId={getCategoryIdFromPath()}
-              onSearchResultIdsChange={setMegaSearchResultIds}
+              value={searchInput}
+              onChange={setSearchInput}
+              onClear={handleClearSearch}
             />
 
             <ActiveFilters
               selectedFilters={selectedFilters}
               onRemove={handleRemoveFilter}
               onClearAll={handleClearFilters}
+              dimensionUnits={dimensionUnits}
             />
 
-            {/* Fade this whole region during transitions */}
             <div className={`${styles.pageTransition} ${!isTransitioning ? styles.show : ''}`}>
               <ProductList
                 products={products}
                 filters={selectedFilters}
                 loading={loading}
-                excludeProductIds={megaSearchResultIds}
               />
 
               <PaginationControls
